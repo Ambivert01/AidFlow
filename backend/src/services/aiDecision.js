@@ -1,17 +1,37 @@
 import axios from "axios";
 
-export async function runAIDecisionChain(payload) {
-  const eligibility = await axios.post("http://localhost:8001/check", payload.eligibility);
-  const fraud = await axios.post("http://localhost:8002/detect", payload.fraud);
-  const risk = await axios.post("http://localhost:8003/evaluate", {
-    eligibility: eligibility.data,
-    fraud: fraud.data,
-    policy: payload.policy
-  });
+/**
+ * AI Agent Clients
+ * Each agent is isolated and replaceable
+ */
+export const aiClients = {
+  eligibility: {
+    async check(payload) {
+      const res = await axios.post(
+        "http://localhost:8001/check",
+        payload
+      );
+      return res.data;
+    },
+  },
 
-  return {
-    eligibility: eligibility.data,
-    fraud: fraud.data,
-    risk: risk.data
-  };
-}
+  fraud: {
+    async detect(payload) {
+      const res = await axios.post(
+        "http://localhost:8002/detect",
+        payload
+      );
+      return res.data;
+    },
+  },
+
+  risk: {
+    async assess(payload) {
+      const res = await axios.post(
+        "http://localhost:8003/evaluate",
+        payload
+      );
+      return res.data;
+    },
+  },
+};

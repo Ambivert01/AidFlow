@@ -3,13 +3,13 @@ import { useAuth } from "../hooks/useAuth";
 import Loader from "./Loader";
 
 export default function ProtectedRoute({ children, allowedRoles }) {
-  const auth = useAuth();
+  const { loading, isAuthenticated, role } = useAuth();
 
-  if (auth.loading) return <Loader text="Authenticating..." />;
+  if (loading) return <Loader text="Authenticating..." />;
 
-  if (!auth.isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
 
-  if (!allowedRoles.includes(auth.role))
+  if (!allowedRoles.includes(role))
     return <Navigate to="/unauthorized" replace />;
 
   return children;
