@@ -3,11 +3,31 @@
  * Enforces programmable money rules
  */
 
+import { Wallet } from "../models/Wallet.model.js";
+
+
 export class WalletEngine {
   constructor({ auditService }) {
     this.auditService = auditService;
     this.wallets = new Map(); // in-memory for now (DB later)
   }
+
+  /*
+ * DB-backed wallet (for beneficiary dashboard)
+ */
+async getOrCreateWallet(beneficiaryId) {
+  let wallet = await Wallet.findOne({ beneficiary: beneficiaryId });
+
+  if (!wallet) {
+    wallet = await Wallet.create({
+      beneficiary: beneficiaryId,
+      balance: 0,
+      status: "ACTIVE",
+    });
+  }
+
+  return wallet;
+}
 
   /*
    * Lock funds with policy

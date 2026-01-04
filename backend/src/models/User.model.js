@@ -26,8 +26,15 @@ const userSchema = new mongoose.Schema(
     // role - drives entire system authorization
     role: {
       type: String,
-      enum: ["ADMIN", "DONOR", "NGO"],
-      default: "DONOR",
+      enum: [
+        "ADMIN",
+        "GOVERNMENT",
+        "NGO",
+        "DONOR",
+        "BENEFICIARY",
+        "MERCHANT"
+      ],
+      required: true,
     },
 
     // isActive - soft-disable users without deletion

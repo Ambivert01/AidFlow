@@ -1,3 +1,9 @@
+import crypto from "crypto";
+import { AuditService } from "../services/audit.service.js";
+
+const auditService = new AuditService();
+
+
 import { Campaign } from "../models/Campaign.model.js";
 
 /*
@@ -14,6 +20,11 @@ export const createCampaign = async (req, res) => {
       policySnapshot,
     } = req.body;
 
+    const jobIdHash = crypto
+      .createHash("sha256")
+      .update(`CAMPAIGN-${req.user.id}-${Date.now()}`)
+      .digest("hex");
+
     const campaign = await Campaign.create({
       title,
       description,
@@ -22,7 +33,21 @@ export const createCampaign = async (req, res) => {
       policySnapshot,
       createdBy: req.user.id,
       status: "DRAFT",
+      jobIdHash, // added
     });
+
+    // 🔹 AUDIT (NEW)
+    await auditService.log({
+      eventType: "CAMPAIGN_CREATED",
+      payload: {
+        campaignId: campaign._id,
+        status: "DRAFT",
+      },
+      jobIdHash,
+      campaignId: campaign._id,
+      actorRole: "NGO",
+    });
+
 
     res.status(201).json({
       message: "Campaign created (DRAFT)",
@@ -51,7 +76,20 @@ export const activateCampaign = async (req, res) => {
     campaign.status = "ACTIVE";
     await campaign.save();
 
+    // 🔹 AUDIT (NEW)
+    await auditService.log({
+      eventType: "CAMPAIGN_ACTIVATED",
+      payload: {
+        campaignId: campaign._id,
+        status: "ACTIVE",
+      },
+      jobIdHash: campaign.jobIdHash,
+      campaignId: campaign._id,
+      actorRole: "NGO",
+    });
+
     res.json({ message: "Campaign activated", campaign });
+
   } catch (err) {
     res.status(500).json({ message: "Activation failed" });
   }

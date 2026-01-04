@@ -2,12 +2,28 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { User } from "../models/User.model.js";
 
-/**
+const ALLOWED_ROLES = [
+  "DONOR",
+  "NGO",
+  "BENEFICIARY",
+  "MERCHANT",
+  "GOVERNMENT",
+  "ADMIN",
+];
+
+
+/*
  * Register new user
  */
 export const register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
+
+    if (!role || !ALLOWED_ROLES.includes(role)) {
+      return res.status(400).json({
+        message: "Invalid or missing role",
+      });
+    }
 
     // Check if user exists
     const existing = await User.findOne({ email });
@@ -40,7 +56,7 @@ export const register = async (req, res) => {
   }
 };
 
-/**
+/*
  * Login user
  */
 export const login = async (req, res) => {

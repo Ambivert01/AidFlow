@@ -32,6 +32,6 @@ router.patch(
 /*
  * Public: list active campaigns
  */
-router.get("/active", getActiveCampaigns);
+router.get("/", getActiveCampaigns);
 
 export default router;
