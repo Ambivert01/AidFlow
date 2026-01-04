@@ -1,6 +1,8 @@
 import { AuditLog } from "../models/AuditLog.model.js";
 import { generateHash } from "../utils/hash.util.js";
 import { logAuditOnChain } from "./blockchainAudit.service.js";
+import { generateMerkleRoot } from "./merkleAudit.service.js";
+
 
 export class AuditService {
   /*
@@ -45,23 +47,49 @@ export class AuditService {
       hash,
     });
 
-    // 🔹 Optional blockchain proof
-    if (pushToBlockchain) {
-      try {
-        const txHash = await logAuditOnChain({
-          jobIdHash,
-          auditHash: hash,
-          campaignId: campaignId.toString(),
-        });
+    return log;
+  }
 
-        log.blockchainTxHash = txHash;
-        await log.save();
-      } catch (err) {
-        // IMPORTANT: audit is still valid even if chain fails
-        console.error("Blockchain audit failed:", err.message);
-      }
+  /*
+   * Finalize a workflow audit:
+   * - Build Merkle root
+   * - Anchor root on blockchain
+   */
+  async finalizeWorkflowAudit({ jobIdHash, campaignId }) {
+    // 1 Fetch logs in deterministic order
+    const logs = await AuditLog.find({ jobIdHash }).sort({ createdAt: 1 });
+
+    if (!logs.length) {
+      throw new Error("No audit logs found for workflow");
     }
 
-    return log;
+    // 2 Collect hashes
+    const hashes = logs.map(l => l.hash);
+
+    // 3 Build Merkle root
+    const merkleRoot = generateMerkleRoot(hashes);
+
+    // 4 Push single proof on-chain
+    const txHash = await logAuditOnChain({
+      jobIdHash,
+      auditHash: merkleRoot,
+      campaignId: campaignId.toString(),
+    });
+
+    // 5 Persist linkage
+    await AuditLog.updateMany(
+      { jobIdHash },
+      {
+        $set: {
+          merkleRoot,
+          blockchainTxHash: txHash,
+        },
+      }
+    );
+
+    return {
+      merkleRoot,
+      txHash,
+    };
   }
 }

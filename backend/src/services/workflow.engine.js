@@ -48,6 +48,11 @@ export class WorkflowEngine {
       campaignId: campaign._id,
     });
 
+    await this.auditService.finalizeWorkflowAudit({
+      jobIdHash: donation._id.toString(),
+      campaignId: campaign._id,
+    });
+
     return state;
   }
 
