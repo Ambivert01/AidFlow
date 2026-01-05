@@ -14,7 +14,7 @@ export default function DonorDashboard() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Active Campaigns</h1>
 
-      {campaigns.map(c => (
+      {Array.isArray(campaigns) && campaigns.map(c => (
         <div key={c._id} className="border p-4 rounded">
           <h2 className="font-semibold">{c.title}</h2>
           <p>{c.description}</p>
@@ -31,7 +31,12 @@ export default function DonorDashboard() {
         </div>
       ))}
 
-      {selected && <Donate campaign={selected} />}
+        {selected && (
+          <Donate
+            campaign={selected}
+            onClose={() => setSelected(null)}
+          />
+        )}
     </div>
   );
 }

@@ -1,26 +1,35 @@
 import { useEffect, useState } from "react";
-import { getMe } from "../services/auth.service";
+import authService from "../services/auth.service";
 
-export const useAuth = () => {
-  const [user, setUser] = useState({
-    isAuthenticated: false,
-    role: null,
-    loading: true
-  });
+export function useAuth() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  // Restore session on app load
   useEffect(() => {
-    getMe()
-      .then(res => {
-        setUser({
-          isAuthenticated: true,
-          role: res.data.role,
-          loading: false
-        });
-      })
-      .catch(() => {
-        setUser({ isAuthenticated: false, role: null, loading: false });
-      });
+    const storedUser = authService.getUser();
+
+    if (storedUser && authService.isAuthenticated()) {
+      setUser(storedUser);
+    } else {
+      setUser(null);
+    }
+
+    setLoading(false);
   }, []);
 
-  return user;
-};
+  const logout = () => {
+    authService.logout();
+    setUser(null);
+    window.location.href = "/login";
+  };
+
+  return {
+    user,
+    role: user?.role || null,
+    isAuthenticated: !!user,
+    loading,
+    setUser,   // VERY IMPORTANT
+    logout,
+  };
+}

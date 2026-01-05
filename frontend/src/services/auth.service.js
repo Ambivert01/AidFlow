@@ -1,10 +1,9 @@
-// frontend/src/services/auth.service.js
 import api from "./api";
 
 const TOKEN_KEY = "aidflow_token";
 const USER_KEY = "aidflow_user";
 
-export const authService = {
+const authService = {
   async login(credentials) {
     const res = await api.post("/auth/login", credentials);
 
@@ -29,6 +28,8 @@ export const authService = {
   },
 
   isAuthenticated() {
-    return !!this.getToken();
+    return !!localStorage.getItem(TOKEN_KEY);
   },
 };
+
+export default authService;

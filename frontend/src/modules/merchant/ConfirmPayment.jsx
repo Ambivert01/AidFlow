@@ -2,12 +2,25 @@ import { useState } from "react";
 import api from "../../services/api";
 
 export default function ConfirmPayment() {
-  const [paymentId, setPaymentId] = useState("");
+  const [walletId, setWalletId] = useState("");
+  const [amount, setAmount] = useState("");
+  const [category, setCategory] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const confirm = () => {
-    api.post("/payments/merchant-confirm", { paymentId })
-      .then(() => alert("Payment confirmed"))
-      .catch(() => alert("Confirmation failed"));
+  const confirm = async () => {
+    try {
+      setLoading(true);
+      await api.post("/merchant/spend", {
+        walletId,
+        amount: Number(amount),
+        category,
+      });
+      alert("Payment successful");
+    } catch (err) {
+      alert(err.response?.data?.message || "Payment failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -15,14 +28,32 @@ export default function ConfirmPayment() {
       <h2 className="text-lg font-semibold mb-3">Confirm Payment</h2>
 
       <input
-        placeholder="Payment ID"
-        className="input w-full"
-        value={paymentId}
-        onChange={e => setPaymentId(e.target.value)}
+        placeholder="Wallet ID"
+        className="input w-full mb-2"
+        value={walletId}
+        onChange={e => setWalletId(e.target.value)}
       />
 
-      <button onClick={confirm} className="btn-primary w-full mt-3">
-        Confirm
+      <input
+        placeholder="Amount"
+        className="input w-full mb-2"
+        value={amount}
+        onChange={e => setAmount(e.target.value)}
+      />
+
+      <input
+        placeholder="Category (food / medicine)"
+        className="input w-full mb-3"
+        value={category}
+        onChange={e => setCategory(e.target.value)}
+      />
+
+      <button
+        onClick={confirm}
+        disabled={loading}
+        className="btn-primary w-full"
+      >
+        {loading ? "Processing..." : "Confirm Payment"}
       </button>
     </div>
   );

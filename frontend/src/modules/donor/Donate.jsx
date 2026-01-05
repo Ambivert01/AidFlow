@@ -1,49 +1,63 @@
-import { useEffect, useState } from "react";
-import { fetchCampaigns, donateToCampaign } from "../../services/donor.service";
-import Loader from "../../components/Loader";
+import { useState } from "react";
+import { donateToCampaign } from "../../services/donor.service";
 
-export default function Donate() {
-  const [campaigns, setCampaigns] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function Donate({ campaign, onClose }) {
+  const [amount, setAmount] = useState(5000);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    fetchCampaigns()
-      .then(res => setCampaigns(res.data))
-      .catch(() => setError("Failed to load campaigns"))
-      .finally(() => setLoading(false));
-  }, []);
+  const handleDonate = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-  const handleDonate = (campaignId) => {
-    donateToCampaign({ campaignId, amount: 5000 })
-      .then(() => alert("Donation successful"))
-      .catch(() => alert("Donation failed"));
+      await donateToCampaign({
+        campaignId: campaign._id,
+        amount,
+      });
+
+      alert("Donation successful");
+      onClose();
+    } catch (err) {
+      setError("Donation failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (loading) return <Loader text="Loading campaigns..." />;
-  if (error) return <p className="text-red-600">{error}</p>;
-
   return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">Active Campaigns</h2>
+    <div className="mt-6 border-t pt-4">
+      <h3 className="text-lg font-semibold">
+        Donate to {campaign.title}
+      </h3>
 
-      {campaigns.length === 0 && (
-        <p className="text-gray-400">No active campaigns</p>
+      {error && (
+        <p className="text-red-600 text-sm mt-2">{error}</p>
       )}
 
-      {campaigns.map(c => (
-        <div key={c._id} className="bg-white p-4 shadow rounded mb-4">
-          <h3 className="font-semibold">{c.title}</h3>
-          <p className="text-sm text-gray-500">{c.location}</p>
+      <input
+        type="number"
+        value={amount}
+        onChange={(e) => setAmount(Number(e.target.value))}
+        className="border px-3 py-2 rounded mt-3 w-full"
+      />
 
-          <button
-            onClick={() => handleDonate(c._id)}
-            className="btn-primary mt-3"
-          >
-            Donate ₹5000
-          </button>
-        </div>
-      ))}
+      <div className="flex gap-3 mt-4">
+        <button
+          onClick={handleDonate}
+          disabled={loading}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          {loading ? "Processing..." : "Donate"}
+        </button>
+
+        <button
+          onClick={onClose}
+          className="border px-4 py-2 rounded"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }

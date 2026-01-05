@@ -170,4 +170,44 @@ export class WorkflowEngine {
 
     return "READY_FOR_DISTRIBUTION";
   }
+
+    /**
+   * Resume workflow AFTER NGO approval
+   * (Do NOT re-run eligibility / risk)
+   */
+  async resumeAfterNGOApproval({ donation, campaign }) {
+    // 🔹 Resolve beneficiary (temporary logic)
+    const beneficiary = await this.aiClients.eligibility.pickBeneficiary({
+      campaignId: campaign._id,
+    });
+
+    if (!beneficiary) {
+      throw new Error("No eligible beneficiary found");
+    }
+
+    // 🔹 Lock funds
+    await this.lockFunds({
+      donation,
+      beneficiary,
+      campaign,
+    });
+
+    // 🔹 Update donation status
+    donation.status = "FUNDS_LOCKED";
+    donation.lastDecisionBy = "SYSTEM";
+    await donation.save();
+
+    // 🔹 Mark ready for use
+    donation.status = "READY_FOR_USE";
+    await donation.save();
+
+    // 🔹 Finalize audit (Merkle + blockchain)
+    await this.auditService.finalizeWorkflowAudit({
+      jobIdHash: donation._id.toString(),
+      campaignId: campaign._id,
+    });
+
+    return "READY_FOR_USE";
+  }
+
 }

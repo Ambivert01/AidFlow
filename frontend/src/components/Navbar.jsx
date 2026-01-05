@@ -1,64 +1,94 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { ROLES } from "../utils/constants";
 
 export default function Navbar() {
-  const { role } = useAuth();
+  const { isAuthenticated, role, logout, loading } = useAuth();
+  const navigate = useNavigate();
+
+  if (loading) return null;
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   return (
-    <nav className="bg-white shadow px-6 py-4 flex justify-between items-center">
-      <div className="text-xl font-bold text-blue-600">
-        AidFlow
-      </div>
+    <nav className="bg-white border-b border-slate-200">
+      <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
 
-      <div className="flex gap-4 text-sm font-medium">
-        {role === ROLES.DONOR && (
-          <>
-            <Link to="/donor">Dashboard</Link>
-            <Link to="/donor/donate">Donate</Link>
-            <Link to="/donor/history">History</Link>
-          </>
-        )}
+        {/* Brand */}
+        <Link to="/" className="text-xl font-semibold text-blue-700">
+          AidFlow
+        </Link>
 
-        {role === ROLES.NGO && (
-          <>
-            <Link to="/ngo">Dashboard</Link>
-            <Link to="/ngo/campaigns">Campaigns</Link>
-            <Link to="/ngo/beneficiaries">Beneficiaries</Link>
-          </>
-        )}
+        {/* Navigation */}
+        <div className="flex items-center gap-5 text-sm font-medium">
 
-        {role === ROLES.BENEFICIARY && (
-          <>
-            <Link to="/beneficiary">Dashboard</Link>
-            <Link to="/beneficiary/wallet">Wallet</Link>
-          </>
-        )}
+          {/* PUBLIC (not logged in) */}
+          {!isAuthenticated && (
+            <>
+              <Link to="/public" className="hover:text-blue-700">
+                Public Audit
+              </Link>
+              <Link
+                to="/login"
+                className="px-3 py-1.5 rounded bg-blue-700 text-white hover:bg-blue-800"
+              >
+                Login
+              </Link>
+            </>
+          )}
 
-        {role === ROLES.MERCHANT && (
-          <>
-            <Link to="/merchant">Dashboard</Link>
-            <Link to="/merchant/scan">Scan QR</Link>
-          </>
-        )}
+          {/* AUTHENTICATED */}
+          {isAuthenticated && (
+            <>
+              {role === ROLES.DONOR && (
+                <>
+                  <Link to="/donor">Dashboard</Link>
+                  <Link to="/donor/donate">Donate</Link>
+                  <Link to="/donor/history">History</Link>
+                </>
+              )}
 
-        {role === ROLES.GOVERNMENT && (
-          <>
-            <Link to="/government">Dashboard</Link>
-            <Link to="/government/monitor">Fraud Monitor</Link>
-          </>
-        )}
+              {role === ROLES.NGO && (
+                <>
+                  <Link to="/ngo">Dashboard</Link>
+                  <Link to="/ngo/campaigns">Campaigns</Link>
+                  <Link to="/ngo/beneficiaries">Beneficiaries</Link>
+                </>
+              )}
 
-        {role === ROLES.PUBLIC && (
-          <>
-            <Link to="/public/audit">Audit</Link>
-          </>
-        )}
+              {role === ROLES.BENEFICIARY && (
+                <>
+                  <Link to="/beneficiary">Dashboard</Link>
+                  <Link to="/beneficiary/wallet">Wallet</Link>
+                </>
+              )}
 
-        <span className="text-xs text-gray-500 border-l pl-4">
-          Logged in as: <b className="text-gray-700">{role.toUpperCase()}</b>
-        </span>
-        
+              {role === ROLES.MERCHANT && (
+                <>
+                  <Link to="/merchant">Dashboard</Link>
+                  <Link to="/merchant/scan">Scan QR</Link>
+                </>
+              )}
+
+              {role === ROLES.GOVERNMENT && (
+                <>
+                  <Link to="/government">Dashboard</Link>
+                  <Link to="/government/monitor">Fraud Monitor</Link>
+                </>
+              )}
+
+              <button
+                onClick={handleLogout}
+                className="ml-3 px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-100"
+              >
+                Logout
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </nav>
   );

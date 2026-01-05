@@ -1,6 +1,6 @@
 // frontend/src/services/api.js
 import axios from "axios";
-import { authService } from "./auth.service";
+import  authService  from "./auth.service";
 
 const api = axios.create({
   baseURL: "http://localhost:5000/api",

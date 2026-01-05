@@ -35,3 +35,27 @@ Fetch workflow status
  */
 export const fetchWorkflowStatus = (campaignId) =>
   api.get(`/workflows/${campaignId}`);
+
+// ================================
+// NGO REVIEW (Approval Flow)
+// ================================
+
+// Fetch donations pending NGO review
+export const fetchPendingDonations = async () => {
+  const res = await api.get("/ngo/donations/pending");
+  return res.data;
+};
+
+// Approve donation
+export const approveDonation = async (donationId) => {
+  const res = await api.post(`/ngo/donations/${donationId}/approve`);
+  return res.data;
+};
+
+// Reject donation
+export const rejectDonation = async (donationId, reason) => {
+  const res = await api.post(`/ngo/donations/${donationId}/reject`, {
+    reason,
+  });
+  return res.data;
+};

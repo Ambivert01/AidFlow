@@ -7,7 +7,7 @@ export default function WalletView() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get("/wallets/my")
+    api.get("/wallets/me")
       .then(res => setWallet(res.data))
       .finally(() => setLoading(false));
   }, []);
@@ -28,7 +28,7 @@ export default function WalletView() {
 
       <p>
         <span className="font-medium">Balance:</span>{" "}
-        ₹{wallet.balance}
+        ₹{wallet.amount}
       </p>
 
       <p>
@@ -37,7 +37,7 @@ export default function WalletView() {
       </p>
 
       <p className="text-sm text-gray-500">
-        Valid till: {new Date(wallet.expiry).toLocaleDateString()}
+        Expires in {wallet.expiresInDays} days
       </p>
     </div>
   );

@@ -1,11 +1,12 @@
 import express from "express";
-import { getAuditLogs, verifyAuditHash } from "../controllers/audit.controller.js";
+import { getAuditLogs, verifyAudit } from "../controllers/audit.controller.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
 import { authorizeRoles } from "../middlewares/role.middleware.js";
 
 const router = express.Router();
-/**
- * Internal audit logs (ADMIN only)
+
+/*
+ * ADMIN: Internal audit logs
  */
 router.get(
   "/",
@@ -14,12 +15,9 @@ router.get(
   getAuditLogs
 );
 
-/**
- * Public audit verification
+/*
+ * PUBLIC: Audit verification (no auth)
  */
-router.get(
-  "/verify/:hash",
-  verifyAuditHash
-)
+router.get("/verify/:jobIdHash", verifyAudit);
 
 export default router;

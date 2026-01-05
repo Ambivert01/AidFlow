@@ -3,7 +3,10 @@ import api from "./api";
 
 // Fetch all active campaigns
 
-export const fetchCampaigns = () => api.get("/campaigns");
+export const fetchCampaigns = async () => {
+  const res = await api.get("/campaigns");
+  return res.data;
+};
 
 
 // Donate to a campaign

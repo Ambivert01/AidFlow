@@ -1,10 +1,11 @@
-// frontend/src/pages/Login.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { authService } from "../services/auth.service";
+import authService from "../services/auth.service";
+import { useAuth } from "../hooks/useAuth";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { setUser } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +20,10 @@ export default function Login() {
     try {
       const user = await authService.login({ email, password });
 
-      // 🔁 Role-based redirect
+      // VERY IMPORTANT: update React auth state
+      setUser(user);
+
+      // Role-based redirect
       switch (user.role) {
         case "DONOR":
           navigate("/donor");

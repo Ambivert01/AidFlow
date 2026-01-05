@@ -23,6 +23,11 @@ const userSchema = new mongoose.Schema(
       // select: false - prevents password leakage
     },
 
+    beneficiary: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
     // role - drives entire system authorization
     role: {
       type: String,

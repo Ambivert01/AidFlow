@@ -1,10 +1,8 @@
-
+import { AuditLog } from "../models/AuditLog.model.js";
 import { verifyOnChain } from "../services/blockchainAudit.service.js";
 
-import { AuditLog } from "../models/AuditLog.model.js";
-
 /*
- * Get audit logs (ADMIN only)
+ * ADMIN: Get recent audit logs
  */
 export const getAuditLogs = async (req, res) => {
   const logs = await AuditLog.find()
@@ -12,60 +10,54 @@ export const getAuditLogs = async (req, res) => {
     .limit(100);
 
   res.json(logs);
-  
-}; 
-  
+};
 
 /*
- * Public audit verification (NO AUTH)
- * Anyone can verify an audit hash
+ * PUBLIC: Verify full AidFlow audit (Merkle-based)
+ * Input: jobIdHash (donationId)
  */
-export const verifyAuditHash = async (req, res) => {
-  const { hash } = req.params;
-
-  if (!hash) {
-    return res.status(400).json({
-      valid: false,
-      message: "Audit hash is required",
-    });
-  }
-
-  // 1 Check in database
-  const record = await AuditLog.findOne({ hash });
-
-  if (!record) {
-    return res.status(404).json({
-      valid: false,
-      message: "Audit record not found",
-    });
-  }
-
-  // 2 Verify on blockchain (hash-only, no PII)
-  let onChainVerified = false;
-
+export const verifyAudit = async (req, res) => {
   try {
-    onChainVerified = await verifyOnChain(hash);
+    const { jobIdHash } = req.params;
+
+    // 1 Fetch full audit chain for workflow
+    const logs = await AuditLog.find({ jobIdHash }).sort({ createdAt: 1 });
+
+    if (!logs.length) {
+      return res.status(404).json({
+        valid: false,
+        message: "No audit logs found for this ID",
+      });
+    }
+
+    const merkleRoot = logs[0].merkleRoot;
+
+    if (!merkleRoot) {
+      return res.status(400).json({
+        valid: false,
+        message: "Audit not finalized yet",
+      });
+    }
+
+    // 2 Verify Merkle root on blockchain
+    const blockchainVerified = await verifyOnChain(merkleRoot);
+
+    // 3 Response
+    return res.json({
+      valid: blockchainVerified,
+      jobIdHash,
+      merkleRoot,
+      blockchainTxHash: logs[0].blockchainTxHash || null,
+      events: logs.map((log) => ({
+        eventType: log.eventType,
+        actorRole: log.actorRole,
+        timestamp: log.createdAt,
+      })),
+    });
   } catch (err) {
-    // blockchain may be down — DO NOT FAIL verification
-    onChainVerified = false;
+    res.status(500).json({
+      valid: false,
+      message: err.message,
+    });
   }
-
-  // 3 Verified
-  return res.status(200).json({
-    valid: true,
-    verification: {
-      database: true,
-      blockchain: onChainVerified,
-    },
-    proof: {
-      eventType: record.eventType,
-      jobIdHash: record.jobIdHash,
-      actorRole: record.actorRole,
-      campaignId: record.campaignId,
-      timestamp: record.createdAt,
-      previousHash: record.previousHash,
-      blockchainTxHash: record.blockchainTxHash || null,
-    },
-  });
-
 };
