@@ -1,7 +1,7 @@
 > **Note:** 
-> The Project is in developinng phase rightnow
-> Backend integration + AI-agents + Blockchain Integration Done
-> Currently working on frontend & increasing productivity of the sytem with enhance integration
+> The Project is in developinng phase rightnow.
+> Backend integration + AI-agents + Blockchain Integration is done.
+> Currently working on frontend & increasing productivity of the sytem with enhance integration.
 
 # AidFlow AI  
 ## Autonomous, Transparent Donation & Disaster Relief Infrastructure
