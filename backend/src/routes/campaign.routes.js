@@ -22,7 +22,7 @@ router.post(
 /*
  * NGO activates campaign
  */
-router.patch(
+router.post(
   "/:id/activate",
   authenticate,
   authorizeRoles("NGO"),
