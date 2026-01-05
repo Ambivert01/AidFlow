@@ -63,32 +63,23 @@ AidFlow AI is built on **five non-negotiable principles**:
 
 ## 3. System Architecture (Layered View)
 
-┌─────────────────────────────┐
-│ Frontend (React) │
-│ Donor | NGO | Beneficiary │
-│ Merchant | Public | Govt │
-└──────────────┬──────────────┘
-↓
-┌─────────────────────────────┐
-│ Backend (Node.js) │
-│ Auth | Campaign | Wallet │
-│ Workflow | Audit | Policy │
-└──────────────┬──────────────┘
-↓
-┌─────────────────────────────┐
-│ AI Agent Layer │
-│ Eligibility | Risk | Fraud│
-└──────────────┬──────────────┘
-↓
-┌─────────────────────────────┐
-│ Audit & Integrity Layer │
+
+Frontend (React):- 
+| Donor | NGO | Beneficiary | Merchant | Public | Govt |
+
+Backend (Node.js):-
+| Auth | Campaign | Wallet │ Workflow | Audit | Policy │
+
+AI Agent Layer:-
+│ Eligibility | Risk | Fraud │
+
+Audit & Integrity Layer:-
 │ Hashing | Merkle Trees │
-└──────────────┬──────────────┘
-↓
-┌─────────────────────────────┐
-│ Blockchain Anchor │
+
+
+Blockchain Anchor:- 
 │ Merkle Root Only (No PII) │
-└─────────────────────────────┘
+
 
 ---
 
