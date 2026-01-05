@@ -12,7 +12,7 @@ AidFlow AI combines **AI-driven decisioning**, **programmable relief wallets**, 
 
 ---
 
-## Executive Summary (For Judges)
+## Executive Summary 
 
 - **Problem**: ₹30,000+ crore lost annually due to donor mistrust and opaque relief systems  
 - **Gap**: Existing solutions focus on fundraising, not **verifiable impact**
