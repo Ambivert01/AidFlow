@@ -1,8 +1,21 @@
+import RoleContextBanner from "../../components/RoleContextBanner";
+import InfoNotice from "../../components/InfoNotice";
+
 import { Link, Outlet } from "react-router-dom";
 
 export default function MerchantDashboard() {
   return (
     <div className="space-y-6">
+      <RoleContextBanner
+        role="MERCHANT"
+        message="You can process beneficiary payments only for allowed categories."
+      />
+
+      <InfoNotice
+        title="Policy-based transactions"
+        message="Payments can only be processed when a beneficiary presents a valid AidFlow wallet and the purchase category is allowed."
+      />
+
       <h1 className="text-2xl font-bold">Merchant Dashboard</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

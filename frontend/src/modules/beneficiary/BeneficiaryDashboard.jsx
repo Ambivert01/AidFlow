@@ -1,9 +1,22 @@
+import RoleContextBanner from "../../components/RoleContextBanner";
+import InfoNotice from "../../components/InfoNotice";
+
 import { Link } from "react-router-dom";
 import WalletView from "./WalletView";
 
 export default function BeneficiaryDashboard() {
   return (
     <div className="space-y-6">
+      <RoleContextBanner
+        role="BENEFICIARY"
+        message="If aid is assigned to you, it will appear in your wallet below."
+      />
+
+      <InfoNotice
+        title="No aid assigned yet"
+        message="When a donation is approved and assigned to you, your AidFlow wallet will appear here. You do not need to take any action."
+      />
+
       <h1 className="text-2xl font-bold">Beneficiary Dashboard</h1>
 
       {/* Wallet Summary */}

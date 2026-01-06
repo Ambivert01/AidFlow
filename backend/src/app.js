@@ -3,6 +3,7 @@ import cors from "cors";
 import morgan from "morgan";
 
 // Routes
+import adminRoutes from "./routes/admin.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import donationRoutes from "./routes/donation.routes.js";
 import campaignRoutes from "./routes/campaign.routes.js";
@@ -12,6 +13,7 @@ import beneficiaryRoutes from "./routes/beneficiary.routes.js";
 import donorRoutes from "./routes/donor.routes.js";
 import ngoRoutes from "./routes/ngo.routes.js";
 import merchantRoutes from "./routes/merchant.routes.js";
+import accessRoutes from "./routes/access.routes.js";
 
 
 
@@ -34,7 +36,9 @@ app.use(morgan("dev"));
  * --------------------
  */
 
+app.use("/api/access", accessRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/donations", donationRoutes);
 app.use("/api/campaigns", campaignRoutes);

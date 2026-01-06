@@ -11,7 +11,6 @@ const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 // -----------------------------
 let writeContract = null;
 
-// Validate private key safely
 const pk = process.env.BLOCKCHAIN_PRIVATE_KEY;
 
 if (
@@ -41,7 +40,7 @@ if (
 }
 
 // -----------------------------
-// Read-only contract (ALWAYS SAFE)
+// Read-only contract
 // -----------------------------
 const readContract = process.env.AUDIT_CONTRACT_ADDRESS
   ? new ethers.Contract(
@@ -52,7 +51,7 @@ const readContract = process.env.AUDIT_CONTRACT_ADDRESS
   : null;
 
 // =======================================================
-// WRITE: Log audit on-chain (OPTIONAL, SAFE)
+// WRITE: Log audit on-chain
 // =======================================================
 export async function logAuditOnChain({
   jobIdHash,
@@ -75,20 +74,18 @@ export async function logAuditOnChain({
 }
 
 // =======================================================
-// READ: Verify audit hash on-chain (PUBLIC)
+// READ: Verify audit on-chain (PUBLIC)
 // =======================================================
-export async function verifyOnChain(auditHash) {
+export async function verifyOnChain(jobIdHash) {
   try {
-    if (!auditHash || !readContract) return false;
+    if (!jobIdHash || !readContract) return false;
 
-    const record = await readContract.getAudit(auditHash);
+    const record = await readContract.verifyAudit(jobIdHash);
 
-    // Empty struct → not found
-    if (!record || record.hash === ethers.ZeroHash) {
-      return false;
-    }
+    // record = [auditHash, campaignId, timestamp]
+    const timestamp = record[2];
 
-    return true;
+    return Number(timestamp) > 0;
   } catch (err) {
     console.error("verifyOnChain error:", err.message);
     return false;

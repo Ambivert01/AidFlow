@@ -8,7 +8,12 @@ export class WalletEngine {
   /*
    * Create or fetch wallet (DB-backed)
    */
-  async getOrCreateWallet({ beneficiaryId, campaignId, allowedCategories }) {
+  async getOrCreateWallet({
+    beneficiaryId,
+    campaignId,
+    allowedCategories,
+    jobIdHash,
+  }) {
     let wallet = await Wallet.findOne({
       beneficiary: beneficiaryId,
       campaign: campaignId,
@@ -19,8 +24,9 @@ export class WalletEngine {
       wallet = await Wallet.create({
         beneficiary: beneficiaryId,
         campaign: campaignId,
-        balance: 0,
+        jobIdHash,
         allowedCategories,
+        balance: 0,
         status: "ACTIVE",
       });
     }
@@ -36,16 +42,16 @@ export class WalletEngine {
       beneficiaryId,
       campaignId,
       allowedCategories: policy.allowedCategories,
+      jobIdHash: donationId.toString(),
     });
 
     wallet.balance += amount;
     await wallet.save();
 
     await this.auditService.log({
-      eventType: "WALLET_LOCKED",
+      eventType: "WALLET_FUNDED",
       payload: {
         walletId: wallet._id,
-        donationId,
         amount,
       },
       jobIdHash: donationId.toString(),
@@ -62,14 +68,10 @@ export class WalletEngine {
     const wallet = await Wallet.findById(walletId);
 
     if (!wallet) throw new Error("Wallet not found");
-    if (wallet.status !== "ACTIVE")
-      throw new Error("Wallet inactive");
-
+    if (wallet.status !== "ACTIVE") throw new Error("Wallet inactive");
     if (!wallet.allowedCategories.includes(category))
       throw new Error("Category not allowed");
-
-    if (wallet.balance < amount)
-      throw new Error("Insufficient balance");
+    if (wallet.balance < amount) throw new Error("Insufficient balance");
 
     wallet.balance -= amount;
 
@@ -77,10 +79,17 @@ export class WalletEngine {
       wallet.status = "CLOSED";
     }
 
+    wallet.transactions.push({
+      type: "DEBIT",
+      amount,
+      category,
+      reference: merchantId,
+    });
+
     await wallet.save();
 
     await this.auditService.log({
-      eventType: "WALLET_SPEND",
+      eventType: "WALLET_SPENT",
       payload: {
         walletId,
         amount,

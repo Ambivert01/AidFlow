@@ -7,7 +7,7 @@ export default function WalletView() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get("/wallets/me")
+    api.get("/wallet/me")
       .then(res => setWallet(res.data))
       .finally(() => setLoading(false));
   }, []);

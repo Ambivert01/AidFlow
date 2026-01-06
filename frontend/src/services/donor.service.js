@@ -8,6 +8,9 @@ export const fetchCampaigns = async () => {
   return res.data;
 };
 
+export const fetchMyDonations = () =>
+  api.get("/donor/donations");
+
 
 // Donate to a campaign
 

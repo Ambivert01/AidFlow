@@ -27,6 +27,22 @@ const walletSchema = new mongoose.Schema(
       default: "ACTIVE",
     },
 
+    campaign: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Campaign",
+      required: true,
+    },
+
+    jobIdHash: {
+      type: String,
+      required: true,
+    },
+
+    allowedCategories: {
+      type: [String],
+      required: true,
+    },
+
     transactions: [
       {
         type: {

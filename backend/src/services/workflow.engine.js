@@ -1,6 +1,7 @@
 /*
  * Workflow Engine
  * Governs the lifecycle of a donation → distribution
+ * This is the CORE execution brain of AidFlow
  */
 
 export class WorkflowEngine {
@@ -17,6 +18,9 @@ export class WorkflowEngine {
   async processDonation({ donation, campaign, beneficiary }) {
     let state = "DONATION_RECEIVED";
 
+    // -------------------------------
+    // STEP 0: Donation received
+    // -------------------------------
     await this.auditService.log({
       eventType: "DONATION_RECEIVED",
       payload: {
@@ -24,21 +28,48 @@ export class WorkflowEngine {
       },
       jobIdHash: donation._id.toString(),
       campaignId: campaign._id,
+      actorRole: "SYSTEM",
     });
 
-    // 1 Eligibility Check (AI + Policy)
-    state = await this.verifyEligibility({ donation, campaign, beneficiary });
+    // -------------------------------
+    // STEP 1: Eligibility (AI + Policy)
+    // -------------------------------
+    state = await this.verifyEligibility({
+      donation,
+      campaign,
+      beneficiary,
+    });
 
-    // 2 Risk Assessment
-    state = await this.assessRisk({ donation, beneficiary, campaign });
+    // -------------------------------
+    // STEP 2: Risk Assessment (AI)
+    // -------------------------------
+    state = await this.assessRisk({
+      donation,
+      beneficiary,
+      campaign,
+    });
 
-    // 3 Lock Funds
-    state = await this.lockFunds({ donation, beneficiary, campaign });
+    // -------------------------------
+    // STEP 3: Lock Funds
+    // -------------------------------
+    state = await this.lockFunds({
+      donation,
+      beneficiary,
+      campaign,
+    });
 
-    // 4 Distribution
-    state = await this.distributeFunds({ donation, beneficiary, campaign });
+    // -------------------------------
+    // STEP 4: Funds ready for use
+    // -------------------------------
+    state = await this.distributeFunds({
+      donation,
+      beneficiary,
+      campaign,
+    });
 
-    // 5 Final Audit
+    // -------------------------------
+    // STEP 5: Workflow completed
+    // -------------------------------
     await this.auditService.log({
       eventType: "WORKFLOW_COMPLETED",
       payload: {
@@ -46,8 +77,10 @@ export class WorkflowEngine {
       },
       jobIdHash: donation._id.toString(),
       campaignId: campaign._id,
+      actorRole: "SYSTEM",
     });
 
+    // 🔐 FINAL STEP: Merkle + Blockchain anchoring
     await this.auditService.finalizeWorkflowAudit({
       jobIdHash: donation._id.toString(),
       campaignId: campaign._id,
@@ -56,10 +89,13 @@ export class WorkflowEngine {
     return state;
   }
 
+  // ======================================================
+  // ELIGIBILITY CHECK (AI + POLICY)
+  // ======================================================
   async verifyEligibility({ donation, campaign, beneficiary }) {
     const policy = campaign.policySnapshot;
 
-    // AI eligibility check
+    // AI eligibility agent
     const aiResult = await this.aiClients.eligibility.check({
       beneficiary,
       donation,
@@ -75,11 +111,13 @@ export class WorkflowEngine {
         },
         jobIdHash: donation._id.toString(),
         campaignId: campaign._id,
+        actorRole: "AI",
       });
+
       throw new Error("Beneficiary not eligible");
     }
 
-    // Policy enforcement
+    // Policy engine enforcement
     const policyResult = this.policyEngine.validateBeneficiary({
       beneficiary,
       policy,
@@ -94,6 +132,7 @@ export class WorkflowEngine {
         },
         jobIdHash: donation._id.toString(),
         campaignId: campaign._id,
+        actorRole: "SYSTEM",
       });
 
       throw new Error("Policy rejected beneficiary");
@@ -107,40 +146,59 @@ export class WorkflowEngine {
       },
       jobIdHash: donation._id.toString(),
       campaignId: campaign._id,
+      actorRole: "AI",
     });
 
     return "ELIGIBILITY_VERIFIED";
   }
 
+  // ======================================================
+  // RISK ASSESSMENT (AI – FRAUD / MISUSE)
+  // ======================================================
   async assessRisk({ donation, beneficiary, campaign }) {
     const risk = await this.aiClients.risk.assess({
       beneficiary,
       amount: donation.amount,
     });
 
+    // AI returns 0–100
+    const riskScore = risk.finalRiskScore;
+    const maxAllowedRisk =
+      (campaign.policySnapshot.maxFraudRisk ?? 0.7) * 100;
+
     await this.auditService.log({
       eventType: "RISK_ASSESSED",
       payload: {
         donationId: donation._id,
-        score: risk.score,
+        score: riskScore,
+        decision: risk.decision,
+        reason: risk.reason,
       },
       jobIdHash: donation._id.toString(),
       campaignId: campaign._id,
+      actorRole: "AI",
     });
 
-    if (risk.score > 0.7) {
+    if (
+      riskScore > maxAllowedRisk ||
+      risk.decision === "MANUAL_REVIEW"
+    ) {
       throw new Error("High risk detected, manual review required");
     }
 
     return "RISK_ASSESSED";
   }
 
+  // ======================================================
+  // LOCK FUNDS INTO BENEFICIARY WALLET
+  // ======================================================
   async lockFunds({ donation, beneficiary, campaign }) {
     await this.walletEngine.lock({
       donationId: donation._id,
       beneficiaryId: beneficiary._id,
       amount: donation.amount,
       policy: campaign.policySnapshot,
+      campaignId: campaign._id,
     });
 
     await this.auditService.log({
@@ -151,13 +209,16 @@ export class WorkflowEngine {
       },
       jobIdHash: donation._id.toString(),
       campaignId: campaign._id,
+      actorRole: "SYSTEM",
     });
 
     return "FUNDS_LOCKED";
   }
 
+  // ======================================================
+  // MARK FUNDS READY FOR USE (BENEFICIARY)
+  // ======================================================
   async distributeFunds({ donation, beneficiary, campaign }) {
-    // Distribution means "READY FOR USE", not closing
     await this.auditService.log({
       eventType: "FUNDS_READY_FOR_USE",
       payload: {
@@ -166,42 +227,37 @@ export class WorkflowEngine {
       },
       jobIdHash: donation._id.toString(),
       campaignId: campaign._id,
+      actorRole: "SYSTEM",
     });
 
-    return "READY_FOR_DISTRIBUTION";
+    return "READY_FOR_USE";
   }
 
-    /**
-   * Resume workflow AFTER NGO approval
-   * (Do NOT re-run eligibility / risk)
-   */
+  // ======================================================
+  // RESUME AFTER NGO APPROVAL (MANUAL PATH)
+  // ======================================================
   async resumeAfterNGOApproval({ donation, campaign }) {
-    // 🔹 Resolve beneficiary (temporary logic)
-    const beneficiary = await this.aiClients.eligibility.pickBeneficiary({
-      campaignId: campaign._id,
-    });
+    const beneficiary = donation.beneficiary;
 
     if (!beneficiary) {
-      throw new Error("No eligible beneficiary found");
+      throw new Error("Beneficiary not assigned to donation");
     }
 
-    // 🔹 Lock funds
+    // Lock funds
     await this.lockFunds({
       donation,
       beneficiary,
       campaign,
     });
 
-    // 🔹 Update donation status
     donation.status = "FUNDS_LOCKED";
     donation.lastDecisionBy = "SYSTEM";
     await donation.save();
 
-    // 🔹 Mark ready for use
     donation.status = "READY_FOR_USE";
     await donation.save();
 
-    // 🔹 Finalize audit (Merkle + blockchain)
+    // Finalize audit chain
     await this.auditService.finalizeWorkflowAudit({
       jobIdHash: donation._id.toString(),
       campaignId: campaign._id,
@@ -209,5 +265,4 @@ export class WorkflowEngine {
 
     return "READY_FOR_USE";
   }
-
 }

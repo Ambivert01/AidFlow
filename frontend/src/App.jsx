@@ -5,6 +5,12 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { ROLES } from "./utils/constants";
 
 /* Pages */
+// ADD import
+import AdminDashboard from "./modules/admin/AdminDashboard";
+import Register from "./pages/Register";
+import Landing from "./pages/Landing";
+import RequestAccess from "./pages/RequestAccess";
+import PublicLanding from "./modules/public/PublicLanding";
 import Login from "./pages/Login";
 import Unauthorized from "./pages/Unauthorized";
 import NotFound from "./pages/NotFound";
@@ -24,7 +30,6 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-
         {/* ---------------- PUBLIC ROUTES ---------------- */}
         <Route
           path="/"
@@ -32,7 +37,7 @@ export default function App() {
             <Layout>
               <div className="text-center py-20">
                 <h1 className="text-3xl font-bold text-blue-700">
-                  AidFlow
+                  <Landing />
                 </h1>
                 <p className="mt-3 text-slate-600">
                   Transparent Disaster Relief Infrastructure
@@ -41,6 +46,21 @@ export default function App() {
             </Layout>
           }
         />
+
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+              <Layout>
+                <AdminDashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route path="/register" element={<Register />} />
+
+        <Route path="/request-access" element={<RequestAccess />} />
 
         <Route
           path="/public"
@@ -127,7 +147,6 @@ export default function App() {
 
         {/* ---------------- 404 ---------------- */}
         <Route path="*" element={<NotFound />} />
-
       </Routes>
     </BrowserRouter>
   );

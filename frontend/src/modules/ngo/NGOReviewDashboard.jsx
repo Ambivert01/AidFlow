@@ -1,3 +1,6 @@
+import RoleContextBanner from "../../components/RoleContextBanner";
+import InfoNotice from "../../components/InfoNotice";
+
 import { useEffect, useState } from "react";
 import {
   fetchPendingDonations,
@@ -39,29 +42,42 @@ export default function NGOReviewDashboard() {
 
   if (donations.length === 0) {
     return (
-      <EmptyState
-        title="No pending reviews"
-        description="All donations are processed."
-      />
+      <>
+        <RoleContextBanner
+          role="NGO"
+          message="There are no donations requiring your review at the moment."
+        />
+
+        <InfoNotice
+          title="Why reviews happen"
+          message="Donations reach this stage only when AI or policy rules detect ambiguity or elevated risk. Your decision is permanently audited."
+        />
+
+        <EmptyState
+          title="No pending reviews"
+          description="All donations are currently processed."
+        />
+      </>
     );
   }
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">
-        Donations Pending Review
-      </h1>
+      <RoleContextBanner
+        role="NGO"
+        message="Review flagged donations and approve or reject them."
+      />
+
+      <InfoNotice
+        title="Why reviews happen"
+        message="Donations reach this stage only when AI or policy rules detect ambiguity or elevated risk. Your decision is permanently audited."
+      />
 
       {donations.map((d) => (
-        <div
-          key={d._id}
-          className="bg-white border rounded p-4 shadow-sm"
-        >
+        <div key={d._id} className="bg-white border rounded p-4 shadow-sm">
           <div className="flex justify-between">
             <div>
-              <p className="font-semibold">
-                ₹{d.amount}
-              </p>
+              <p className="font-semibold">₹{d.amount}</p>
               <p className="text-sm text-gray-500">
                 Campaign: {d.campaign?.title}
               </p>

@@ -2,6 +2,7 @@ import { Donation } from "../models/Donation.model.js";
 import { Campaign } from "../models/Campaign.model.js";
 import { User } from "../models/User.model.js";
 import { createWorkflowEngine } from "../services/workflow.service.js";
+import { AuditLog } from "../models/AuditLog.model.js";
 
 /**
  * Donor makes a donation
@@ -41,20 +42,15 @@ export const donate = async (req, res) => {
           beneficiary,
         })
         .then(async () => {
-          // Auto-approved path
           donation.status = "READY_FOR_USE";
           donation.lastDecisionBy = "SYSTEM";
-          donation.decisionReason = null;
           await donation.save();
         })
         .catch(async (err) => {
-          // AI / policy flagged → NGO review
           donation.status = "PENDING_NGO_REVIEW";
           donation.lastDecisionBy = "AI";
           donation.decisionReason = err.message;
           await donation.save();
-
-          console.error("AidFlow workflow flagged:", err.message);
         });
     }
 
@@ -62,7 +58,8 @@ export const donate = async (req, res) => {
     res.status(201).json({
       message: "Donation received",
       donationId: donation._id,
-      status: donation.status,
+      // status: donation.status,
+      auditHint: "Audit proof will be available shortly",
     });
   } catch (err) {
     console.error("DONATION ERROR →", err);

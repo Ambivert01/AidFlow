@@ -31,15 +31,30 @@ const userSchema = new mongoose.Schema(
     // role - drives entire system authorization
     role: {
       type: String,
-      enum: [
-        "ADMIN",
-        "GOVERNMENT",
-        "NGO",
-        "DONOR",
-        "BENEFICIARY",
-        "MERCHANT"
-      ],
+      enum: ["ADMIN", "GOVERNMENT", "NGO", "DONOR", "BENEFICIARY", "MERCHANT"],
       required: true,
+    },
+
+    verificationStatus: {
+      type: String,
+      enum: ["PENDING", "APPROVED", "REJECTED"],
+      default: "APPROVED", // donors auto-approved
+    },
+
+    documents: {
+      type: Object, // uploaded proofs (later extensible)
+      default: null,
+    },
+
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    rejectionReason: {
+      type: String,
+      default: null,
     },
 
     // isActive - soft-disable users without deletion

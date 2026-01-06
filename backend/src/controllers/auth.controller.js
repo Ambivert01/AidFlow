@@ -11,7 +11,6 @@ const ALLOWED_ROLES = [
   "ADMIN",
 ];
 
-
 /*
  * Register new user
  */
@@ -19,9 +18,9 @@ export const register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
 
-    if (!role || !ALLOWED_ROLES.includes(role)) {
-      return res.status(400).json({
-        message: "Invalid or missing role",
+    if (role !== "DONOR") {
+      return res.status(403).json({
+        message: "Only donors can self-register",
       });
     }
 
@@ -60,24 +59,36 @@ export const register = async (req, res) => {
  * Login user
  */
 export const login = async (req, res) => {
-  console.log("LOGIN BODY:", req.body);
-
   try {
     const { email, password } = req.body;
 
-    // Fetch user with password
+    // 1 Fetch user first
     const user = await User.findOne({ email }).select("+password");
+
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Compare password
+    // 2 Check verification status (NOW user exists)
+    if (user.verificationStatus === "PENDING") {
+      return res.status(403).json({
+        message: "Account pending admin approval",
+      });
+    }
+
+    if (user.verificationStatus === "REJECTED") {
+      return res.status(403).json({
+        message: "Access request rejected",
+      });
+    }
+
+    // 3 Compare password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Generate JWT
+    // 4 Generate JWT (ROLE IS CRITICAL)
     const token = jwt.sign(
       {
         id: user._id,
@@ -87,6 +98,7 @@ export const login = async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    // 5 Respond
     res.json({
       token,
       user: {
@@ -97,6 +109,8 @@ export const login = async (req, res) => {
       },
     });
   } catch (err) {
+    console.error("LOGIN ERROR:", err);
     res.status(500).json({ message: "Login failed" });
   }
 };
+

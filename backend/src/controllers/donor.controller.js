@@ -1,34 +1,35 @@
 import { Donation } from "../models/Donation.model.js";
-import { Campaign } from "../models/Campaign.model.js";
 import { AuditLog } from "../models/AuditLog.model.js";
 
-/*
- * Get donor donation history
- */
 export const getMyDonations = async (req, res) => {
   try {
     const donorId = req.user.id;
 
     const donations = await Donation.find({ donor: donorId })
-      .populate("campaign", "title disasterType location status")
+      .populate("campaign", "title location")
       .sort({ createdAt: -1 });
 
-    // Optional: audit trail (read-only)
-    const donationIds = donations.map(d => d._id.toString());
+    const result = [];
 
-    const audits = await AuditLog.find({
-      entityId: { $in: donationIds },
-    })
-      .sort({ createdAt: -1 })
-      .limit(100);
+    for (const d of donations) {
+      const audit = await AuditLog.findOne({
+        jobIdHash: d._id.toString(),
+        eventType: "WORKFLOW_COMPLETED",
+      });
 
-    res.json({
-      donations,
-      audits,
-    });
+      result.push({
+        donationId: d._id,
+        campaign: d.campaign,
+        amount: d.amount,
+        status: d.status,
+        auditHash: audit ? audit.hash : null,
+        createdAt: d.createdAt,
+      });
+    }
+
+    res.json(result);
   } catch (err) {
-    res.status(500).json({
-      message: "Failed to load donor history",
-    });
+    console.error(err);
+    res.status(500).json({ message: "Failed to load donor history" });
   }
 };

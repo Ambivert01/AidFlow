@@ -1,6 +1,19 @@
+import RoleContextBanner from "../../components/RoleContextBanner";
+import InfoNotice from "../../components/InfoNotice";
+
 export default function GovtDashboard() {
   return (
     <div className="space-y-4">
+      <RoleContextBanner
+        role="GOVERNMENT"
+        message="This dashboard provides high-level visibility into system activity and risks."
+      />
+
+      <InfoNotice
+        title="Read-only oversight"
+        message="This dashboard provides visibility into system activity. Operational actions are handled by NGOs and automated workflows."
+      />
+
       <h1 className="text-2xl font-bold">Disaster Command Center</h1>
 
       <div
