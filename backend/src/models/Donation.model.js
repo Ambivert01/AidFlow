@@ -25,15 +25,21 @@ const donationSchema = new mongoose.Schema(
       default: "INR",
     },
 
+    beneficiary: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
     status: {
       type: String,
       enum: [
-        "CREATED",                // donor donated
-        "ELIGIBILITY_FAILED",     // AI or policy rejected
-        "PENDING_NGO_REVIEW",     // NGO must review
+        "CREATED", // donor donated
+        "ELIGIBILITY_FAILED", // AI or policy rejected
+        "PENDING_NGO_REVIEW", // NGO must review
         "REJECTED_BY_NGO",
         "APPROVED_BY_NGO",
-        "HIGH_RISK_ESCALATED",    // sent to govt
+        "HIGH_RISK_ESCALATED", // sent to govt
         "REJECTED_BY_GOVT",
         "APPROVED_BY_GOVT",
         "FUNDS_LOCKED",

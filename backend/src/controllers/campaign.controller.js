@@ -155,3 +155,21 @@ export const getActiveCampaigns = async (req, res) => {
     });
   }
 };
+
+/*
+ * Get campaigns created by logged-in NGO
+ */
+export const getNgoCampaigns = async (req, res) => {
+  try {
+    const campaigns = await Campaign.find({
+      createdBy: req.user.id,
+    }).sort({ createdAt: -1 });
+
+    res.json(campaigns);
+  } catch (err) {
+    console.error("GET NGO CAMPAIGNS ERROR:", err);
+    res.status(500).json({
+      message: "Failed to fetch NGO campaigns",
+    });
+  }
+};

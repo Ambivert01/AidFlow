@@ -70,7 +70,7 @@ export default function DonorDashboard() {
         {donations.map((d) => (
           <div
             key={d.donationId}
-            className="border p-4 rounded mb-3 bg-gray-50"
+            className="border p-4 rounded mb-3 bg-gray-50 space-y-2"
           >
             <p>
               <b>Campaign:</b> {d.campaign?.title}
@@ -82,12 +82,32 @@ export default function DonorDashboard() {
               <b>Status:</b> {d.status}
             </p>
 
+            {/* AUDIT ID (PUBLIC VERIFICATION KEY) */}
+            <div className="bg-white border rounded p-2 flex items-center justify-between">
+              <div className="text-sm break-all">
+                <b>Audit ID:</b> {d.donationId}
+              </div>
+
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(d.donationId);
+                  alert("Audit ID copied to clipboard");
+                }}
+                className="ml-3 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Copy
+              </button>
+            </div>
+
+            {/* STATUS MESSAGE */}
             {d.auditHash ? (
-              <p className="text-green-700 break-all">
-                <b>Audit Hash:</b> {d.auditHash}
+              <p className="text-green-700 text-sm">
+                ✔ Audit finalized & anchored on blockchain
               </p>
             ) : (
-              <p className="text-yellow-600">Audit proof processing…</p>
+              <p className="text-yellow-600 text-sm">
+                ⏳ Audit proof processing…
+              </p>
             )}
           </div>
         ))}

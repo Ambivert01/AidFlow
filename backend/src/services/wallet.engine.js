@@ -8,25 +8,21 @@ export class WalletEngine {
   /*
    * Create or fetch wallet (DB-backed)
    */
-  async getOrCreateWallet({
-    beneficiaryId,
-    campaignId,
-    allowedCategories,
-    jobIdHash,
-  }) {
+  async getOrCreateWallet({ beneficiaryId, allowedCategories }) {
     let wallet = await Wallet.findOne({
       beneficiary: beneficiaryId,
-      campaign: campaignId,
       status: "ACTIVE",
     });
 
     if (!wallet) {
       wallet = await Wallet.create({
         beneficiary: beneficiaryId,
-        campaign: campaignId,
-        jobIdHash,
-        allowedCategories,
         balance: 0,
+        categoryLimits: {
+          food: 0,
+          medicine: 0,
+          shelter: 0,
+        },
         status: "ACTIVE",
       });
     }
@@ -37,25 +33,35 @@ export class WalletEngine {
   /*
    * Lock funds into wallet
    */
-  async lock({ donationId, beneficiaryId, amount, policy, campaignId }) {
+  async lock({
+    donationId,
+    beneficiaryId,
+    amount,
+    policy,
+    campaignId,
+    jobIdHash,
+  }) {
     const wallet = await this.getOrCreateWallet({
       beneficiaryId,
-      campaignId,
       allowedCategories: policy.allowedCategories,
-      jobIdHash: donationId.toString(),
     });
 
     wallet.balance += amount;
+    wallet.campaign = campaignId;
+    wallet.jobIdHash = jobIdHash;
+
     await wallet.save();
 
     await this.auditService.log({
-      eventType: "WALLET_FUNDED",
+      eventType: "WALLET_LOCKED",
       payload: {
         walletId: wallet._id,
+        donationId,
         amount,
       },
-      jobIdHash: donationId.toString(),
+      jobIdHash,
       campaignId,
+      actorRole: "SYSTEM",
     });
 
     return wallet;

@@ -27,8 +27,14 @@ export default function NGOReviewDashboard() {
   }, []);
 
   const handleApprove = async (id) => {
-    await approveDonation(id);
-    load();
+    try {
+      await approveDonation(id);
+      alert("Approved successfully");
+      load();
+    } catch (err) {
+      alert(err.response?.data?.message || "Approve failed");
+      console.error(err);
+    }
   };
 
   const handleReject = async (id) => {
@@ -73,7 +79,9 @@ export default function NGOReviewDashboard() {
         message="Donations reach this stage only when AI or policy rules detect ambiguity or elevated risk. Your decision is permanently audited."
       />
 
-      {donations.map((d) => (
+      {donations
+      .filter(d => d.status === "PENDING_NGO_REVIEW")
+      .map((d) => (
         <div key={d._id} className="bg-white border rounded p-4 shadow-sm">
           <div className="flex justify-between">
             <div>

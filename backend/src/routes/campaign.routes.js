@@ -3,6 +3,7 @@ import {
   createCampaign,
   activateCampaign,
   getActiveCampaigns,
+  getNgoCampaigns,            
 } from "../controllers/campaign.controller.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
 import { authorizeRoles } from "../middlewares/role.middleware.js";
@@ -27,6 +28,16 @@ router.post(
   authenticate,
   authorizeRoles("NGO"),
   activateCampaign
+);
+
+/*
+ * NGO: get own campaigns  
+ */
+router.get(
+  "/ngo",
+  authenticate,
+  authorizeRoles("NGO"),
+  getNgoCampaigns
 );
 
 /*

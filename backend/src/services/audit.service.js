@@ -3,7 +3,6 @@ import { generateHash } from "../utils/hash.util.js";
 import { logAuditOnChain } from "./blockchainAudit.service.js";
 import { generateMerkleRoot } from "./merkleAudit.service.js";
 
-
 export class AuditService {
   /*
    * Log an AidFlow audit event immutably
@@ -14,82 +13,77 @@ export class AuditService {
     jobIdHash,
     campaignId,
     actorRole = "SYSTEM",
-    pushToBlockchain = true,
   }) {
-    // 🔹 Get last log in SAME workflow (important!)
-    const lastLog = await AuditLog.findOne({ jobIdHash })
-      .sort({ createdAt: -1 });
+    const lastLog = await AuditLog.findOne({ jobIdHash }).sort({
+      createdAt: -1,
+    });
 
     const auditData = {
       eventType,
-
       entityId:
         payload?.donationId ||
         payload?.walletId ||
         payload?.beneficiaryId ||
         "SYSTEM",
-
       payload,
       jobIdHash,
       campaignId,
       actorRole,
-
       previousHash: lastLog ? lastLog.hash : null,
       timestamp: Date.now(),
     };
 
-    // 🔹 Deterministic hash
     const hash = generateHash(auditData);
 
-    // 🔹 Save locally
-    const log = await AuditLog.create({
+    return await AuditLog.create({
       ...auditData,
       hash,
     });
-
-    return log;
   }
 
   /*
-   * Finalize a workflow audit:
-   * - Build Merkle root
-   * - Anchor root on blockchain
+   * FINALIZE WORKFLOW AUDIT
    */
   async finalizeWorkflowAudit({ jobIdHash, campaignId }) {
-    // 1 Fetch logs in deterministic order
     const logs = await AuditLog.find({ jobIdHash }).sort({ createdAt: 1 });
 
     if (!logs.length) {
-      throw new Error("No audit logs found for workflow");
+      throw new Error("No audit logs found");
     }
 
-    // 2 Collect hashes
-    const hashes = logs.map(l => l.hash);
-
-    // 3 Build Merkle root
+    const hashes = logs.map((l) => l.hash);
     const merkleRoot = generateMerkleRoot(hashes);
 
-    // 4 Push single proof on-chain
-    const txHash = await logAuditOnChain({
-      jobIdHash,
-      auditHash: merkleRoot,
-      campaignId: campaignId.toString(),
-    });
-
-    // 5 Persist linkage
+    // ALWAYS SAVE MERKLE ROOT
     await AuditLog.updateMany(
       { jobIdHash },
       {
         $set: {
           merkleRoot,
-          blockchainTxHash: txHash,
+          finalizedAt: new Date(),
         },
       }
     );
 
-    return {
-      merkleRoot,
-      txHash,
-    };
+    // 🔐 OPTIONAL BLOCKCHAIN
+    let txHash = null;
+    try {
+      txHash = await logAuditOnChain({
+        jobIdHash,
+        auditHash: merkleRoot,
+        campaignId: campaignId.toString(),
+      });
+    } catch (e) {
+      console.warn("Blockchain skipped");
+    }
+
+    if (txHash) {
+      await AuditLog.updateMany(
+        { jobIdHash },
+        { $set: { blockchainTxHash: txHash } }
+      );
+    }
+
+    return { merkleRoot, txHash };
   }
 }

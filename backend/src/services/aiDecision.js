@@ -1,37 +1,17 @@
 import axios from "axios";
+import { config } from "../config/env.js";
 
-/**
- * AI Agent Clients
- * Each agent is isolated and replaceable
- */
 export const aiClients = {
   eligibility: {
-    async check(payload) {
-      const res = await axios.post(
-        "http://localhost:8001/check",
-        payload
-      );
-      return res.data;
-    },
+    check: (payload) =>
+      axios.post(`${config.aiAgents.eligibility}/check`, payload).then(r => r.data),
   },
-
   fraud: {
-    async detect(payload) {
-      const res = await axios.post(
-        "http://localhost:8002/detect",
-        payload
-      );
-      return res.data;
-    },
+    detect: (payload) =>
+      axios.post(`${config.aiAgents.fraud}/detect`, payload).then(r => r.data),
   },
-
   risk: {
-    async assess(payload) {
-      const res = await axios.post(
-        "http://localhost:8003/evaluate",
-        payload
-      );
-      return res.data;
-    },
+    assess: (payload) =>
+      axios.post(`${config.aiAgents.risk}/evaluate`, payload).then(r => r.data),
   },
 };

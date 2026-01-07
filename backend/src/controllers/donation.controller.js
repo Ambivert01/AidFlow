@@ -33,6 +33,9 @@ export const donate = async (req, res) => {
 
     // 4 Trigger workflow (ASYNC, SAFE)
     if (beneficiary) {
+      donation.beneficiary = beneficiary._id;
+      await donation.save();
+
       const workflow = createWorkflowEngine();
 
       workflow
