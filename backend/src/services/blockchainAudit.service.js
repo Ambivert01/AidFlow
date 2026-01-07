@@ -1,12 +1,11 @@
 import { ethers } from "ethers";
 import contractABI from "../abi/AidFlowAuditABI.js";
 
-// Provider (read-only)
+// PROVIDER 
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 
-// Signer + write contract (OPTIONAL)
+// SIGNER (OPTIONAL WRITE) 
 let writeContract = null;
-
 const pk = process.env.BLOCKCHAIN_PRIVATE_KEY;
 
 if (
@@ -26,16 +25,13 @@ if (
 
     console.log("Blockchain signer initialized");
   } catch (err) {
-    console.warn(
-      "Blockchain signer disabled (invalid private key)",
-      err.message
-    );
+    console.warn("⚠ Blockchain signer disabled:", err.message);
   }
 } else {
-  console.warn("Blockchain signer disabled (env not configured)");
+  console.warn("⚠ Blockchain signer disabled (env not configured)");
 }
 
-// Read-only contract
+// READ-ONLY CONTRACT 
 const readContract = process.env.AUDIT_CONTRACT_ADDRESS
   ? new ethers.Contract(
       process.env.AUDIT_CONTRACT_ADDRESS,
@@ -44,20 +40,28 @@ const readContract = process.env.AUDIT_CONTRACT_ADDRESS
     )
   : null;
 
-// WRITE: Log audit on-chain
+// WRITE: LOG AUDIT ON-CHAIN 
 export async function logAuditOnChain({
   jobIdHash,
   auditHash,
   campaignId,
 }) {
-  if (!writeContract) {
-    console.warn("Blockchain logging skipped (signer unavailable)");
-    return null;
-  }
+  if (!writeContract) return null;
+
+  // CRITICAL: Convert jobIdHash → bytes32
+  const jobHashBytes32 = ethers.keccak256(
+    ethers.toUtf8Bytes(jobIdHash)
+  );
+
+  // Ensure auditHash is bytes32
+  const auditHashBytes32 = ethers.zeroPadValue(
+    "0x" + auditHash,
+    32
+  );
 
   const tx = await writeContract.logAudit(
-    jobIdHash,
-    auditHash,
+    jobHashBytes32,
+    auditHashBytes32,
     campaignId
   );
 
@@ -65,17 +69,19 @@ export async function logAuditOnChain({
   return tx.hash;
 }
 
-// READ: Verify audit on-chain (PUBLIC)
+// ---------------- READ: VERIFY AUDIT ----------------
 export async function verifyOnChain(jobIdHash) {
   try {
     if (!jobIdHash || !readContract) return false;
 
-    const [auditHash, campaignId, timestamp] =
-      await readContract.verifyAudit(jobIdHash);
+    const jobHashBytes32 = ethers.keccak256(
+      ethers.toUtf8Bytes(jobIdHash)
+    );
 
-    if (!auditHash || auditHash === ethers.ZeroHash) {
-      return false;
-    }
+    const [auditHash, campaignId, timestamp] =
+      await readContract.verifyAudit(jobHashBytes32);
+
+    if (!auditHash || auditHash === ethers.ZeroHash) return false;
 
     return {
       auditHash,

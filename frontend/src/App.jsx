@@ -29,6 +29,8 @@ import PublicCampaigns from "./modules/public/PublicCampaigns";
 import DonationTimeline from "./modules/donor/DonationTimeline";
 import MerchantScan from "./modules/merchant/MerchantScan";
 import MerchantTransactions from "./modules/merchant/MerchantTransactions";
+import DisasterControl from "./modules/government/DisasterControl";
+import FraudMonitor from "./modules/government/FraudMonitor";
 
 export default function App() {
   return (
@@ -193,6 +195,61 @@ export default function App() {
             <ProtectedRoute allowedRoles={[ROLES.GOVERNMENT]}>
               <Layout>
                 <GovtDashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/government/disasters"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.GOVERNMENT]}>
+              <Layout>
+                <DisasterControl />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/government/fraud"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.GOVERNMENT]}>
+              <Layout>
+                <FraudMonitor />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/government/escalated"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.GOVERNMENT]}>
+              <Layout>
+                <EscalatedDonations />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/government/wallets"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.GOVERNMENT]}>
+              <Layout>
+                <WalletControl />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/government/campaigns"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.GOVERNMENT]}>
+              <Layout>
+                <CampaignControl />
               </Layout>
             </ProtectedRoute>
           }

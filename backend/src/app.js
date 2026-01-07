@@ -14,9 +14,9 @@ import donorRoutes from "./routes/donor.routes.js";
 import merchantRoutes from "./routes/merchant.routes.js";
 import accessRoutes from "./routes/access.routes.js";
 import ngoDashboardRoutes from "./routes/ngoDashboard.routes.js";
-
+import paymentsRoutes from "./routes/payments.routes.js";
 import publicRoutes from "./routes/public.routes.js";
-
+import rateLimit from "express-rate-limit";
 
 
 const app = express();
@@ -43,6 +43,11 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(morgan("dev"));
 
+app.use(rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 100
+}));
+
 /*
  * API Routes
  */
@@ -59,7 +64,7 @@ app.use("/api/audit", auditRoutes);
 app.use("/api/ngo", ngoDashboardRoutes);
 app.use("/api/merchant", merchantRoutes);
 app.use("/api/public", publicRoutes);
-
+app.use("/payments", paymentsRoutes);
 
 
 

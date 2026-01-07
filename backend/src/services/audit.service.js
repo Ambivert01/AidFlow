@@ -4,6 +4,7 @@ import { logAuditOnChain } from "./blockchainAudit.service.js";
 import { generateMerkleRoot } from "./merkleAudit.service.js";
 
 export class AuditService {
+
   /*
    * Log an AidFlow audit event immutably
    */
@@ -35,26 +36,32 @@ export class AuditService {
 
     const hash = generateHash(auditData);
 
-    return await AuditLog.create({
+    return AuditLog.create({
       ...auditData,
       hash,
     });
   }
 
   /*
-   * FINALIZE WORKFLOW AUDIT
+   * FINALIZE WORKFLOW AUDIT (ONLY ONCE)
    */
   async finalizeWorkflowAudit({ jobIdHash, campaignId }) {
+
     const logs = await AuditLog.find({ jobIdHash }).sort({ createdAt: 1 });
 
     if (!logs.length) {
       throw new Error("No audit logs found");
     }
 
-    const hashes = logs.map((l) => l.hash);
+    // CRITICAL: Prevent re-finalization
+    if (logs.some(l => l.finalizedAt)) {
+      throw new Error("Audit already finalized");
+    }
+
+    const hashes = logs.map(l => l.hash);
     const merkleRoot = generateMerkleRoot(hashes);
 
-    // ALWAYS SAVE MERKLE ROOT
+    // Save Merkle root locally
     await AuditLog.updateMany(
       { jobIdHash },
       {
@@ -65,7 +72,7 @@ export class AuditService {
       }
     );
 
-    // OPTIONAL BLOCKCHAIN
+    // Anchor on blockchain (optional)
     let txHash = null;
     try {
       txHash = await logAuditOnChain({
@@ -73,8 +80,8 @@ export class AuditService {
         auditHash: merkleRoot,
         campaignId: campaignId.toString(),
       });
-    } catch (e) {
-      console.warn("Blockchain skipped");
+    } catch {
+      console.warn("⚠ Blockchain anchoring skipped");
     }
 
     if (txHash) {

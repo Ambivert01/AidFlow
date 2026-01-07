@@ -48,6 +48,17 @@ export default function MerchantDashboard() {
         >
           View Transactions
         </Link>
+
+        <InfoNotice
+          title="Merchant Rules"
+          message="Aid payments are category-restricted, policy-bound, and immutable. Any misuse triggers automatic freeze and government escalation."
+        />
+
+        {/* QR */}
+        <GenerateQR />
+
+        {/* History */}
+        <PaymentHistory />
       </div>
     </div>
   );

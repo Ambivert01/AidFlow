@@ -72,3 +72,9 @@ export const donate = async (req, res) => {
     });
   }
 };
+
+export const refundDonation = async (donation) => {
+  donation.status = "REFUNDED";
+  donation.lastDecisionBy = "SYSTEM";
+  await donation.save();
+};

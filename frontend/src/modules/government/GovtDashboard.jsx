@@ -1,40 +1,40 @@
+// src/modules/government/GovtDashboard.jsx
+import { useEffect, useState } from "react";
+import api from "../../services/api";
+import Loader from "../../components/Loader";
 import RoleContextBanner from "../../components/RoleContextBanner";
-import InfoNotice from "../../components/InfoNotice";
 
 export default function GovtDashboard() {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    api.get("/government/overview").then(res => setData(res.data));
+  }, []);
+
+  if (!data) return <Loader text="Loading government overview..." />;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <RoleContextBanner
         role="GOVERNMENT"
-        message="This dashboard provides high-level visibility into system activity and risks."
+        message="National oversight dashboard. All actions are permanently audited."
       />
 
-      <InfoNotice
-        title="Read-only oversight"
-        message="This dashboard provides visibility into system activity. Operational actions are handled by NGOs and automated workflows."
-      />
-
-      <h1 className="text-2xl font-bold">Disaster Command Center</h1>
-
-      <div
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3
- gap-4"
-      >
-        <div className="bg-white p-4 shadow rounded">
-          <p>Active Disasters</p>
-          <p className="text-xl font-semibold">1</p>
-        </div>
-
-        <div className="bg-white p-4 shadow rounded">
-          <p>Funds Distributed</p>
-          <p className="text-xl font-semibold">₹9.8 Cr</p>
-        </div>
-
-        <div className="bg-white p-4 shadow rounded">
-          <p>AI Flags</p>
-          <p className="text-xl font-semibold">3</p>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Stat label="Escalated Donations" value={data.escalated} />
+        <Stat label="Approved" value={data.approved} />
+        <Stat label="Rejected" value={data.rejected} />
+        <Stat label="Frozen Wallets" value={data.frozenWallets} />
       </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }) {
+  return (
+    <div className="bg-white p-4 rounded shadow text-center">
+      <p className="text-gray-500 text-sm">{label}</p>
+      <p className="text-2xl font-bold">{value}</p>
     </div>
   );
 }
