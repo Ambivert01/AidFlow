@@ -1,3 +1,6 @@
+import InfoNotice from "../../components/InfoNotice";
+
+
 import { useState } from "react";
 import api from "../../services/api";
 import Loader from "../../components/Loader";
@@ -24,18 +27,21 @@ export default function PublicAudit() {
           "No audit found for this ID. Please check the Audit ID and try again."
       );
     } finally {
-      setLoading(false); // 🔑 FIX infinite processing
+      setLoading(false); // FIX infinite processing
     }
   };
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-
       {/* HEADER */}
+
+      <InfoNotice
+        title="How verification works"
+        message="AidFlow verifies audit integrity by comparing cryptographic audit logs against blockchain-anchored proofs. If any record is altered, verification fails."
+      />
+
       <div className="text-center space-y-2">
-        <h1 className="text-2xl font-bold">
-          Public Audit Verification
-        </h1>
+        <h1 className="text-2xl font-bold">Public Audit Verification</h1>
 
         <p className="text-sm text-slate-600">
           Verify the integrity of a disaster relief donation workflow.
@@ -48,9 +54,7 @@ export default function PublicAudit() {
 
       {/* INPUT */}
       <div className="bg-white border p-4 rounded space-y-3">
-        <label className="text-sm font-medium">
-          Donation Audit ID
-        </label>
+        <label className="text-sm font-medium">Donation Audit ID</label>
 
         <input
           className="border p-2 w-full rounded text-sm"
@@ -85,17 +89,12 @@ export default function PublicAudit() {
       {/* RESULT */}
       {result && (
         <div className="bg-gray-50 border p-4 rounded space-y-4">
-
           {/* STATUS */}
           <div>
             <p className="font-semibold">
               Verification Status:{" "}
               <span
-                className={
-                  result.valid
-                    ? "text-green-700"
-                    : "text-red-700"
-                }
+                className={result.valid ? "text-green-700" : "text-red-700"}
               >
                 {result.valid ? "VERIFIED" : "NOT VERIFIED"}
               </span>
@@ -104,9 +103,7 @@ export default function PublicAudit() {
 
           {/* MERKLE ROOT */}
           <div>
-            <p className="text-sm font-medium">
-              Merkle Root (Audit Proof)
-            </p>
+            <p className="text-sm font-medium">Merkle Root (Audit Proof)</p>
             <p className="text-xs break-all text-slate-700">
               {result.merkleRoot}
             </p>
@@ -114,9 +111,7 @@ export default function PublicAudit() {
 
           {/* BLOCKCHAIN */}
           <div>
-            <p className="text-sm font-medium">
-              Blockchain Anchor
-            </p>
+            <p className="text-sm font-medium">Blockchain Anchor</p>
             <p className="text-xs break-all text-slate-700">
               {result.blockchainTxHash || "Not anchored yet"}
             </p>
@@ -124,15 +119,12 @@ export default function PublicAudit() {
 
           {/* TIMELINE */}
           <div>
-            <p className="text-sm font-medium mb-2">
-              Audit Timeline
-            </p>
+            <p className="text-sm font-medium mb-2">Audit Timeline</p>
             <ul className="list-disc pl-5 space-y-1 text-xs">
               {result.events.map((e, i) => (
                 <li key={i}>
                   <b>{e.eventType}</b> —{" "}
-                  {new Date(e.timestamp).toLocaleString()} (
-                  {e.actorRole})
+                  {new Date(e.timestamp).toLocaleString()} ({e.actorRole})
                 </li>
               ))}
             </ul>

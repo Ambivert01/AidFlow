@@ -19,6 +19,7 @@ export const verifyAudit = async (req, res) => {
   try {
     const { jobIdHash } = req.params;
 
+    // 1 Fetch full audit chain
     const logs = await AuditLog.find({ jobIdHash }).sort({ createdAt: 1 });
 
     if (!logs.length) {
@@ -28,7 +29,8 @@ export const verifyAudit = async (req, res) => {
       });
     }
 
-    const finalizedLog = logs.find((l) => l.merkleRoot);
+    // 2 Find finalized audit (must have merkleRoot)
+    const finalizedLog = logs.find(l => l.merkleRoot);
 
     if (!finalizedLog) {
       return res.status(400).json({
@@ -37,33 +39,45 @@ export const verifyAudit = async (req, res) => {
       });
     }
 
-    const merkleRoot = finalizedLog.merkleRoot;
+    const localMerkleRoot = finalizedLog.merkleRoot;
 
-    // Merkle = source of truth
-    let blockchainAnchored = false;
+    // 3 Verify ON-CHAIN using jobIdHash (SOURCE OF TRUTH)
+    const chainResult = await verifyOnChain(jobIdHash);
 
-    try {
-      blockchainAnchored = await verifyOnChain(merkleRoot);
-    } catch {
-      blockchainAnchored = false;
+    if (!chainResult) {
+      return res.json({
+        valid: false,
+        jobIdHash,
+        reason: "No on-chain audit record found",
+      });
     }
 
+    // 4 Compare on-chain hash vs local Merkle root
+    const isValid = chainResult.auditHash === localMerkleRoot;
+
+    // 5 FINAL PUBLIC RESPONSE
     return res.json({
-      valid: true, // FINAL ANSWER
+      valid: isValid,
       jobIdHash,
-      merkleRoot,
-      blockchainAnchored,
+      merkleRoot: localMerkleRoot,
+      blockchain: {
+        anchored: true,
+        campaignId: chainResult.campaignId,
+        timestamp: chainResult.timestamp,
+      },
       blockchainTxHash: finalizedLog.blockchainTxHash || null,
-      events: logs.map((log) => ({
+      events: logs.map(log => ({
         eventType: log.eventType,
         actorRole: log.actorRole,
         timestamp: log.createdAt,
       })),
     });
+
   } catch (err) {
-    res.status(500).json({
+    return res.status(500).json({
       valid: false,
       message: err.message,
     });
   }
 };
+

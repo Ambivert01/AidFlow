@@ -25,6 +25,7 @@ import NGOReviewDashboard from "./modules/ngo/NGOReviewDashboard";
 import BeneficiaryDashboard from "./modules/beneficiary/BeneficiaryDashboard";
 import MerchantDashboard from "./modules/merchant/MerchantDashboard";
 import GovtDashboard from "./modules/government/GovtDashboard";
+import PublicCampaigns from "./modules/public/PublicCampaigns";
 
 export default function App() {
   return (
@@ -36,9 +37,7 @@ export default function App() {
           element={
             <Layout>
               <div className="text-center py-20">
-                <h1 className="text-3xl font-bold text-blue-700">
-                  <Landing />
-                </h1>
+                <Landing />
                 <p className="mt-3 text-slate-600">
                   Transparent Disaster Relief Infrastructure
                 </p>
@@ -63,10 +62,28 @@ export default function App() {
         <Route path="/request-access" element={<RequestAccess />} />
 
         <Route
-          path="/public"
+          path="/public/how-it-works"
+          element={
+            <Layout>
+              <PublicLanding />
+            </Layout>
+          }
+        />
+
+        <Route
+          path="/public/audit"
           element={
             <Layout>
               <PublicAudit />
+            </Layout>
+          }
+        />
+
+        <Route
+          path="/public/campaigns"
+          element={
+            <Layout>
+              <PublicCampaigns />
             </Layout>
           }
         />

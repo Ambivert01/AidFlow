@@ -15,16 +15,14 @@ import ngoRoutes from "./routes/ngo.routes.js";
 import merchantRoutes from "./routes/merchant.routes.js";
 import accessRoutes from "./routes/access.routes.js";
 
-
+import publicRoutes from "./routes/public.routes.js";
 
 
 
 const app = express();
 
-/**
- * --------------------
+/*
  * Global Middlewares
- * --------------------
  */
 app.use(
   cors({
@@ -60,6 +58,7 @@ app.use("/api/donor", donorRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/ngo", ngoRoutes);
 app.use("/api/merchant", merchantRoutes);
+app.use("/api/public", publicRoutes);
 
 
 
