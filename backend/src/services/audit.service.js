@@ -65,7 +65,7 @@ export class AuditService {
       }
     );
 
-    // 🔐 OPTIONAL BLOCKCHAIN
+    // OPTIONAL BLOCKCHAIN
     let txHash = null;
     try {
       txHash = await logAuditOnChain({

@@ -17,55 +17,49 @@ export const getPendingDonations = async (req, res) => {
  * NGO approves donation
  */
 export const approveDonation = async (req, res) => {
-  try {
-    const donation = await Donation.findById(req.params.id)
-      .populate("campaign");
+  const donation = await Donation.findById(req.params.id).populate("campaign");
 
-    if (!donation || donation.status !== "PENDING_NGO_REVIEW") {
-      return res.status(400).json({ message: "Invalid donation state" });
-    }
-
-    // 1 ALWAYS log NGO decision FIRST
-    const auditService = new AuditService();
-
-    await auditService.log({
-      eventType: "DONATION_APPROVED_BY_NGO",
-      payload: { donationId: donation._id },
-      jobIdHash: donation._id.toString(),
-      campaignId: donation.campaign._id,
-      actorRole: "NGO",
-    });
-
-    // 2 Resume workflow (wallet + ready)
-    const workflow = createWorkflowEngine();
-
-    await workflow.resumeAfterNGOApproval({
-      donation,
-      campaign: donation.campaign,
-    });
-
-    // 3 Mark donation
-    donation.status = "READY_FOR_USE";
-    donation.lastDecisionBy = "SYSTEM";
-    donation.decisionReason = null;
-    await donation.save();
-
-    // 4 FINALIZE AUDIT (THIS WAS MISSING RELIABILITY)
-    await auditService.finalizeWorkflowAudit({
-      jobIdHash: donation._id.toString(),
-      campaignId: donation.campaign._id,
-    });
-
-    res.json({ message: "Donation approved and audit finalized" });
-
-  } catch (err) {
-    console.error("NGO APPROVE ERROR:", err);
-    res.status(500).json({
-      message: "Approval failed, donation returned to review queue",
-    });
+  if (!donation || donation.status !== "PENDING_NGO_REVIEW") {
+    return res.status(400).json({ message: "Invalid donation state" });
   }
-};
 
+  // 1 Record NGO decision
+  donation.status = "APPROVED_BY_NGO";
+  donation.ngoDecision = {
+    decision: "APPROVE",
+    decidedBy: req.user.id,
+    decidedAt: new Date(),
+  };
+  await donation.save();
+
+  // 2 Audit NGO decision
+  await auditService.log({
+    eventType: "DONATION_APPROVED_BY_NGO",
+    payload: { donationId: donation._id },
+    jobIdHash: donation._id.toString(),
+    campaignId: donation.campaign._id,
+    actorRole: "NGO",
+  });
+
+  // 3 Resume SYSTEM workflow (NO NGO LOGIC HERE)
+  const workflow = createWorkflowEngine();
+  await workflow.resumeAfterNGOApproval({
+    donation,
+    campaign: donation.campaign,
+  });
+
+  // 4 Final state
+  donation.status = "READY_FOR_USE";
+  await donation.save();
+
+  // 5 Finalize audit chain
+  await auditService.finalizeWorkflowAudit({
+    jobIdHash: donation._id.toString(),
+    campaignId: donation.campaign._id,
+  });
+
+  res.json({ message: "Donation approved and funds locked" });
+};
 
 /**
  * NGO rejects donation
@@ -78,21 +72,22 @@ export const rejectDonation = async (req, res) => {
   }
 
   donation.status = "REJECTED_BY_NGO";
-  donation.lastDecisionBy = "NGO";
-  donation.decisionReason = req.body.reason || "Rejected by NGO";
+  donation.ngoDecision = {
+    decision: "REJECT",
+    reason: req.body.reason,
+    decidedBy: req.user.id,
+    decidedAt: new Date(),
+  };
   await donation.save();
 
-  const auditService = new AuditService();
   await auditService.log({
     eventType: "DONATION_REJECTED_BY_NGO",
-    payload: {
-      donationId: donation._id,
-      reason: donation.decisionReason,
-    },
+    payload: { reason: req.body.reason },
     jobIdHash: donation._id.toString(),
     campaignId: donation.campaign,
     actorRole: "NGO",
   });
 
-  res.json({ message: "Donation rejected by NGO" });
+  res.json({ message: "Donation rejected and recorded" });
 };
+

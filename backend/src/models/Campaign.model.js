@@ -42,7 +42,7 @@ const campaignSchema = new mongoose.Schema(
     // workflow engine will later act on this
     status: {
       type: String,
-      enum: ["DRAFT", "ACTIVE", "PAUSED", "CLOSED"],
+      enum: ["DRAFT", "ACTIVE", "WORKFLOW_RUNNING", "COMPLETED", "ARCHIVED"],
       default: "DRAFT",
     },
   },

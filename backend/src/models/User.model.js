@@ -62,6 +62,24 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    merchantProfile: {
+      shopName: String,
+      category: {
+        type: String,
+        enum: ["FOOD", "MEDICINE", "SHELTER"],
+      },
+      location: {
+        ward: String,
+        district: String,
+        state: String,
+      },
+      status: {
+        type: String,
+        enum: ["PENDING", "ACTIVE", "SUSPENDED"],
+        default: "PENDING",
+      },
+    },
   },
   {
     timestamps: true,

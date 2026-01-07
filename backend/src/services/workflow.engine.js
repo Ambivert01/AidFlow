@@ -1,245 +1,159 @@
-/*
- * Workflow Engine
- * Governs the lifecycle of a donation → distribution
- * This is the CORE execution brain of AidFlow
- */
+// backend/src/services/workflow.engine.js
+
+import { Donation } from "../models/Donation.model.js";
+import { Beneficiary } from "../models/Beneficiary.model.js";
+import { createWallet } from "./wallet.service.js";
 
 export class WorkflowEngine {
   constructor({ policyEngine, walletEngine, auditService, aiClients }) {
     this.policyEngine = policyEngine;
-    this.walletEngine = walletEngine;
+    this.walletEngine = walletEngine; // only used for spending
     this.auditService = auditService;
     this.aiClients = aiClients;
   }
 
-  /*
-   * Entry point when donation is received
+  /**
+   * STEP 1: Run AI evaluation for a beneficiary (NGO onboarding)
    */
-  async processDonation({ donation, campaign, beneficiary }) {
-    let state = "DONATION_RECEIVED";
-
-    // STEP 0: Donation received
-    await this.auditService.log({
-      eventType: "DONATION_RECEIVED",
-      payload: {
-        donationId: donation._id,
-      },
-      jobIdHash: donation._id.toString(),
-      campaignId: campaign._id,
-      actorRole: "SYSTEM",
-    });
-
-    // STEP 1: Eligibility (AI + Policy)
-    state = await this.verifyEligibility({
-      donation,
-      campaign,
+  async evaluateBeneficiary({ beneficiary, campaign, jobIdHash }) {
+    // 1 Eligibility AI
+    const eligibility = await this.aiClients.eligibility.check({
       beneficiary,
-    });
-
-    // STEP 2: Risk Assessment (AI)
-    state = await this.assessRisk({
-      donation,
-      beneficiary,
-      campaign,
-    });
-
-    // STEP 3: Lock Funds
-    state = await this.lockFunds({
-      donation,
-      beneficiary,
-      campaign,
-    });
-
-    // STEP 4: Funds ready for use
-    state = await this.distributeFunds({
-      donation,
-      beneficiary,
-      campaign,
-    });
-
-    // STEP 5: Workflow completed
-    await this.auditService.log({
-      eventType: "WORKFLOW_COMPLETED",
-      payload: {
-        donationId: donation._id,
-      },
-      jobIdHash: donation._id.toString(),
-      campaignId: campaign._id,
-      actorRole: "SYSTEM",
-    });
-
-    // FINAL STEP: Merkle + Blockchain anchoring
-    await this.auditService.finalizeWorkflowAudit({
-      jobIdHash: donation._id.toString(),
-      campaignId: campaign._id,
-    });
-
-    return state;
-  }
-
-  // ELIGIBILITY CHECK (AI + POLICY)
-  async verifyEligibility({ donation, campaign, beneficiary }) {
-    const policy = campaign.policySnapshot;
-
-    // AI eligibility agent
-    const aiResult = await this.aiClients.eligibility.check({
-      beneficiary: {
-        id: beneficiary._id.toString(),
-        location: {
-          ward: campaign.location?.ward || "UNKNOWN",
-          lat: 0,
-          lng: 0,
-        },
-        documents: [],
-        deviceFingerprint: beneficiary._id.toString(),
-        pastAidCount: 0,
-      },
       disaster: {
         type: campaign.disasterType,
-        affectedWards: campaign.location?.ward ? [campaign.location.ward] : [],
-        severity: 0.7,
+        affectedWards: [campaign.location?.ward],
+        severity: 1,
       },
     });
 
-    if (!aiResult.eligible) {
-      await this.auditService.log({
-        eventType: "ELIGIBILITY_FAILED",
-        payload: {
-          donationId: donation._id,
-          reason: aiResult.reason,
-        },
-        jobIdHash: donation._id.toString(),
-        campaignId: campaign._id,
-        actorRole: "AI",
-      });
-
-      throw new Error("Beneficiary not eligible");
-    }
-
-    // Policy engine enforcement
-    const policyResult = this.policyEngine.validateBeneficiary({
-      beneficiary,
-      policy,
+    // 2 Fraud AI
+    const fraud = await this.aiClients.fraud.detect({
+      beneficiaryId: beneficiary.user,
+      walletId: null,
+      deviceFingerprint: beneficiary.deviceFingerprint || "NA",
+      location: campaign.location?.ward,
+      recentTransactions: 0,
+      totalAidReceived: 0,
+      merchantId: null,
+      timeWindowHours: 24,
     });
 
-    if (!policyResult.allowed) {
-      await this.auditService.log({
-        eventType: "POLICY_REJECTED",
-        payload: {
-          donationId: donation._id,
-          reason: policyResult.reason,
-        },
-        jobIdHash: donation._id.toString(),
-        campaignId: campaign._id,
-        actorRole: "SYSTEM",
-      });
-
-      throw new Error("Policy rejected beneficiary");
-    }
-
-    await this.auditService.log({
-      eventType: "ELIGIBILITY_VERIFIED",
-      payload: {
-        donationId: donation._id,
-        confidence: aiResult.confidence,
-      },
-      jobIdHash: donation._id.toString(),
-      campaignId: campaign._id,
-      actorRole: "AI",
-    });
-
-    return "ELIGIBILITY_VERIFIED";
-  }
-
-  // RISK ASSESSMENT (AI – FRAUD / MISUSE)
-  async assessRisk({ donation, beneficiary, campaign }) {
+    // 3 Risk AI
     const risk = await this.aiClients.risk.assess({
-      beneficiary,
-      amount: donation.amount,
-    });
-
-    // AI returns 0–100
-    const riskScore = risk.finalRiskScore;
-    const maxAllowedRisk = (campaign.policySnapshot.maxFraudRisk ?? 0.7) * 100;
-
-    await this.auditService.log({
-      eventType: "RISK_ASSESSED",
-      payload: {
-        donationId: donation._id,
-        score: riskScore,
-        decision: risk.decision,
-        reason: risk.reason,
+      eligibility,
+      fraud,
+      policy: {
+        maxAllowedRisk: campaign.policySnapshot.maxFraudRisk,
+        minEligibilityConfidence:
+          campaign.policySnapshot.minEligibilityConfidence,
       },
-      jobIdHash: donation._id.toString(),
-      campaignId: campaign._id,
-      actorRole: "AI",
     });
 
-    if (riskScore > maxAllowedRisk || risk.decision === "MANUAL_REVIEW") {
-      throw new Error("High risk detected, manual review required");
-    }
+    // 4 Persist AI decision (IMMUTABLE)
+    beneficiary.aiDecision = {
+      eligibilityConfidence: eligibility.confidence,
+      fraudRisk: fraud.riskScore,
+      decision: risk.decision,
+      flags: fraud.flags,
+      evaluatedAt: new Date(),
+    };
 
-    return "RISK_ASSESSED";
-  }
+    beneficiary.status =
+      risk.decision === "BLOCK"
+        ? "BLOCKED"
+        : risk.decision === "MANUAL_REVIEW"
+        ? "REGISTERED"
+        : "ELIGIBLE";
 
-  // LOCK FUNDS INTO BENEFICIARY WALLET
-  async lockFunds({ donation, beneficiary, campaign }) {
-    await this.walletEngine.lock({
-      donationId: donation._id,
-      beneficiaryId: beneficiary._id,
-      amount: donation.amount,
-      policy: campaign.policySnapshot,
-      campaignId: campaign._id, 
-      jobIdHash: donation._id.toString(),
-    });
+    await beneficiary.save();
 
-    return "FUNDS_LOCKED";
-  }
-
-  // MARK FUNDS READY FOR USE (BENEFICIARY)
-  async distributeFunds({ donation, beneficiary, campaign }) {
+    // 5 Audit AI decision
     await this.auditService.log({
-      eventType: "FUNDS_READY_FOR_USE",
+      eventType: "BENEFICIARY_AI_EVALUATED",
       payload: {
-        donationId: donation._id,
         beneficiaryId: beneficiary._id,
+        decision: risk.decision,
       },
-      jobIdHash: donation._id.toString(),
+      jobIdHash,
       campaignId: campaign._id,
       actorRole: "SYSTEM",
     });
 
-    return "READY_FOR_USE";
+    return beneficiary;
   }
 
-  // RESUME AFTER NGO APPROVAL (MANUAL PATH)
+  /**
+   * STEP 2: Resume workflow AFTER NGO approval of donation
+   */
   async resumeAfterNGOApproval({ donation, campaign }) {
-    const beneficiary = donation.beneficiary;
+    const jobIdHash = donation._id.toString();
 
-    if (!beneficiary) {
-      throw new Error("Beneficiary not assigned to donation");
+    // 1 Safety check
+    if (!donation.beneficiary) {
+      donation.status = "ELIGIBILITY_FAILED";
+      donation.decisionReason = "No beneficiary assigned";
+      await donation.save();
+      return;
     }
 
-    // Lock funds
-    await this.lockFunds({
-      donation,
-      beneficiary,
+    // 2 Create Wallet (SINGLE SOURCE OF TRUTH)
+    await createWallet({
+      beneficiaryId: donation.beneficiary,
       campaign,
+      amount: donation.amount,
+      jobIdHash,
     });
 
     donation.status = "FUNDS_LOCKED";
     donation.lastDecisionBy = "SYSTEM";
     await donation.save();
 
+    // 3 Audit wallet creation (NEW EVENT)
+    await this.auditService.log({
+      eventType: "WALLET_CREATED",
+      payload: {
+        donationId: donation._id,
+        beneficiaryId: donation.beneficiary,
+        amount: donation.amount,
+      },
+      jobIdHash,
+      campaignId: campaign._id,
+      actorRole: "SYSTEM",
+    });
+
     donation.status = "READY_FOR_USE";
     await donation.save();
 
-    // Finalize audit chain
-    await this.auditService.finalizeWorkflowAudit({
-      jobIdHash: donation._id.toString(),
+    // 4 Audit disbursement
+    await this.auditService.log({
+      eventType: "DONATION_DISBURSED_TO_WALLET",
+      payload: {
+        donationId: donation._id,
+        beneficiaryId: donation.beneficiary,
+        amount: donation.amount,
+      },
+      jobIdHash,
       campaignId: campaign._id,
+      actorRole: "SYSTEM",
     });
 
-    return "READY_FOR_USE";
+    return true;
+  }
+
+  /**
+   * STEP 3: Get workflow status (NGO dashboard)
+   */
+  async getWorkflowStatus(campaignId) {
+    const total = await Donation.countDocuments({ campaign: campaignId });
+    const ready = await Donation.countDocuments({
+      campaign: campaignId,
+      status: "READY_FOR_USE",
+    });
+
+    return {
+      state: "RUNNING",
+      verifiedCount: total,
+      disbursedCount: ready,
+    };
   }
 }

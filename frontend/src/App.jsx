@@ -27,7 +27,8 @@ import MerchantDashboard from "./modules/merchant/MerchantDashboard";
 import GovtDashboard from "./modules/government/GovtDashboard";
 import PublicCampaigns from "./modules/public/PublicCampaigns";
 import DonationTimeline from "./modules/donor/DonationTimeline";
-
+import MerchantScan from "./modules/merchant/MerchantScan";
+import MerchantTransactions from "./modules/merchant/MerchantTransactions";
 
 export default function App() {
   return (
@@ -158,6 +159,28 @@ export default function App() {
             <ProtectedRoute allowedRoles={[ROLES.MERCHANT]}>
               <Layout>
                 <MerchantDashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/merchant/scan"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.MERCHANT]}>
+              <Layout>
+                <MerchantScan />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/merchant/transactions"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.MERCHANT]}>
+              <Layout>
+                <MerchantTransactions />
               </Layout>
             </ProtectedRoute>
           }

@@ -1,113 +1,144 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import StatusBadge from "../../components/StatusBadge";
 
-export default function Beneficiaries() {
+export default function Beneficiaries({ campaignId }) {
   const [beneficiaries, setBeneficiaries] = useState([]);
-  const [form, setForm] = useState({
-    name: "",
-    aadhaar: "",
-    location: ""
-  });
+  const [userId, setUserId] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 1️⃣ Fetch beneficiaries
-  useEffect(() => {
-    api.get("/ngo/beneficiaries").then(res => {
-      setBeneficiaries(res.data);
+  const load = async () => {
+    const res = await api.get("/ngo/beneficiaries", {
+      params: { campaignId },
     });
-  }, []);
-
-  // 2️⃣ Handle input
-  const handleChange = e => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setBeneficiaries(res.data);
   };
 
-  // 3️⃣ Submit beneficiary
+  useEffect(() => {
+    load();
+  }, [campaignId]);
+
+  // Register beneficiary (link existing user)
   const addBeneficiary = async () => {
+    if (!userId) return alert("User ID required");
+
     setLoading(true);
     try {
-      await api.post("/ngo/beneficiaries", form);
-      const refreshed = await api.get("/ngo/beneficiaries");
-      setBeneficiaries(refreshed.data);
-      setForm({ name: "", aadhaar: "", location: "" });
-    } catch {
-      alert("Beneficiary flagged or duplicate detected");
+      await api.post("/ngo/beneficiaries", {
+        userId,
+        campaignId,
+      });
+      await load();
+      setUserId("");
+    } catch (err) {
+      alert(
+        err.response?.data?.message ||
+          "Duplicate or blocked beneficiary"
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  const overrideDecision = async (id, decision) => {
+    const reason = prompt("Reason (mandatory)");
+    if (!reason) return;
+
+    await api.post(`/ngo/beneficiaries/${id}/override`, {
+      decision,
+      reason,
+    });
+    await load();
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Beneficiaries</h2>
+      <h2 className="text-2xl font-bold">Campaign Beneficiaries</h2>
 
-      {/* 🔹 Add Beneficiary */}
+      {/* ADD BENEFICIARY */}
       <div className="border p-4 rounded bg-gray-50">
-        <h3 className="font-semibold mb-2">Add Beneficiary</h3>
+        <h3 className="font-semibold mb-2">
+          Register Beneficiary (Existing User)
+        </h3>
 
         <input
-          name="name"
-          placeholder="Full Name"
-          className="border p-2 w-full mb-2"
-          value={form.name}
-          onChange={handleChange}
-        />
-
-        <input
-          name="aadhaar"
-          placeholder="Aadhaar Number"
-          className="border p-2 w-full mb-2"
-          value={form.aadhaar}
-          onChange={handleChange}
-        />
-
-        <input
-          name="location"
-          placeholder="Location / Ward"
-          className="border p-2 w-full mb-2"
-          value={form.location}
-          onChange={handleChange}
+          placeholder="Beneficiary User ID"
+          className="border p-2 w-full mb-3"
+          value={userId}
+          onChange={(e) => setUserId(e.target.value)}
         />
 
         <button
           disabled={loading}
-          className="bg-green-600 text-white px-4 py-2 rounded"
           onClick={addBeneficiary}
+          className="bg-green-600 text-white px-4 py-2 rounded"
         >
-          {loading ? "Verifying..." : "Add Beneficiary"}
+          {loading ? "Evaluating via AI..." : "Register Beneficiary"}
         </button>
       </div>
 
-      {/* 🔹 Beneficiary List */}
+      {/* BENEFICIARY LIST */}
       <div>
-        <h3 className="font-semibold mb-2">Registered Beneficiaries</h3>
+        <h3 className="font-semibold mb-3">Registered Beneficiaries</h3>
 
-        {beneficiaries.map(b => (
+        {beneficiaries.map((b) => (
           <div
             key={b._id}
-            className="border p-3 rounded mb-2 flex justify-between"
+            className="border p-4 rounded mb-3 bg-white"
           >
-            <div>
-              <p className="font-medium">{b.name}</p>
-              <p className="text-sm">Location: {b.location}</p>
-              <p className="text-sm">Status: {b.status}</p>
+            <div className="flex justify-between items-center">
+              <p className="font-medium">
+                User ID: {b.user}
+              </p>
+              <StatusBadge status={b.status} />
             </div>
 
-            <div className="text-right">
-              <p className="text-sm">
-                Risk Score:{" "}
-                <span
-                  className={
-                    b.riskScore > 60 ? "text-red-600" : "text-green-600"
+            {/* AI DECISION */}
+            {b.aiDecision && (
+              <div className="mt-2 text-sm text-gray-700">
+                <p>
+                  AI Decision:{" "}
+                  <b>{b.aiDecision.risk.decision}</b>
+                </p>
+                <p>
+                  Eligibility Confidence:{" "}
+                  {b.aiDecision.eligibility.confidence}
+                </p>
+                <p>
+                  Fraud Risk Score:{" "}
+                  {b.aiDecision.fraud.riskScore}
+                </p>
+              </div>
+            )}
+
+            {/* NGO OVERRIDE */}
+            {b.status === "ELIGIBLE" && (
+              <div className="flex gap-3 mt-3">
+                <button
+                  onClick={() =>
+                    overrideDecision(b._id, "APPROVE")
                   }
+                  className="bg-blue-600 text-white px-3 py-1 rounded"
                 >
-                  {b.riskScore}
-                </span>
+                  Approve
+                </button>
+                <button
+                  onClick={() =>
+                    overrideDecision(b._id, "REJECT")
+                  }
+                  className="bg-red-600 text-white px-3 py-1 rounded"
+                >
+                  Reject
+                </button>
+              </div>
+            )}
+
+            {b.overrideByNgo && (
+              <p className="text-xs text-gray-500 mt-2">
+                NGO Decision: {b.overrideByNgo.decision} —{" "}
+                {b.overrideByNgo.reason}
               </p>
-              <p className="text-xs text-gray-500">
-                Aadhaar Hash Stored
-              </p>
-            </div>
+            )}
           </div>
         ))}
       </div>

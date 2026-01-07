@@ -7,7 +7,7 @@ export default function MerchantTransactions() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get("/payments/merchant-history")
+    api.get("/merchant/transactions")
       .then(res => setTxs(res.data))
       .finally(() => setLoading(false));
   }, []);
@@ -15,17 +15,18 @@ export default function MerchantTransactions() {
   if (loading) return <Loader text="Loading transactions..." />;
 
   return (
-    <div className="mt-6">
-      <h2 className="text-lg font-semibold mb-3">Transactions</h2>
+    <div>
+      <h2 className="text-xl font-bold mb-4">My Transactions</h2>
 
-      {txs.length === 0 && <p className="text-gray-400">No transactions yet</p>}
+      {txs.length === 0 && <p>No transactions yet</p>}
 
-      {txs.map(tx => (
-        <div key={tx._id} className="bg-white p-4 shadow rounded mb-3">
-          <p>Amount: ₹{tx.amount}</p>
-          <p>Category: {tx.category}</p>
-          <p className="text-sm text-gray-500">
-            {new Date(tx.createdAt).toLocaleString()}
+      {txs.map((t, i) => (
+        <div key={i} className="bg-white p-3 rounded shadow mb-2">
+          <p>Amount: ₹{t.amount}</p>
+          <p>Category: {t.category}</p>
+          <p>Beneficiary: {t.beneficiary?.name}</p>
+          <p className="text-xs text-gray-500">
+            {new Date(t.timestamp).toLocaleString()}
           </p>
         </div>
       ))}

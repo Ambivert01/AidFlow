@@ -11,9 +11,9 @@ import auditRoutes from "./routes/audit.routes.js";
 import walletRoutes from "./routes/wallet.routes.js";
 import beneficiaryRoutes from "./routes/beneficiary.routes.js";
 import donorRoutes from "./routes/donor.routes.js";
-import ngoRoutes from "./routes/ngo.routes.js";
 import merchantRoutes from "./routes/merchant.routes.js";
 import accessRoutes from "./routes/access.routes.js";
+import ngoDashboardRoutes from "./routes/ngoDashboard.routes.js";
 
 import publicRoutes from "./routes/public.routes.js";
 
@@ -56,7 +56,7 @@ app.use("/api/campaigns", campaignRoutes);
 app.use("/api/beneficiary", beneficiaryRoutes);
 app.use("/api/donor", donorRoutes);
 app.use("/api/audit", auditRoutes);
-app.use("/api/ngo", ngoRoutes);
+app.use("/api/ngo", ngoDashboardRoutes);
 app.use("/api/merchant", merchantRoutes);
 app.use("/api/public", publicRoutes);
 

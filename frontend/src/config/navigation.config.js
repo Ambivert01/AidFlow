@@ -9,7 +9,11 @@ export const NAVIGATION = {
     { label: "Login", path: "/login" },
   ],
 
-  [ROLES.DONOR]: [{ label: "Dashboard", path: "/donor" }],
+  [ROLES.DONOR]: [
+    { label: "Dashboard", path: "/donor" },
+    { label: "My Donations", path: "/donor" },
+    { label: "Verify Audit", path: "/public/audit" },
+  ],
 
   [ROLES.NGO]: [
     { label: "Dashboard", path: "/ngo" },
@@ -18,7 +22,11 @@ export const NAVIGATION = {
 
   [ROLES.BENEFICIARY]: [{ label: "Dashboard", path: "/beneficiary" }],
 
-  [ROLES.MERCHANT]: [{ label: "Dashboard", path: "/merchant" }],
+  [ROLES.MERCHANT]: [
+    { label: "Dashboard", path: "/merchant" },
+    { label: "Scan Wallet", path: "/merchant/scan" },
+    { label: "Transactions", path: "/merchant/transactions" },
+  ],
 
   [ROLES.GOVERNMENT]: [{ label: "Dashboard", path: "/government" }],
 };

@@ -1,48 +1,54 @@
 import RoleContextBanner from "../../components/RoleContextBanner";
 import InfoNotice from "../../components/InfoNotice";
-
-import { Link, Outlet } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 export default function MerchantDashboard() {
   return (
     <div className="space-y-6">
       <RoleContextBanner
         role="MERCHANT"
-        message="You can process beneficiary payments only for allowed categories."
+        message="Accept aid-wallet payments only for your approved category. All transactions are audited."
       />
 
       <InfoNotice
-        title="Policy-based transactions"
-        message="Payments can only be processed when a beneficiary presents a valid AidFlow wallet and the purchase category is allowed."
+        title="Merchant Responsibility"
+        message="You can accept payments only for your registered category. Any misuse is permanently logged and visible to authorities."
       />
 
-      <h1 className="text-2xl font-bold">Merchant Dashboard</h1>
+      {/* Stats */}
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="bg-white p-4 rounded shadow">
+          <p className="text-sm text-gray-500">Approved Category</p>
+          <p className="text-xl font-semibold">Food</p>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link
-          to="/merchant/qr"
-          className="bg-blue-600 text-white p-4 rounded text-center"
-        >
-          Generate QR
-        </Link>
+        <div className="bg-white p-4 rounded shadow">
+          <p className="text-sm text-gray-500">Transactions Today</p>
+          <p className="text-xl font-semibold">12</p>
+        </div>
 
-        <Link
-          to="/merchant/confirm"
-          className="bg-green-600 text-white p-4 rounded text-center"
-        >
-          Confirm Payment
-        </Link>
-
-        <Link
-          to="/merchant/history"
-          className="bg-gray-800 text-white p-4 rounded text-center"
-        >
-          Transactions
-        </Link>
+        <div className="bg-white p-4 rounded shadow">
+          <p className="text-sm text-gray-500">Total Amount Today</p>
+          <p className="text-xl font-semibold">₹18,400</p>
+        </div>
       </div>
 
-      {/* Nested Pages Render Here */}
-      <Outlet />
+      {/* Actions */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <Link
+          to="/merchant/scan"
+          className="bg-blue-600 text-white p-4 rounded text-center"
+        >
+          Scan Beneficiary Wallet
+        </Link>
+
+        <Link
+          to="/merchant/transactions"
+          className="bg-gray-800 text-white p-4 rounded text-center"
+        >
+          View Transactions
+        </Link>
+      </div>
     </div>
   );
 }

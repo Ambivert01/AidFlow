@@ -1,18 +1,16 @@
 import express from "express";
-import { getBeneficiaryDashboard } from "../controllers/beneficiary.controller.js";
+import {
+  registerBeneficiary,
+  listBeneficiaries,
+} from "../controllers/beneficiary.controller.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
 import { authorizeRoles } from "../middlewares/role.middleware.js";
 
 const router = express.Router();
 
-/*
- * Beneficiary dashboard
- */
-router.get(
-  "/dashboard",
-  authenticate,
-  authorizeRoles("BENEFICIARY"),
-  getBeneficiaryDashboard
-);
+router.use(authenticate, authorizeRoles("NGO"));
+
+router.post("/", registerBeneficiary);
+router.get("/", listBeneficiaries);
 
 export default router;

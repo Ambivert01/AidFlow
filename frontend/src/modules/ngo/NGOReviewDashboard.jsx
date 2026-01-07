@@ -75,44 +75,49 @@ export default function NGOReviewDashboard() {
       />
 
       <InfoNotice
+        title="Legal & Financial Responsibility"
+        message="Approving a donation permanently releases funds into a beneficiary wallet. This action is irreversible, recorded on blockchain, and publicly auditable."
+      />
+
+      <InfoNotice
         title="Why reviews happen"
         message="Donations reach this stage only when AI or policy rules detect ambiguity or elevated risk. Your decision is permanently audited."
       />
 
       {donations
-      .filter(d => d.status === "PENDING_NGO_REVIEW")
-      .map((d) => (
-        <div key={d._id} className="bg-white border rounded p-4 shadow-sm">
-          <div className="flex justify-between">
-            <div>
-              <p className="font-semibold">₹{d.amount}</p>
-              <p className="text-sm text-gray-500">
-                Campaign: {d.campaign?.title}
-              </p>
-              <p className="text-sm text-gray-500">
-                Donor: {d.donor?.name || "Anonymous"}
-              </p>
+        .filter((d) => d.status === "PENDING_NGO_REVIEW")
+        .map((d) => (
+          <div key={d._id} className="bg-white border rounded p-4 shadow-sm">
+            <div className="flex justify-between">
+              <div>
+                <p className="font-semibold">₹{d.amount}</p>
+                <p className="text-sm text-gray-500">
+                  Campaign: {d.campaign?.title}
+                </p>
+                <p className="text-sm text-gray-500">
+                  Donor: {d.donor?.name || "Anonymous"}
+                </p>
+              </div>
+
+              <StatusBadge status={d.status} />
             </div>
 
-            <StatusBadge status={d.status} />
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => handleApprove(d._id)}
+                className="bg-green-600 text-white px-4 py-2 rounded"
+              >
+                Approve
+              </button>
+              <button
+                onClick={() => handleReject(d._id)}
+                className="bg-red-600 text-white px-4 py-2 rounded"
+              >
+                Reject
+              </button>
+            </div>
           </div>
-
-          <div className="flex gap-3 mt-4">
-            <button
-              onClick={() => handleApprove(d._id)}
-              className="bg-green-600 text-white px-4 py-2 rounded"
-            >
-              Approve
-            </button>
-            <button
-              onClick={() => handleReject(d._id)}
-              className="bg-red-600 text-white px-4 py-2 rounded"
-            >
-              Reject
-            </button>
-          </div>
-        </div>
-      ))}
+        ))}
     </div>
   );
 }

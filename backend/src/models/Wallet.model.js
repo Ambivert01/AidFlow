@@ -9,55 +9,45 @@ const walletSchema = new mongoose.Schema(
       unique: true,
     },
 
-    balance: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    categoryLimits: {
-      food: { type: Number, default: 0 },
-      medicine: { type: Number, default: 0 },
-      shelter: { type: Number, default: 0 },
-    },
-
-    status: {
-      type: String,
-      enum: ["ACTIVE", "FROZEN"],
-      default: "ACTIVE",
-    },
-
     campaign: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Campaign",
       required: true,
     },
 
+    balance: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    // IMMUTABLE POLICY SNAPSHOT
+    policy: {
+      allowedCategories: {
+        type: [String],
+        required: true,
+      },
+      maxPerTransaction: {
+        type: Number,
+        required: true,
+      },
+      expiresAt: {
+        type: Date,
+        required: true,
+      },
+    },
+
+    status: {
+      type: String,
+      enum: ["ACTIVE", "EXPIRED", "FROZEN", "CLOSED"],
+      default: "ACTIVE",
+    },
+
     jobIdHash: {
       type: String,
       required: true,
+      unique: true,
     },
-
-    allowedCategories: {
-      type: [String],
-      required: true,
-    },
-
-    transactions: [
-      {
-        type: {
-          type: String,
-          enum: ["CREDIT", "DEBIT"],
-        },
-        amount: Number,
-        category: String,
-        reference: String,
-        timestamp: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
   },
   { timestamps: true }
 );
