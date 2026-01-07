@@ -1,30 +1,47 @@
-import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { fetchDonationTimeline } from "../../services/donor.service";
+import { useParams } from "react-router-dom";
+import api from "../../services/api";
 import Loader from "../../components/Loader";
+import InfoNotice from "../../components/InfoNotice";
 
 export default function DonationTimeline() {
-  const { id } = useParams();
-  const [steps, setSteps] = useState([]);
+  const { jobIdHash } = useParams();
+  const [timeline, setTimeline] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDonationTimeline(id)
-      .then(res => setSteps(res.data))
+    api
+      .get(`/audit/timeline/${jobIdHash}`)
+      .then((res) => setTimeline(res.data.timeline))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [jobIdHash]);
 
-  if (loading) return <Loader text="Fetching impact timeline..." />;
+  if (loading) return <Loader text="Loading audit timeline…" />;
 
   return (
-    <div>
-      <h2 className="text-xl font-bold mb-6">Impact Timeline</h2>
+    <div className="max-w-3xl mx-auto space-y-6">
+      <InfoNotice
+        title="Immutable Audit Timeline"
+        message="This timeline is generated from cryptographically chained audit logs. It cannot be altered."
+      />
 
-      <div className="border-l-2 border-blue-500 pl-6 space-y-6">
-        {steps.map((s, i) => (
+      <h2 className="text-xl font-bold">Donation Timeline</h2>
+
+      <div className="border-l-2 border-blue-600 pl-6 space-y-6">
+        {timeline.map((e, i) => (
           <div key={i} className="relative">
-            <span className="absolute -left-3 top-1 h-3 w-3 bg-blue-500 rounded-full"></span>
-            <p>{s.label}</p>
+            <span className="absolute -left-3 top-1 h-3 w-3 bg-blue-600 rounded-full"></span>
+
+            <p className="font-medium">{e.event.replaceAll("_", " ")}</p>
+            <p className="text-xs text-gray-500">
+              {new Date(e.timestamp).toLocaleString()} — {e.actor}
+            </p>
+
+            {e.payload && (
+              <pre className="mt-1 text-xs bg-gray-100 p-2 rounded">
+                {JSON.stringify(e.payload, null, 2)}
+              </pre>
+            )}
           </div>
         ))}
       </div>

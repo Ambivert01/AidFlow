@@ -1,9 +1,10 @@
-import RoleContextBanner from "../../components/RoleContextBanner";
-import InfoNotice from "../../components/InfoNotice";
-
 import { useEffect, useState } from "react";
 import { fetchCampaigns, fetchMyDonations } from "../../services/donor.service";
 import Donate from "./Donate";
+
+import RoleContextBanner from "../../components/RoleContextBanner";
+import InfoNotice from "../../components/InfoNotice";
+import { ROLES } from "../../utils/constants";
 
 export default function DonorDashboard() {
   const [campaigns, setCampaigns] = useState([]);
@@ -16,61 +17,74 @@ export default function DonorDashboard() {
   }, []);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
+      {/* ROLE CONTEXT */}
       <RoleContextBanner
-        role="DONOR"
-        message="You can donate to active campaigns and publicly verify how your donations are used."
+        role={ROLES.DONOR}
+        message="Donate to verified campaigns and track every rupee through an immutable audit trail."
       />
 
-      {/* ACTIVE CAMPAIGNS */}
+      {/* ================= ACTIVE CAMPAIGNS ================= */}
       <section>
         <InfoNotice
-          title="Available Relief Campaigns"
-          message="These are active, verified campaigns where you can donate. Each donation will be processed through AI checks and recorded on blockchain."
+          title="Active Relief Campaigns"
+          message="These campaigns are verified and policy-locked. Donations are processed through AI checks and recorded immutably."
         />
 
-        <h1 className="text-2xl font-bold mb-4">Active Campaigns</h1>
+        <h2 className="text-2xl font-bold mb-4">Donate to a Campaign</h2>
 
-        {Array.isArray(campaigns) &&
-          campaigns.map((c) => (
-            <div key={c._id} className="border p-4 rounded mb-3">
-              <h2 className="font-semibold">{c.title}</h2>
-              <p>{c.description}</p>
+        {campaigns.length === 0 && (
+          <p className="text-gray-500">No active campaigns at the moment.</p>
+        )}
 
-              <button
-                className="mt-2 bg-blue-600 text-white px-4 py-1 rounded"
-                onClick={() => setSelected(c)}
-              >
-                Donate
-              </button>
-            </div>
-          ))}
+        {campaigns.map((c) => (
+          <div key={c._id} className="border p-4 rounded mb-4 bg-white">
+            <h3 className="font-semibold text-lg">{c.title}</h3>
+            <p className="text-sm text-gray-600">{c.description}</p>
+
+            {/* POLICY SNAPSHOT */}
+            <details className="mt-2 text-sm">
+              <summary className="cursor-pointer font-medium">
+                Policy Snapshot (Locked)
+              </summary>
+              <pre className="bg-gray-100 p-2 rounded mt-2 text-xs">
+                {JSON.stringify(c.policySnapshot, null, 2)}
+              </pre>
+            </details>
+
+            <button
+              className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
+              onClick={() => setSelected(c)}
+            >
+              Donate
+            </button>
+          </div>
+        ))}
 
         {selected && (
           <Donate campaign={selected} onClose={() => setSelected(null)} />
         )}
       </section>
 
-      {/* MY DONATIONS — TRANSPARENCY */}
+      {/* ================= MY DONATIONS ================= */}
       <section>
         <InfoNotice
-          title="Available Relief Campaigns"
-          message="These are active, verified campaigns where you can donate. Each donation will be processed through AI checks and recorded on blockchain."
+          title="Your Donation Transparency"
+          message="Each donation generates an immutable audit trail that can be verified publicly."
         />
 
-        <h2 className="text-xl font-bold mb-3">My Donations (Transparency)</h2>
+        <h2 className="text-xl font-bold mb-3">My Donations</h2>
 
         {donations.length === 0 && (
           <p className="text-gray-500">
-            You haven’t made any donations yet. Once you donate, audit proofs
-            will appear here.
+            You haven’t donated yet. Once you do, audit proofs will appear here.
           </p>
         )}
 
         {donations.map((d) => (
           <div
             key={d.donationId}
-            className="border p-4 rounded mb-3 bg-gray-50 space-y-2"
+            className="border p-4 rounded mb-4 bg-gray-50 space-y-2"
           >
             <p>
               <b>Campaign:</b> {d.campaign?.title}
@@ -78,28 +92,32 @@ export default function DonorDashboard() {
             <p>
               <b>Amount:</b> ₹{d.amount}
             </p>
+
             <p>
-              <b>Status:</b> {d.status}
+              <b>Status:</b>{" "}
+              {d.status === "READY_FOR_USE"
+                ? "Funds Released (Verified)"
+                : d.status.replaceAll("_", " ")}
             </p>
 
-            {/* AUDIT ID (PUBLIC VERIFICATION KEY) */}
-            <div className="bg-white border rounded p-2 flex items-center justify-between">
-              <div className="text-sm break-all">
+            {/* AUDIT ID */}
+            <div className="bg-white border rounded p-2 flex justify-between items-center">
+              <div className="text-xs break-all">
                 <b>Audit ID:</b> {d.donationId}
               </div>
 
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(d.donationId);
-                  alert("Audit ID copied to clipboard");
+                  alert("Audit ID copied");
                 }}
-                className="ml-3 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="px-3 py-1 text-xs bg-blue-600 text-white rounded"
               >
                 Copy
               </button>
             </div>
 
-            {/* STATUS MESSAGE */}
+            {/* AUDIT STATUS */}
             {d.auditHash ? (
               <p className="text-green-700 text-sm">
                 ✔ Audit finalized & anchored on blockchain
@@ -109,6 +127,17 @@ export default function DonorDashboard() {
                 ⏳ Audit proof processing…
               </p>
             )}
+
+            {/* PUBLIC VERIFY */}
+            <a href="/public" className="text-blue-600 text-sm underline">
+              Verify publicly
+            </a>
+            <a
+              href={`/donor/timeline/${d.donationId}`}
+              className="text-sm text-blue-700 underline"
+            >
+              View full audit timeline
+            </a>
           </div>
         ))}
       </section>

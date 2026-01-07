@@ -5,9 +5,7 @@ import { verifyOnChain } from "../services/blockchainAudit.service.js";
  * ADMIN: Get recent audit logs
  */
 export const getAuditLogs = async (req, res) => {
-  const logs = await AuditLog.find()
-    .sort({ createdAt: -1 })
-    .limit(100);
+  const logs = await AuditLog.find().sort({ createdAt: -1 }).limit(100);
 
   res.json(logs);
 };
@@ -30,7 +28,7 @@ export const verifyAudit = async (req, res) => {
     }
 
     // 2 Find finalized audit (must have merkleRoot)
-    const finalizedLog = logs.find(l => l.merkleRoot);
+    const finalizedLog = logs.find((l) => l.merkleRoot);
 
     if (!finalizedLog) {
       return res.status(400).json({
@@ -66,13 +64,12 @@ export const verifyAudit = async (req, res) => {
         timestamp: chainResult.timestamp,
       },
       blockchainTxHash: finalizedLog.blockchainTxHash || null,
-      events: logs.map(log => ({
+      events: logs.map((log) => ({
         eventType: log.eventType,
         actorRole: log.actorRole,
         timestamp: log.createdAt,
       })),
     });
-
   } catch (err) {
     return res.status(500).json({
       valid: false,
@@ -81,3 +78,36 @@ export const verifyAudit = async (req, res) => {
   }
 };
 
+/*
+ * DONOR / NGO / GOVERNMENT / ADMIN
+ * Read-only immutable audit timeline
+ */
+export const getAuditTimeline = async (req, res) => {
+  try {
+    const { jobIdHash } = req.params;
+
+    const logs = await AuditLog.find({ jobIdHash })
+      .sort({ createdAt: 1 })
+      .select("eventType actorRole createdAt payload");
+
+    if (!logs.length) {
+      return res.status(404).json({
+        message: "No audit events found for this workflow",
+      });
+    }
+
+    return res.json({
+      jobIdHash,
+      timeline: logs.map((log) => ({
+        event: log.eventType,
+        actor: log.actorRole,
+        timestamp: log.createdAt,
+        payload: log.payload,
+      })),
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: err.message,
+    });
+  }
+};

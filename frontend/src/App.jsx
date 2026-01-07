@@ -26,6 +26,8 @@ import BeneficiaryDashboard from "./modules/beneficiary/BeneficiaryDashboard";
 import MerchantDashboard from "./modules/merchant/MerchantDashboard";
 import GovtDashboard from "./modules/government/GovtDashboard";
 import PublicCampaigns from "./modules/public/PublicCampaigns";
+import DonationTimeline from "./modules/donor/DonationTimeline";
+
 
 export default function App() {
   return (
@@ -98,6 +100,17 @@ export default function App() {
             <ProtectedRoute allowedRoles={[ROLES.DONOR]}>
               <Layout>
                 <DonorDashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/donor/timeline/:jobIdHash"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.DONOR]}>
+              <Layout>
+                <DonationTimeline />
               </Layout>
             </ProtectedRoute>
           }

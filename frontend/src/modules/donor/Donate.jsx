@@ -16,7 +16,10 @@ export default function Donate({ campaign, onClose }) {
         amount,
       });
 
-      alert("Donation successful");
+      alert(
+        "Donation received.\nYour contribution is now being processed through AI checks and policy enforcement.\nAn audit proof will be generated shortly."
+      );
+
       onClose();
     } catch (err) {
       setError("Donation failed. Please try again.");
@@ -27,13 +30,9 @@ export default function Donate({ campaign, onClose }) {
 
   return (
     <div className="mt-6 border-t pt-4">
-      <h3 className="text-lg font-semibold">
-        Donate to {campaign.title}
-      </h3>
+      <h3 className="text-lg font-semibold">Donate to {campaign.title}</h3>
 
-      {error && (
-        <p className="text-red-600 text-sm mt-2">{error}</p>
-      )}
+      {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
 
       <input
         type="number"
@@ -51,10 +50,7 @@ export default function Donate({ campaign, onClose }) {
           {loading ? "Processing..." : "Donate"}
         </button>
 
-        <button
-          onClick={onClose}
-          className="border px-4 py-2 rounded"
-        >
+        <button onClick={onClose} className="border px-4 py-2 rounded">
           Cancel
         </button>
       </div>
