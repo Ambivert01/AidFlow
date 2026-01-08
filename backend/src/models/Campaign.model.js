@@ -31,19 +31,35 @@ const campaignSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
 
-    // ensures rules cannot change mid-execution
+    // IMMUTABLE POLICY SNAPSHOT
     policySnapshot: {
-      type: Object, // rules frozen at campaign creation
+      type: Object,
       required: true,
     },
 
-    // workflow engine will later act on this
+    // WORKFLOW TRACE ID (CRITICAL)
+    jobIdHash: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+    },
+
+    // Workflow lifecycle
     status: {
       type: String,
-      enum: ["DRAFT", "ACTIVE", "WORKFLOW_RUNNING", "COMPLETED", "ARCHIVED"],
+      enum: [
+        "DRAFT",
+        "ACTIVE",
+        "WORKFLOW_RUNNING",
+        "COMPLETED",
+        "ARCHIVED",
+      ],
       default: "DRAFT",
+      index: true,
     },
   },
   { timestamps: true }

@@ -12,7 +12,53 @@ export class WorkflowEngine {
     this.aiClients = aiClients;
   }
 
-  /**
+  /*
+   * STEP 0: Full donation intake workflow (AI + policy)
+   * Called immediately after donation creation
+   */
+  async processDonation({ donation, campaign, beneficiary }) {
+    const jobIdHash = donation._id.toString();
+
+    // 1 AI evaluate beneficiary
+    const evaluatedBeneficiary = await this.evaluateBeneficiary({
+      beneficiary,
+      campaign,
+      jobIdHash,
+    });
+
+    // 2 Decision routing
+    if (evaluatedBeneficiary.status === "BLOCKED") {
+      donation.status = "ELIGIBILITY_FAILED";
+      donation.lastDecisionBy = "AI";
+      donation.decisionReason = "AI blocked beneficiary";
+      await donation.save();
+      return;
+    }
+
+    if (evaluatedBeneficiary.status === "REGISTERED") {
+      donation.status = "PENDING_NGO_REVIEW";
+      donation.lastDecisionBy = "AI";
+
+      donation.reviewReason = "AI confidence below threshold";
+      donation.aiDecision =
+        evaluatedBeneficiary.aiDecision?.decision || "MANUAL_REVIEW";
+      donation.aiRiskScore =
+        evaluatedBeneficiary.aiDecision?.fraudRisk ??
+        evaluatedBeneficiary.aiDecision?.finalRiskScore ??
+        null;
+
+      await donation.save();
+      return;
+    }
+
+    // 3 Eligible → go to NGO (controlled approval)
+    donation.status = "PENDING_NGO_REVIEW";
+    donation.lastDecisionBy = "SYSTEM";
+    donation.reviewReason = "Eligible but requires NGO authorization";
+    await donation.save();
+  }
+
+  /*
    * STEP 1: Run AI evaluation for a beneficiary (NGO onboarding)
    */
   async evaluateBeneficiary({ beneficiary, campaign, jobIdHash }) {
@@ -82,7 +128,7 @@ export class WorkflowEngine {
     return beneficiary;
   }
 
-  /**
+  /*
    * STEP 2: Resume workflow AFTER NGO approval of donation
    */
   async resumeAfterNGOApproval({ donation, campaign }) {
@@ -108,23 +154,14 @@ export class WorkflowEngine {
     donation.lastDecisionBy = "SYSTEM";
     await donation.save();
 
-    // 3 Audit wallet creation (NEW EVENT)
-    await this.auditService.log({
-      eventType: "WALLET_CREATED",
-      payload: {
-        donationId: donation._id,
-        beneficiaryId: donation.beneficiary,
-        amount: donation.amount,
-      },
-      jobIdHash,
-      campaignId: campaign._id,
-      actorRole: "SYSTEM",
-    });
-
+    /*
+     * READY_FOR_USE should be set ONLY after wallet creation + audit
+     * NOT blindly overwritten
+     */
     donation.status = "READY_FOR_USE";
     await donation.save();
 
-    // 4 Audit disbursement
+    // 5 Audit disbursement
     await this.auditService.log({
       eventType: "DONATION_DISBURSED_TO_WALLET",
       payload: {

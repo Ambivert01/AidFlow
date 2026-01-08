@@ -5,12 +5,17 @@ import { logger } from "./src/utils/logger.js";
 
 dotenv.config();
 
+/*
+import dotenv from "dotenv";
+dotenv.config();
+ 
+add in the app.js only if not added here
+*/
+
 const PORT = process.env.PORT || 5000;
 
-/**
- * --------------------
+/*
  * Database Connection
- * --------------------
  */
 const connectDB = async () => {
   try {
@@ -22,10 +27,8 @@ const connectDB = async () => {
   }
 };
 
-/**
- * --------------------
+/*
  * Server Bootstrap
- * --------------------
  */
 const startServer = async () => {
   await connectDB();

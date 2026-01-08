@@ -2,6 +2,7 @@ import { Donation } from "../models/Donation.model.js";
 import { AuditService } from "../services/audit.service.js";
 import { createWorkflowEngine } from "../services/workflow.service.js";
 
+const auditService = new AuditService();
 /**
  * Get all donations pending NGO review
  */
@@ -23,16 +24,11 @@ export const approveDonation = async (req, res) => {
     return res.status(400).json({ message: "Invalid donation state" });
   }
 
-  // 1 Record NGO decision
+  // 1 NGO decision
   donation.status = "APPROVED_BY_NGO";
-  donation.ngoDecision = {
-    decision: "APPROVE",
-    decidedBy: req.user.id,
-    decidedAt: new Date(),
-  };
+  donation.lastDecisionBy = "NGO";
   await donation.save();
 
-  // 2 Audit NGO decision
   await auditService.log({
     eventType: "DONATION_APPROVED_BY_NGO",
     payload: { donationId: donation._id },
@@ -41,25 +37,24 @@ export const approveDonation = async (req, res) => {
     actorRole: "NGO",
   });
 
-  // 3 Resume SYSTEM workflow (NO NGO LOGIC HERE)
+  // 2 SYSTEM resumes workflow
   const workflow = createWorkflowEngine();
   await workflow.resumeAfterNGOApproval({
     donation,
     campaign: donation.campaign,
   });
 
-  // 4 Final state
-  donation.status = "READY_FOR_USE";
-  await donation.save();
-
-  // 5 Finalize audit chain
+  // 3 FINALIZE AUDIT (IMPORTANT)
   await auditService.finalizeWorkflowAudit({
     jobIdHash: donation._id.toString(),
     campaignId: donation.campaign._id,
   });
 
-  res.json({ message: "Donation approved and funds locked" });
+  res.json({
+    message: "Donation approved, wallet created, audit finalized",
+  });
 };
+
 
 /**
  * NGO rejects donation
@@ -72,12 +67,8 @@ export const rejectDonation = async (req, res) => {
   }
 
   donation.status = "REJECTED_BY_NGO";
-  donation.ngoDecision = {
-    decision: "REJECT",
-    reason: req.body.reason,
-    decidedBy: req.user.id,
-    decidedAt: new Date(),
-  };
+  donation.lastDecisionBy = "NGO";
+  donation.decisionReason = req.body.reason;
   await donation.save();
 
   await auditService.log({
@@ -88,6 +79,6 @@ export const rejectDonation = async (req, res) => {
     actorRole: "NGO",
   });
 
-  res.json({ message: "Donation rejected and recorded" });
+  res.json({ message: "Donation rejected permanently" });
 };
 

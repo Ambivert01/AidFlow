@@ -98,7 +98,7 @@ export default function Beneficiaries({ campaignId }) {
               <div className="mt-2 text-sm text-gray-700">
                 <p>
                   AI Decision:{" "}
-                  <b>{b.aiDecision.risk.decision}</b>
+                  <b>{b.aiDecision.decision}</b>
                 </p>
                 <p>
                   Eligibility Confidence:{" "}

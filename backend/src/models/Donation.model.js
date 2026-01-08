@@ -50,6 +50,21 @@ const donationSchema = new mongoose.Schema(
       index: true,
     },
 
+    reviewReason: {
+      type: String,
+      default: null,
+    },
+
+    aiDecision: {
+      type: String,
+      default: null,
+    },
+
+    aiRiskScore: {
+      type: Number,
+      default: null,
+    },
+
     lastDecisionBy: {
       type: String, // AI | NGO | GOVERNMENT | SYSTEM
       default: "SYSTEM",

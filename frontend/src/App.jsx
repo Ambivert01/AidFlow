@@ -20,17 +20,33 @@ import PublicAudit from "./modules/public/PublicAudit";
 
 /* Dashboards */
 import DonorDashboard from "./modules/donor/DonorDashboard";
-import NGODashboard from "./modules/ngo/NGODashboard";
-import NGOReviewDashboard from "./modules/ngo/NGOReviewDashboard";
 import BeneficiaryDashboard from "./modules/beneficiary/BeneficiaryDashboard";
-import MerchantDashboard from "./modules/merchant/MerchantDashboard";
-import GovtDashboard from "./modules/government/GovtDashboard";
 import PublicCampaigns from "./modules/public/PublicCampaigns";
 import DonationTimeline from "./modules/donor/DonationTimeline";
+
+//ngo
+import NGODashboard from "./modules/ngo/NGODashboard";
+import NGOReviewDashboard from "./modules/ngo/NGOReviewDashboard";
+import CreateCampaign from "./modules/ngo/CreateCampaign";
+import ManageCampaign from "./modules/ngo/ManageCampaign";
+import WorkflowMonitor from "./modules/ngo/WorkflowMonitor";
+import NgoCampaignList from "./modules/ngo/NgoCampaignList";
+import NgoCampaignDetails from "./modules/ngo/NgoCampaignDetails";
+import NgoWorkflowList from "./modules/ngo/NgoWorkflowList";
+
+
+// Merchant
+import MerchantDashboard from "./modules/merchant/MerchantDashboard";
 import MerchantScan from "./modules/merchant/MerchantScan";
 import MerchantTransactions from "./modules/merchant/MerchantTransactions";
+
+// Government
+import GovtDashboard from "./modules/government/GovtDashboard";
+import CampaignControl from "./modules/government/CampaignControl";
 import DisasterControl from "./modules/government/DisasterControl";
+import EscalatedDonations from "./modules/government/EscalatedDonations";
 import FraudMonitor from "./modules/government/FraudMonitor";
+import WalletControl from "./modules/government/WalletControl";
 
 export default function App() {
   return (
@@ -126,6 +142,61 @@ export default function App() {
             <ProtectedRoute allowedRoles={[ROLES.NGO]}>
               <Layout>
                 <NGODashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/ngo/create"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.NGO]}>
+              <Layout>
+                <CreateCampaign />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/ngo/campaigns"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.NGO]}>
+              <Layout>
+                <NgoCampaignList />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/ngo/campaign/:id"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.NGO]}>
+              <Layout>
+                <NgoCampaignDetails />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/ngo/workflow"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.NGO]}>
+              <Layout>
+                <NgoWorkflowList />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/ngo/workflow/:id"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.NGO]}>
+              <Layout>
+                <WorkflowMonitor />
               </Layout>
             </ProtectedRoute>
           }

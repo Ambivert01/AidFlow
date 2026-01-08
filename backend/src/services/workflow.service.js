@@ -5,7 +5,7 @@ import { AuditService } from "./audit.service.js";
 
 import { aiClients } from "./aiDecision.js";
 
-/**
+/*
  * Factory to build WorkflowEngine with dependencies
  */
 export function createWorkflowEngine() {

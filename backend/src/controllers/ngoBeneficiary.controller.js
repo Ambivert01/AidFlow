@@ -1,31 +1,34 @@
+import { Beneficiary } from "../models/Beneficiary.model.js";
+import { Campaign } from "../models/Campaign.model.js";
+import { AuditService } from "../services/audit.service.js";
+import { createWorkflowEngine } from "../services/workflow.service.js";
+
+const audit = new AuditService();
+
+/**
+ * NGO: Register existing user as beneficiary
+ */
 export const registerBeneficiary = async (req, res) => {
-  const { name, aadhaar, location, campaignId } = req.body;
+  const { userId, campaignId } = req.body;
 
-  // 1. Hash Aadhaar (never store raw)
-  const aadhaarHash = crypto
-    .createHash("sha256")
-    .update(aadhaar)
-    .digest("hex");
-
-  // 2. Prevent duplicates (CRITICAL)
-  const exists = await Beneficiary.findOne({ aadhaarHash });
-  if (exists) {
-    return res.status(409).json({
-      message: "Beneficiary already registered in system",
-    });
+  const campaign = await Campaign.findById(campaignId);
+  if (!campaign || campaign.status !== "ACTIVE") {
+    return res.status(400).json({ message: "Invalid campaign" });
   }
 
-  // 3. Create beneficiary
+  const exists = await Beneficiary.findOne({ user: userId, campaign: campaignId });
+  if (exists) {
+    return res.status(409).json({ message: "Beneficiary already registered" });
+  }
+
   const beneficiary = await Beneficiary.create({
-    name,
-    aadhaarHash,
-    location,
+    user: userId,
     campaign: campaignId,
+    registeredBy: req.user.id,
     status: "REGISTERED",
   });
 
-  // 4. Audit log
-  await auditService.log({
+  await audit.log({
     eventType: "BENEFICIARY_REGISTERED",
     payload: { beneficiaryId: beneficiary._id },
     jobIdHash: beneficiary._id.toString(),
@@ -33,65 +36,39 @@ export const registerBeneficiary = async (req, res) => {
     actorRole: "NGO",
   });
 
-  // 5. Trigger AI evaluation (async safe)
-  evaluateBeneficiaryAIAsync(beneficiary);
+  // AI evaluation via workflow engine
+  const workflow = createWorkflowEngine();
+  await workflow.evaluateBeneficiary({
+    beneficiary,
+    campaign,
+    jobIdHash: beneficiary._id.toString(),
+  });
 
   res.status(201).json(beneficiary);
 };
 
-async function evaluateBeneficiaryAIAsync(beneficiary) {
-  const aiResult = await aiClients.risk.assess({
-    beneficiaryId: beneficiary._id,
-    location: beneficiary.location,
-  });
-
-  beneficiary.aiDecision = {
-    eligibilityConfidence: aiResult.eligibility.confidence,
-    fraudRisk: aiResult.fraud.riskScore,
-    decision: aiResult.risk.decision,
-    flags: aiResult.fraud.flags,
-    evaluatedAt: new Date(),
-  };
-
-  if (aiResult.risk.decision === "ALLOW") {
-    beneficiary.status = "AI_APPROVED";
-  } else {
-    beneficiary.status = "AI_FLAGGED";
-  }
-
-  await beneficiary.save();
-
-  await auditService.log({
-    eventType: "BENEFICIARY_AI_EVALUATED",
-    payload: aiResult,
-    jobIdHash: beneficiary._id.toString(),
-    campaignId: beneficiary.campaign,
-    actorRole: "SYSTEM",
-  });
-}
-
-export const ngoDecision = async (req, res) => {
+/**
+ * NGO override AI decision
+ */
+export const ngoOverrideDecision = async (req, res) => {
   const { decision, reason } = req.body;
   const beneficiary = await Beneficiary.findById(req.params.id);
 
-  if (beneficiary.status !== "AI_FLAGGED") {
-    return res.status(400).json({ message: "Invalid state" });
+  if (!beneficiary) {
+    return res.status(404).json({ message: "Beneficiary not found" });
   }
 
-  beneficiary.ngoDecision = {
-    approvedBy: req.user.id,
+  beneficiary.overrideByNgo = {
     decision,
     reason,
-    decidedAt: new Date(),
+    overriddenAt: new Date(),
   };
 
-  beneficiary.status =
-    decision === "APPROVE" ? "NGO_APPROVED" : "NGO_REJECTED";
-
+  beneficiary.status = decision === "APPROVE" ? "ACTIVE" : "BLOCKED";
   await beneficiary.save();
 
-  await auditService.log({
-    eventType: "BENEFICIARY_NGO_DECISION",
+  await audit.log({
+    eventType: "BENEFICIARY_NGO_OVERRIDE",
     payload: { decision, reason },
     jobIdHash: beneficiary._id.toString(),
     campaignId: beneficiary.campaign,

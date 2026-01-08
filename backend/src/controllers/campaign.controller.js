@@ -11,13 +11,8 @@ const auditService = new AuditService();
  */
 export const createCampaign = async (req, res) => {
   try {
-    const {
-      title,
-      description,
-      disasterType,
-      location,
-      policySnapshot,
-    } = req.body;
+    const { title, description, disasterType, location, policySnapshot } =
+      req.body;
 
     // POLICY VALIDATION (CRITICAL)
     const REQUIRED_POLICY_FIELDS = [
@@ -99,23 +94,32 @@ export const activateCampaign = async (req, res) => {
       });
     }
 
+    //      Prevent double activation
     if (campaign.status !== "DRAFT") {
       return res.status(400).json({
-        message: "Campaign cannot be activated",
+        message: `Campaign already ${campaign.status}`,
       });
     }
 
-    // Policy must exist to activate
+    // Safety: policy must exist
     if (!campaign.policySnapshot) {
       return res.status(400).json({
-        message: "Policy snapshot missing. Cannot activate campaign.",
+        message: "Policy snapshot missing",
       });
     }
 
+    // SAFETY: ensure jobIdHash exists
+    if (!campaign.jobIdHash) {
+      return res.status(500).json({
+        message: "Campaign workflow ID missing. Recreate campaign.",
+      });
+    }
+
+    // ACTIVATE
     campaign.status = "ACTIVE";
     await campaign.save();
 
-    // AUDIT — Campaign Activated
+    // AUDIT (CRITICAL)
     await auditService.log({
       eventType: "CAMPAIGN_ACTIVATED",
       payload: {
@@ -128,13 +132,13 @@ export const activateCampaign = async (req, res) => {
     });
 
     res.json({
-      message: "Campaign activated",
+      message: "Campaign activated successfully",
       campaign,
     });
   } catch (err) {
     console.error("CAMPAIGN ACTIVATE ERROR:", err);
     res.status(500).json({
-      message: "Activation failed",
+      message: "Campaign activation failed",
     });
   }
 };

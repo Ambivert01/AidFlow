@@ -11,7 +11,6 @@ export const NAVIGATION = {
 
   [ROLES.DONOR]: [
     { label: "Dashboard", path: "/donor" },
-    { label: "My Donations", path: "/donor" },
     { label: "Verify Audit", path: "/public/audit" },
   ],
 

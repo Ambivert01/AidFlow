@@ -3,20 +3,17 @@ import api from "./api";
 /*
 Create new relief campaign
  */
-export const createCampaign = (data) =>
-  api.post("/campaigns", data);
+export const createCampaign = (data) => api.post("/campaigns", data);
 
 /*
 Fetch NGO-owned campaigns
  */
-export const fetchNgoCampaigns = () =>
-  api.get("/campaigns/ngo");
+export const fetchNgoCampaigns = () => api.get("/campaigns/ngo");
 
 /*
 Add beneficiary to campaign
  */
-export const addBeneficiary = (data) =>
-  api.post("/beneficiaries", data);
+export const addBeneficiary = (data) => api.post("/beneficiaries", data);
 
 /*
 Fetch beneficiaries of a campaign
@@ -25,20 +22,18 @@ export const fetchBeneficiaries = (campaignId) =>
   api.get(`/beneficiaries/${campaignId}`);
 
 /*
-Start AidFlow AI workflow
- */
-export const startWorkflow = (campaignId) =>
-  api.post("/workflows/start", { campaignId });
-
-/*
-Fetch workflow status
+ * Fetch NGO workflow visibility (PIPELINE VIEW)
  */
 export const fetchWorkflowStatus = (campaignId) =>
-  api.get(`/workflows/${campaignId}`);
+  api.get(`/ngo/workflow/${campaignId}`);
 
-// ================================
+/*
+ * Start workflow (OPTIONAL – if you expose button later)
+ */
+export const startWorkflow = (campaignId) =>
+  api.post("/ngo/workflow/start", { campaignId });
+
 // NGO REVIEW (Approval Flow)
-// ================================
 
 // Fetch donations pending NGO review
 export const fetchPendingDonations = async () => {

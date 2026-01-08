@@ -1,3 +1,6 @@
+import "dotenv/config";
+// This ensures env is loaded before routes & services.
+
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
@@ -17,6 +20,9 @@ import ngoDashboardRoutes from "./routes/ngoDashboard.routes.js";
 import paymentsRoutes from "./routes/payments.routes.js";
 import publicRoutes from "./routes/public.routes.js";
 import rateLimit from "express-rate-limit";
+import ngoWorkflowRoutes from "./routes/ngoWorkflow.routes.js";
+import ngoRoutes from "./routes/ngo.routes.js";
+
 
 
 const app = express();
@@ -62,10 +68,11 @@ app.use("/api/beneficiary", beneficiaryRoutes);
 app.use("/api/donor", donorRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/ngo", ngoDashboardRoutes);
+app.use("/api/ngo", ngoRoutes);
 app.use("/api/merchant", merchantRoutes);
 app.use("/api/public", publicRoutes);
 app.use("/payments", paymentsRoutes);
-
+app.use("/api/ngo", ngoWorkflowRoutes);
 
 
 /*

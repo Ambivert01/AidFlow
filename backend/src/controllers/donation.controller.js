@@ -1,13 +1,10 @@
 import { Donation } from "../models/Donation.model.js";
 import { Campaign } from "../models/Campaign.model.js";
-import { User } from "../models/User.model.js";
-import { createWorkflowEngine } from "../services/workflow.service.js";
-import { AuditLog } from "../models/AuditLog.model.js";
+import { AuditService } from "../services/audit.service.js";
 
-/**
- * Donor makes a donation
- * - Intake donation
- * - Trigger AidFlow workflow asynchronously
+/*
+ * DONOR → Create donation
+ * NO workflow execution here
  */
 export const donate = async (req, res) => {
   try {
@@ -16,10 +13,10 @@ export const donate = async (req, res) => {
     // 1 Validate campaign
     const campaign = await Campaign.findById(campaignId);
     if (!campaign || campaign.status !== "ACTIVE") {
-      return res.status(400).json({ message: "Invalid campaign" });
+      return res.status(400).json({ message: "Invalid or inactive campaign" });
     }
 
-    // 2 Create donation (CREATED)
+    // 2 Create donation
     const donation = await Donation.create({
       donor: req.user.id,
       campaign: campaignId,
@@ -28,51 +25,44 @@ export const donate = async (req, res) => {
       lastDecisionBy: "SYSTEM",
     });
 
-    // 3 Pick beneficiary (TEMP LOGIC)
-    const beneficiary = await User.findOne({ role: "BENEFICIARY" });
+    const jobIdHash = donation._id.toString();
 
-    // 4 Trigger workflow (ASYNC, SAFE)
-    if (beneficiary) {
-      donation.beneficiary = beneficiary._id;
-      await donation.save();
-
-      const workflow = createWorkflowEngine();
-
-      workflow
-        .processDonation({
-          donation,
-          campaign,
-          beneficiary,
-        })
-        .then(async () => {
-          donation.status = "READY_FOR_USE";
-          donation.lastDecisionBy = "SYSTEM";
-          await donation.save();
-        })
-        .catch(async (err) => {
-          donation.status = "PENDING_NGO_REVIEW";
-          donation.lastDecisionBy = "AI";
-          donation.decisionReason = err.message;
-          await donation.save();
-        });
-    }
-
-    // 5 Immediate response to donor
-    res.status(201).json({
-      message: "Donation received",
-      donationId: donation._id,
-      // status: donation.status,
-      auditHint: "Audit proof will be available shortly",
+    // 3 Audit: DONATION_CREATED
+    const auditService = new AuditService();
+    await auditService.log({
+      eventType: "DONATION_CREATED",
+      payload: {
+        donationId: donation._id,
+        amount,
+      },
+      jobIdHash,
+      campaignId: campaign._id,
+      actorRole: "DONOR",
     });
+
+    // 4 Move to NGO review (AI / Policy happens later)
+    donation.status = "PENDING_NGO_REVIEW";
+    await donation.save();
+
+    // 5 Respond immediately
+    return res.status(201).json({
+      message: "Donation received and queued for review",
+      donationId: donation._id,
+      status: donation.status,
+      auditId: jobIdHash,
+    });
+
   } catch (err) {
     console.error("DONATION ERROR →", err);
-    res.status(500).json({
+    return res.status(500).json({
       message: "Donation failed",
-      error: err.message,
     });
   }
 };
 
+/*
+ * SYSTEM refund (future use)
+ */
 export const refundDonation = async (donation) => {
   donation.status = "REFUNDED";
   donation.lastDecisionBy = "SYSTEM";
