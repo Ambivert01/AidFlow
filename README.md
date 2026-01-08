@@ -1,5 +1,5 @@
 > **Note:** 
-> The Project is in developinng phase rightnow.
+> The Project is in developing phase right now.
 > Backend integration + AI-agents + Blockchain Integration is done.
 > Currently working on frontend & increasing productivity of the sytem with enhance integration.
 
