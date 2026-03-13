@@ -51,6 +51,7 @@ export const createCampaign = async (req, res) => {
       disasterType,
       location,
       policySnapshot,
+      ngo: req.user.id,
       createdBy: req.user.id,
       status: "DRAFT",
       jobIdHash,
@@ -157,6 +158,25 @@ export const getActiveCampaigns = async (req, res) => {
     res.status(500).json({
       message: "Failed to fetch campaigns",
     });
+  }
+};
+
+/*
+ * Get campaign by ID (Detailed)
+ */
+export const getCampaignDetail = async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.id)
+      .populate("createdBy", "name email");
+
+    if (!campaign) {
+      return res.status(404).json({ message: "Campaign not found" });
+    }
+
+    res.json(campaign);
+  } catch (err) {
+    console.error("GET CAMPAIGN DETAIL ERROR:", err);
+    res.status(500).json({ message: "Failed to fetch campaign detail" });
   }
 };
 

@@ -6,11 +6,11 @@ export default function WalletControl() {
   const [walletId, setWalletId] = useState("");
 
   const freeze = () =>
-    api.post(`/government/wallets/${walletId}/freeze`)
+    api.post(`/government/wallets/freeze`, { walletId })
       .then(() => alert("Wallet frozen"));
 
   const unfreeze = () =>
-    api.post(`/government/wallets/${walletId}/unfreeze`)
+    api.post(`/government/wallets/unfreeze`, { walletId })
       .then(() => alert("Wallet unfrozen"));
 
   return (

@@ -26,8 +26,9 @@ frontend/aidflow-ui/.env.*
 # =========================
 backend/aidflow-api/node_modules/
 backend/aidflow-api/logs/
-backend/aidflow-api/.env
+backend/aidflow-api/.env.
 backend/aidflow-api/.env.*
+backend/src/scripts/seed.js
 
 # =========================
 # Blockchain (Hardhat)

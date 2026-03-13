@@ -21,7 +21,7 @@ export default function Donate({ campaign, onClose }) {
       );
 
       onClose();
-    } catch (err) {
+    } catch {
       setError("Donation failed. Please try again.");
     } finally {
       setLoading(false);

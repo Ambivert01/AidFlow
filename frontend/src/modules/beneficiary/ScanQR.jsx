@@ -1,69 +1,40 @@
 import { useState } from "react";
 import api from "../../services/api";
-import Loader from "../../components/Loader";
 
 export default function ScanQR() {
   const [qrData, setQrData] = useState("");
   const [preview, setPreview] = useState(null);
-  const [loading, setLoading] = useState(false);
 
   const scan = async () => {
-    setLoading(true);
-    try {
-      const res = await api.post("/payments/scan", { qrData });
-      setPreview(res.data);
-    } catch {
-      alert("Invalid / expired QR");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const confirm = async () => {
-    try {
-      await api.post("/payments/confirm", {
-        walletId: preview.walletId,
-        merchantId: preview.merchantId,
-        amount: preview.amount,
-        category: preview.category,
-      });
-      alert("Payment successful");
-      setPreview(null);
-      setQrData("");
-    } catch (e) {
-      alert(e.response?.data?.message || "Payment failed");
-    }
+    const res = await api.post("/payments/scan", { qrToken: qrData });
+    setPreview(res.data);
   };
 
   return (
-    <div className="bg-white p-5 rounded shadow max-w-md">
-      <h2 className="text-lg font-semibold mb-3">Scan Merchant QR</h2>
+    <div className="bg-white p-4 rounded shadow space-y-3">
+      <h3 className="font-semibold">Scan Merchant QR</h3>
 
-      <input
-        placeholder="Paste QR payload"
+      <textarea
+        className="border p-2 w-full"
+        rows={4}
+        placeholder="Paste QR payload here"
         value={qrData}
         onChange={(e) => setQrData(e.target.value)}
-        className="border p-2 w-full mb-3"
       />
 
-      <button onClick={scan} className="btn-primary w-full">
+      <button
+        onClick={scan}
+        className="bg-blue-600 text-white px-4 py-2 rounded"
+      >
         Scan
       </button>
 
-      {loading && <Loader text="Validating..." />}
-
       {preview && (
-        <div className="bg-green-50 p-4 rounded mt-4">
-          <p><b>Merchant:</b> {preview.merchantName}</p>
-          <p><b>Category:</b> {preview.category}</p>
-          <p><b>Amount:</b> ₹{preview.amount}</p>
-
-          <button
-            onClick={confirm}
-            className="btn-primary w-full mt-3"
-          >
-            Confirm Payment
-          </button>
+        <div className="border p-3 rounded bg-gray-50">
+          <p><b>Wallet:</b> {preview.walletId?.slice(-8)}</p>
+          <p><b>Allowed categories:</b> {(preview.allowedCategories || []).join(", ")}</p>
+          <p><b>Max per transaction:</b> ₹{preview.maxPerTransaction}</p>
+          <p><b>Balance:</b> ₹{preview.balance}</p>
         </div>
       )}
     </div>

@@ -20,12 +20,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       select: false, // never auto-return password
-      // select: false - prevents password leakage
-    },
-
-    beneficiary: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
     },
 
     // role - drives entire system authorization
@@ -38,11 +32,11 @@ const userSchema = new mongoose.Schema(
     verificationStatus: {
       type: String,
       enum: ["PENDING", "APPROVED", "REJECTED"],
-      default: "APPROVED", // donors auto-approved
+      default: "APPROVED", // donors auto-approved; NGO/Merchant start as PENDING
     },
 
     documents: {
-      type: Object, // uploaded proofs (later extensible)
+      type: Object,
       default: null,
     },
 
@@ -63,21 +57,23 @@ const userSchema = new mongoose.Schema(
       default: true,
     },
 
+    // Merchant profile embedded for quick access
     merchantProfile: {
-      shopName: String,
+      shopName: { type: String, default: null },
       category: {
         type: String,
-        enum: ["FOOD", "MEDICINE", "SHELTER"],
+        enum: ["FOOD", "MEDICINE", "SHELTER", "WATER", "OTHER", null],
+        default: null,
       },
       location: {
-        ward: String,
-        district: String,
-        state: String,
+        ward: { type: String, default: null },
+        district: { type: String, default: null },
+        state: { type: String, default: null },
       },
       status: {
         type: String,
-        enum: ["PENDING", "ACTIVE", "SUSPENDED"],
-        default: "PENDING",
+        enum: ["PENDING", "ACTIVE", "SUSPENDED", null],
+        default: null,
       },
     },
   },

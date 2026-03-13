@@ -1,6 +1,5 @@
 import { Campaign } from "../models/Campaign.model.js";
 import { AuditService } from "../services/audit.service.js";
-import { runWorkflow } from "../services/workflow.engine.js";
 
 const audit = new AuditService();
 
@@ -17,7 +16,7 @@ export const startWorkflow = async (req, res) => {
 
   if (campaign.status !== "ACTIVE")
     return res.status(400).json({
-      message: "Workflow can only start from ACTIVE state"
+      message: "Workflow can only start from ACTIVE state",
     });
 
   // STATE TRANSITION (AUTHORITATIVE)
@@ -29,11 +28,12 @@ export const startWorkflow = async (req, res) => {
     jobIdHash: campaign.jobIdHash,
     campaignId: campaign._id,
     actorRole: "SYSTEM",
-    payload: { campaignId }
+    payload: { campaignId },
   });
 
-  // ASYNC WORKFLOW
-  runWorkflow(campaign._id);
+  // For now, there is no separate long-running campaign-level engine.
+  // WorkflowEngine is used at donation/beneficiary level; this endpoint
+  // simply updates state and records audit.
 
   res.json({ message: "Workflow started" });
 };

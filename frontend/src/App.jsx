@@ -1,334 +1,124 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import useAuthStore from "./store/authStore";
 
 import Layout from "./components/Layout";
-import ProtectedRoute from "./components/ProtectedRoute";
-import { ROLES } from "./utils/constants";
-
-/* Pages */
-// ADD import
-import AdminDashboard from "./modules/admin/AdminDashboard";
-import Register from "./pages/Register";
 import Landing from "./pages/Landing";
-import RequestAccess from "./pages/RequestAccess";
-import PublicLanding from "./modules/public/PublicLanding";
 import Login from "./pages/Login";
-import Unauthorized from "./pages/Unauthorized";
-import NotFound from "./pages/NotFound";
-
-/* Public */
-import PublicAudit from "./modules/public/PublicAudit";
-
-/* Dashboards */
-import DonorDashboard from "./modules/donor/DonorDashboard";
-import BeneficiaryDashboard from "./modules/beneficiary/BeneficiaryDashboard";
+import Register from "./pages/Register";
+import RequestAccess from "./pages/RequestAccess";
+import PublicAidAuditPage from "./pages/PublicAidAuditPage";
 import PublicCampaigns from "./modules/public/PublicCampaigns";
+
+// Role Modules
+import DonorDashboard from "./modules/donor/DonorDashboard";
+import Donate from "./modules/donor/Donate";
 import DonationTimeline from "./modules/donor/DonationTimeline";
 
-//ngo
 import NGODashboard from "./modules/ngo/NGODashboard";
-import NGOReviewDashboard from "./modules/ngo/NGOReviewDashboard";
 import CreateCampaign from "./modules/ngo/CreateCampaign";
 import ManageCampaign from "./modules/ngo/ManageCampaign";
-import WorkflowMonitor from "./modules/ngo/WorkflowMonitor";
-import NgoCampaignList from "./modules/ngo/NgoCampaignList";
-import NgoCampaignDetails from "./modules/ngo/NgoCampaignDetails";
-import NgoWorkflowList from "./modules/ngo/NgoWorkflowList";
+import NGOReviewDashboard from "./modules/ngo/NGOReviewDashboard";
+import Beneficiaries from "./modules/ngo/Beneficiaries";
+import RegisterBeneficiary from "./modules/ngo/RegisterBeneficiary";
 
+import BeneficiaryDashboard from "./modules/beneficiary/BeneficiaryDashboard";
+import BeneficiaryQR from "./modules/beneficiary/BeneficiaryQR";
 
-// Merchant
 import MerchantDashboard from "./modules/merchant/MerchantDashboard";
 import MerchantScan from "./modules/merchant/MerchantScan";
+import ConfirmPayment from "./modules/merchant/ConfirmPayment";
 import MerchantTransactions from "./modules/merchant/MerchantTransactions";
 
-// Government
 import GovtDashboard from "./modules/government/GovtDashboard";
-import CampaignControl from "./modules/government/CampaignControl";
-import DisasterControl from "./modules/government/DisasterControl";
 import EscalatedDonations from "./modules/government/EscalatedDonations";
 import FraudMonitor from "./modules/government/FraudMonitor";
-import WalletControl from "./modules/government/WalletControl";
+import GovtWallets from "./modules/government/GovtWallets";
+import GovtCampaigns from "./modules/government/GovtCampaigns";
+
+import AdminDashboard from "./modules/admin/AdminDashboard";
+import PendingRequests from "./modules/admin/PendingRequests";
+import AdminUsers from "./modules/admin/AdminUsers";
+import AdminMerchants from "./modules/admin/AdminMerchants";
+import AdminAuditLogs from "./modules/admin/AdminAuditLogs";
+
+import BeneficiarySelfApply from "./modules/beneficiary/BeneficiarySelfApply";
+
+// Role-based route guard
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const { user, token } = useAuthStore();
+  
+  if (!token) return <Navigate to="/login" replace />;
+  if (allowedRoles && !allowedRoles.includes(user?.role)) {
+    // If logged in but wrong role, send them to their actual home
+    return <Navigate to={`/${user.role.toLowerCase()}`} replace />;
+  }
+  
+  return children;
+};
+
+// Route logged-in users away from auth pages
+const AuthRoute = ({ children }) => {
+  const { user, token } = useAuthStore();
+  if (token && user) return <Navigate to={`/${user.role.toLowerCase()}`} replace />;
+  return children;
+};
 
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        {/* ---------------- PUBLIC ROUTES ---------------- */}
-        <Route
-          path="/"
-          element={
-            <Layout>
-              <div className="text-center py-20">
-                <Landing />
-                <p className="mt-3 text-slate-600">
-                  Transparent Disaster Relief Infrastructure
-                </p>
-              </div>
-            </Layout>
-          }
-        />
+      <Layout>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<AuthRoute><Landing /></AuthRoute>} />
+          <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
+          <Route path="/register" element={<AuthRoute><Register /></AuthRoute>} />
+          <Route path="/request-access" element={<AuthRoute><RequestAccess /></AuthRoute>} />
+          <Route path="/public-audit" element={<PublicAidAuditPage />} />
+          <Route path="/public/campaigns" element={<PublicCampaigns />} />
 
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-              <Layout>
-                <AdminDashboard />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
+          {/* Donor Routes */}
+          <Route path="/donor" element={<ProtectedRoute allowedRoles={['DONOR']}><DonorDashboard /></ProtectedRoute>} />
+          <Route path="/donor/campaigns/:id/donate" element={<ProtectedRoute allowedRoles={['DONOR']}><Donate /></ProtectedRoute>} />
+          <Route path="/donor/donation/:id" element={<ProtectedRoute allowedRoles={['DONOR']}><DonationTimeline /></ProtectedRoute>} />
 
-        <Route path="/register" element={<Register />} />
+          {/* NGO Routes */}
+          <Route path="/ngo" element={<ProtectedRoute allowedRoles={['NGO']}><NGODashboard /></ProtectedRoute>} />
+          <Route path="/ngo/campaigns/create" element={<ProtectedRoute allowedRoles={['NGO']}><CreateCampaign /></ProtectedRoute>} />
+          <Route path="/ngo/campaigns/:id" element={<ProtectedRoute allowedRoles={['NGO']}><ManageCampaign /></ProtectedRoute>} />
+          <Route path="/ngo/reviews" element={<ProtectedRoute allowedRoles={['NGO']}><NGOReviewDashboard /></ProtectedRoute>} />
+          <Route path="/ngo/beneficiaries" element={<ProtectedRoute allowedRoles={['NGO']}><Beneficiaries /></ProtectedRoute>} />
+          <Route path="/ngo/beneficiaries/register" element={<ProtectedRoute allowedRoles={['NGO']}><RegisterBeneficiary /></ProtectedRoute>} />
 
-        <Route path="/request-access" element={<RequestAccess />} />
+          {/* Beneficiary Routes */}
+          <Route path="/beneficiary" element={<ProtectedRoute allowedRoles={['BENEFICIARY']}><BeneficiaryDashboard /></ProtectedRoute>} />
+          <Route path="/beneficiary/qr" element={<ProtectedRoute allowedRoles={['BENEFICIARY']}><BeneficiaryQR /></ProtectedRoute>} />
+          <Route path="/beneficiary/apply" element={<ProtectedRoute allowedRoles={['BENEFICIARY']}><BeneficiarySelfApply /></ProtectedRoute>} />
 
-        <Route
-          path="/public/how-it-works"
-          element={
-            <Layout>
-              <PublicLanding />
-            </Layout>
-          }
-        />
+          {/* Merchant Routes */}
+          <Route path="/merchant" element={<ProtectedRoute allowedRoles={['MERCHANT']}><MerchantDashboard /></ProtectedRoute>} />
+          <Route path="/merchant/scan" element={<ProtectedRoute allowedRoles={['MERCHANT']}><MerchantScan /></ProtectedRoute>} />
+          <Route path="/merchant/confirm" element={<ProtectedRoute allowedRoles={['MERCHANT']}><ConfirmPayment /></ProtectedRoute>} />
+          <Route path="/merchant/transactions" element={<ProtectedRoute allowedRoles={['MERCHANT']}><MerchantTransactions /></ProtectedRoute>} />
 
-        <Route
-          path="/public/audit"
-          element={
-            <Layout>
-              <PublicAudit />
-            </Layout>
-          }
-        />
+          {/* Government Routes */}
+          <Route path="/government" element={<ProtectedRoute allowedRoles={['GOVERNMENT']}><GovtDashboard /></ProtectedRoute>} />
+          <Route path="/government/escalated" element={<ProtectedRoute allowedRoles={['GOVERNMENT']}><EscalatedDonations /></ProtectedRoute>} />
+          <Route path="/government/fraud" element={<ProtectedRoute allowedRoles={['GOVERNMENT']}><FraudMonitor /></ProtectedRoute>} />
+          <Route path="/government/wallets" element={<ProtectedRoute allowedRoles={['GOVERNMENT']}><GovtWallets /></ProtectedRoute>} />
+          <Route path="/government/campaigns" element={<ProtectedRoute allowedRoles={['GOVERNMENT']}><GovtCampaigns /></ProtectedRoute>} />
 
-        <Route
-          path="/public/campaigns"
-          element={
-            <Layout>
-              <PublicCampaigns />
-            </Layout>
-          }
-        />
+          {/* Admin Routes */}
+          <Route path="/admin" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/requests" element={<ProtectedRoute allowedRoles={['ADMIN']}><PendingRequests /></ProtectedRoute>} />
+          <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUsers /></ProtectedRoute>} />
+          <Route path="/admin/merchants" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminMerchants /></ProtectedRoute>} />
+          <Route path="/admin/audit" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminAuditLogs /></ProtectedRoute>} />
 
-        <Route path="/login" element={<Login />} />
-        <Route path="/unauthorized" element={<Unauthorized />} />
-
-        {/* ---------------- DONOR ---------------- */}
-        <Route
-          path="/donor"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.DONOR]}>
-              <Layout>
-                <DonorDashboard />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/donor/timeline/:jobIdHash"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.DONOR]}>
-              <Layout>
-                <DonationTimeline />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        {/* ---------------- NGO ---------------- */}
-        <Route
-          path="/ngo"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.NGO]}>
-              <Layout>
-                <NGODashboard />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/ngo/create"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.NGO]}>
-              <Layout>
-                <CreateCampaign />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/ngo/campaigns"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.NGO]}>
-              <Layout>
-                <NgoCampaignList />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/ngo/campaign/:id"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.NGO]}>
-              <Layout>
-                <NgoCampaignDetails />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/ngo/workflow"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.NGO]}>
-              <Layout>
-                <NgoWorkflowList />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/ngo/workflow/:id"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.NGO]}>
-              <Layout>
-                <WorkflowMonitor />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/ngo/reviews"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.NGO]}>
-              <Layout>
-                <NGOReviewDashboard />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        {/* ---------------- BENEFICIARY ---------------- */}
-        <Route
-          path="/beneficiary"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.BENEFICIARY]}>
-              <Layout>
-                <BeneficiaryDashboard />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        {/* ---------------- MERCHANT ---------------- */}
-        <Route
-          path="/merchant"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MERCHANT]}>
-              <Layout>
-                <MerchantDashboard />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/merchant/scan"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MERCHANT]}>
-              <Layout>
-                <MerchantScan />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/merchant/transactions"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.MERCHANT]}>
-              <Layout>
-                <MerchantTransactions />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        {/* ---------------- GOVERNMENT ---------------- */}
-        <Route
-          path="/government"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.GOVERNMENT]}>
-              <Layout>
-                <GovtDashboard />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/government/disasters"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.GOVERNMENT]}>
-              <Layout>
-                <DisasterControl />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/government/fraud"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.GOVERNMENT]}>
-              <Layout>
-                <FraudMonitor />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/government/escalated"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.GOVERNMENT]}>
-              <Layout>
-                <EscalatedDonations />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/government/wallets"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.GOVERNMENT]}>
-              <Layout>
-                <WalletControl />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/government/campaigns"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.GOVERNMENT]}>
-              <Layout>
-                <CampaignControl />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-
-        {/* ---------------- 404 ---------------- */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Layout>
     </BrowserRouter>
   );
 }

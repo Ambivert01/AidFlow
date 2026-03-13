@@ -6,12 +6,14 @@ const donationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
 
     campaign: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Campaign",
       required: true,
+      index: true,
     },
 
     amount: {
@@ -25,55 +27,48 @@ const donationSchema = new mongoose.Schema(
       default: "INR",
     },
 
+    // Linked beneficiary after NGO assignment
     beneficiary: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Beneficiary",
       default: null,
     },
 
+    // Full donation lifecycle status
     status: {
       type: String,
       enum: [
-        "CREATED", // donor donated
-        "ELIGIBILITY_FAILED", // AI or policy rejected
-        "PENDING_NGO_REVIEW", // NGO must review
-        "REJECTED_BY_NGO",
-        "APPROVED_BY_NGO",
-        "HIGH_RISK_ESCALATED", // sent to govt
-        "REJECTED_BY_GOVT",
-        "APPROVED_BY_GOVT",
-        "FUNDS_LOCKED",
-        "READY_FOR_USE",
-        "COMPLETED",
+        "CREATED",                // Initial state
+        "PENDING_NGO_REVIEW",     // Awaiting NGO action
+        "NGO_APPROVED",           // NGO approved, move to wallet
+        "HIGH_RISK_ESCALATED",    // AI risk > threshold, sent to gov
+        "APPROVED_BY_GOVT",       // Government cleared it
+        "REJECTED_BY_GOVT",       // Government rejected
+        "WALLET_CREATING",        // Wallet creation in progress
+        "READY_FOR_USE",          // Wallet active, beneficiary can spend
+        "ELIGIBILITY_FAILED",     // AI blocked beneficiary
+        "REJECTED",               // NGO rejected
+        "REFUNDED",               // Amount refunded
+        "AUDIT_FINALIZED",        // Blockchain anchored, workflow closed
       ],
       default: "CREATED",
       index: true,
     },
 
-    reviewReason: {
-      type: String,
-      default: null,
-    },
+    reviewReason: { type: String, default: null },
 
-    aiDecision: {
-      type: String,
-      default: null,
-    },
+    // AI outputs
+    aiDecision: { type: String, default: null },  // ALLOW | MANUAL_REVIEW | BLOCK
+    aiRiskScore: { type: Number, default: null },  // 0-100
 
-    aiRiskScore: {
-      type: Number,
-      default: null,
-    },
-
+    // Who acted last
     lastDecisionBy: {
-      type: String, // AI | NGO | GOVERNMENT | SYSTEM
+      type: String,
+      enum: ["AI", "NGO", "GOVERNMENT", "SYSTEM", "ADMIN"],
       default: "SYSTEM",
     },
 
-    decisionReason: {
-      type: String,
-      default: null,
-    },
+    decisionReason: { type: String, default: null },
   },
   { timestamps: true }
 );

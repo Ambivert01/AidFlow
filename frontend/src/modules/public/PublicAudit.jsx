@@ -1,136 +1,136 @@
-import InfoNotice from "../../components/InfoNotice";
-
-
 import { useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import api from "../../services/api";
-import Loader from "../../components/Loader";
+import { useToast } from "../../components/toastContext";
 
 export default function PublicAudit() {
-  const [jobIdHash, setJobIdHash] = useState("");
-  const [result, setResult] = useState(null);
+  const [searchParams] = useSearchParams();
+  const [jobIdHash, setJobIdHash] = useState(searchParams.get("id") || "");
+  const [auditData, setAuditData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const showToast = useToast();
 
-  const verifyAudit = async () => {
-    if (!jobIdHash.trim()) return;
-
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!jobIdHash) return;
+    
     setLoading(true);
-    setError("");
-    setResult(null);
-
     try {
-      const res = await api.get(`/audit/verify/${jobIdHash.trim()}`);
-      setResult(res.data);
+      const res = await api.get(`/public/audit/${jobIdHash}`);
+      setAuditData(res.data);
     } catch (err) {
-      setError(
-        err?.response?.data?.message ||
-          "No audit found for this ID. Please check the Audit ID and try again."
-      );
+      showToast(err.response?.data?.message || "Audit trail not found", "error");
+      setAuditData(null);
     } finally {
-      setLoading(false); // FIX infinite processing
+      setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* HEADER */}
-
-      <InfoNotice
-        title="How verification works"
-        message="AidFlow verifies audit integrity by comparing cryptographic audit logs against blockchain-anchored proofs. If any record is altered, verification fails."
-      />
-
-      <div className="text-center space-y-2">
-        <h1 className="text-2xl font-bold">Public Audit Verification</h1>
-
-        <p className="text-sm text-slate-600">
-          Verify the integrity of a disaster relief donation workflow.
-        </p>
-
-        <p className="text-xs text-slate-500">
-          You only need the <b>Donation Audit ID</b> (shared with the donor).
-        </p>
+    <div className="stack-lg">
+      <div className="page-header" style={{ textAlign: "center", marginBottom: "var(--space-8)" }}>
+         <h1 className="page-title">Immutable Public Ledger</h1>
+         <p className="page-subtitle" style={{ maxWidth: "600px", margin: "0 auto" }}>
+            Enter a transaction hash or Job ID below to view the entire cryptographic lifecycle of a donation—from inception to final settlement.
+         </p>
       </div>
 
-      {/* INPUT */}
-      <div className="bg-white border p-4 rounded space-y-3">
-        <label className="text-sm font-medium">Donation Audit ID</label>
-
-        <input
-          className="border p-2 w-full rounded text-sm"
-          placeholder="Example: 65a9f1d8c2a4e9b6c8d12345"
-          value={jobIdHash}
-          onChange={(e) => setJobIdHash(e.target.value)}
-        />
-
-        <button
-          onClick={verifyAudit}
-          disabled={loading}
-          className="bg-blue-700 text-white w-full py-2 rounded hover:bg-blue-800"
-        >
-          {loading ? "Verifying audit…" : "Verify Audit"}
-        </button>
+      <div className="card shadow-lg" style={{ maxWidth: "600px", margin: "0 auto", padding: "var(--space-6)" }}>
+         <form onSubmit={handleSearch} className="row" style={{ gap: "var(--space-2)" }}>
+           <input
+             type="text"
+             className="form-input"
+             style={{ flex: 1, fontFamily: "monospace" }}
+             placeholder="Enter Hex Hash (e.g. 5f8d...a3)"
+             value={jobIdHash}
+             onChange={e => setJobIdHash(e.target.value)}
+             required
+           />
+           <button type="submit" className="btn btn-primary" disabled={loading}>
+             {loading ? "Searching..." : "Lookup Ledger"}
+           </button>
+         </form>
+         <div style={{ marginTop: "var(--space-4)", textAlign: "center", fontSize: "12px", color: "var(--color-text-faint)" }}>
+           Powered by AidFlow Zero-Trust Architecture
+         </div>
       </div>
 
-      {/* LOADING */}
-      {loading && (
-        <div className="text-center">
-          <Loader text="Checking audit integrity…" />
+      {loading ? (
+        <div className="stack-md">
+           <div className="skeleton" style={{ height: "40px", width: "300px" }} />
+           <div className="card shadow-md stack-md p-6">
+              <div className="skeleton" style={{ height: "24px", width: "50%" }} />
+              <div className="skeleton" style={{ height: "16px", width: "30%" }} />
+              <div className="stack-sm mt-4">
+                 {[1,2,3].map(i => (
+                   <div key={i} className="skeleton" style={{ height: "80px", width: "100%" }} />
+                 ))}
+              </div>
+           </div>
+        </div>
+      ) : auditData && (
+        <div className="card shadow-md stack-lg mt-8">
+            <div className="row-between" style={{ borderBottom: "1px solid var(--color-border)", paddingBottom: "var(--space-4)" }}>
+               <div>
+                  <h2 style={{ fontSize: "18px", fontWeight: "800" }}>Audit Trace: {auditData.jobIdHash}</h2>
+                  <p style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Blockchain Status: 
+                    <span style={{ marginLeft: "8px", padding: "2px 8px", borderRadius: "12px", fontSize: "10px", background: auditData.auditFinalized ? "var(--color-success-light)" : "var(--color-warning-light)", color: auditData.auditFinalized ? "var(--color-success-dark)" : "var(--color-warning-dark)" }}>
+                      {auditData.auditFinalized ? "✓ ANCHORED" : "○ PENDING FINALIZATION"}
+                    </span>
+                  </p>
+               </div>
+               {auditData.auditFinalized && (
+                 <a 
+                   href={`https://etherscan.io/tx/${auditData.blockchainTxHash}`} 
+                   target="_blank" 
+                   rel="noopener noreferrer" 
+                   className="btn btn-ghost btn-sm"
+                 >
+                   View on Etherscan
+                 </a>
+               )}
+            </div>
+
+            <div className="timeline" style={{ paddingLeft: "16px", borderLeft: "2px solid var(--color-border)", margin: "var(--space-6) 0" }}>
+               {auditData.timeline.map((event, i) => (
+                 <div key={i} style={{ position: "relative", marginBottom: "var(--space-6)", paddingLeft: "var(--space-4)" }}>
+                    {/* Timeline Dot */}
+                    <div style={{ position: "absolute", left: "-23px", top: "4px", width: "12px", height: "12px", borderRadius: "50%", background: i === 0 ? "var(--color-success)" : "var(--color-primary)", border: "2px solid var(--color-surface)" }} />
+                    
+                    <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginBottom: "4px", fontWeight: "600" }}>
+                      {new Date(event.timestamp).toLocaleString()} • {event.actor}
+                    </div>
+                    <div style={{ background: "var(--color-surface-alt)", padding: "16px", borderRadius: "8px", border: "1px solid var(--color-border)" }}>
+                       <div className="row-between mb-2">
+                          <p style={{ fontWeight: "700", fontSize: "14px" }}>{event.label}</p>
+                          <span style={{ fontSize: "10px", color: "var(--color-text-faint)", fontFamily: "monospace" }}>Seq: {i}</span>
+                       </div>
+                       
+                       {/* Cryptographic Proof Piece */}
+                       <div style={{ marginBottom: "12px", padding: "8px", background: "var(--color-surface)", borderRadius: "4px", borderLeft: "3px solid var(--color-primary-light)" }}>
+                          <div style={{ fontSize: "9px", color: "var(--color-text-faint)", textDecoration: "uppercase", marginBottom: "2px" }}>Cryptographic Hash</div>
+                          <div style={{ fontSize: "10px", fontFamily: "monospace", wordBreak: "break-all", color: "var(--color-primary)" }}>{event.hash}</div>
+                       </div>
+
+                       {event.previousHash && (
+                         <div style={{ marginBottom: "12px", padding: "4px 8px", fontSize: "10px", color: "var(--color-text-faint)", fontFamily: "monospace" }}>
+                           ↑ Linked to: {event.previousHash.slice(0, 32)}...
+                         </div>
+                       )}
+                       
+                       {/* Merkle Root if Finalized */}
+                       {i === auditData.timeline.length - 1 && auditData.merkleRoot && (
+                         <div style={{ marginTop: "12px", padding: "8px", background: "var(--color-success-light)", color: "var(--color-success-dark)", borderRadius: "4px", fontSize: "11px", fontWeight: "700", border: "1px dashed var(--color-success)" }}>
+                            🔒 Global Merkle Root: {auditData.merkleRoot}
+                         </div>
+                       )}
+                    </div>
+                 </div>
+               ))}
+            </div>
         </div>
       )}
 
-      {/* ERROR */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* RESULT */}
-      {result && (
-        <div className="bg-gray-50 border p-4 rounded space-y-4">
-          {/* STATUS */}
-          <div>
-            <p className="font-semibold">
-              Verification Status:{" "}
-              <span
-                className={result.valid ? "text-green-700" : "text-red-700"}
-              >
-                {result.valid ? "VERIFIED" : "NOT VERIFIED"}
-              </span>
-            </p>
-          </div>
-
-          {/* MERKLE ROOT */}
-          <div>
-            <p className="text-sm font-medium">Merkle Root (Audit Proof)</p>
-            <p className="text-xs break-all text-slate-700">
-              {result.merkleRoot}
-            </p>
-          </div>
-
-          {/* BLOCKCHAIN */}
-          <div>
-            <p className="text-sm font-medium">Blockchain Anchor</p>
-            <p className="text-xs break-all text-slate-700">
-              {result.blockchainTxHash || "Not anchored yet"}
-            </p>
-          </div>
-
-          {/* TIMELINE */}
-          <div>
-            <p className="text-sm font-medium mb-2">Audit Timeline</p>
-            <ul className="list-disc pl-5 space-y-1 text-xs">
-              {result.events.map((e, i) => (
-                <li key={i}>
-                  <b>{e.eventType}</b> —{" "}
-                  {new Date(e.timestamp).toLocaleString()} ({e.actorRole})
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

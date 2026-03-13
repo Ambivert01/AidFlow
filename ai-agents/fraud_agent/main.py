@@ -17,3 +17,7 @@ app.add_middleware(
 @app.post("/detect", response_model=FraudResponse)
 def detect(request: FraudRequest):
     return detect_fraud(request)
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "service": "fraud_agent"}

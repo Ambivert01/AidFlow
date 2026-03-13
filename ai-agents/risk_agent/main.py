@@ -17,3 +17,7 @@ app.add_middleware(
 @app.post("/evaluate", response_model=RiskResponse)
 def evaluate(request: RiskRequest):
     return calculate_risk(request)
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "service": "risk_agent"}

@@ -7,7 +7,7 @@ export default function PaymentHistory() {
   const [history, setHistory] = useState(null);
 
   useEffect(() => {
-    api.get("/payments/history").then(res => setHistory(res.data));
+    api.get("/merchant/transactions").then(res => setHistory(res.data));
   }, []);
 
   if (!history) return <Loader text="Loading transactions..." />;
@@ -21,12 +21,12 @@ export default function PaymentHistory() {
       <h2 className="font-bold mb-3">Transaction History</h2>
 
       {history.map(tx => (
-        <div key={tx._id} className="bg-white p-3 shadow rounded mb-2">
-          <p>Wallet: {tx.walletId}</p>
+        <div key={tx.id || `${tx.walletId}_${tx.timestamp}`} className="bg-white p-3 shadow rounded mb-2">
+          <p>Wallet: {String(tx.walletId || "").slice(-8)}</p>
           <p>Category: {tx.category}</p>
           <p>Amount: ₹{tx.amount}</p>
           <p className="text-xs text-gray-500">
-            {new Date(tx.createdAt).toLocaleString()}
+            {new Date(tx.timestamp).toLocaleString()}
           </p>
         </div>
       ))}

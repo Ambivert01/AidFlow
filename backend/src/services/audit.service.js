@@ -5,9 +5,6 @@ import { generateMerkleRoot } from "./merkleAudit.service.js";
 
 export class AuditService {
 
-  /*
-   * Log an AidFlow audit event immutably
-   */
   async log({
     eventType,
     payload,
@@ -15,9 +12,13 @@ export class AuditService {
     campaignId,
     actorRole = "SYSTEM",
   }) {
+    // 1. Fetch Tail of the Chain
     const lastLog = await AuditLog.findOne({ jobIdHash }).sort({
-      createdAt: -1,
+      sequence: -1,
     });
+
+    const sequence = lastLog ? lastLog.sequence + 1 : 0;
+    const previousHash = lastLog ? lastLog.hash : "GENESIS";
 
     const auditData = {
       eventType,
@@ -28,9 +29,10 @@ export class AuditService {
         "SYSTEM",
       payload,
       jobIdHash,
+      sequence,
       campaignId,
       actorRole,
-      previousHash: lastLog ? lastLog.hash : null,
+      previousHash,
       timestamp: Date.now(),
     };
 
@@ -43,27 +45,25 @@ export class AuditService {
   }
 
   /*
-   * FINALIZE WORKFLOW AUDIT (ONLY ONCE)
+   * FINALIZE WORKFLOW AUDIT (ATOMIC & IDEMPOTENT)
    */
   async finalizeWorkflowAudit({ jobIdHash, campaignId }) {
-
-    const logs = await AuditLog.find({ jobIdHash }).sort({ createdAt: 1 });
+    // 1. Fetch non-finalized logs
+    const logs = await AuditLog.find({ jobIdHash, finalizedAt: null }).sort({ sequence: 1 });
 
     if (!logs.length) {
-      throw new Error("No audit logs found");
-    }
-
-    // CRITICAL: Prevent re-finalization
-    if (logs.some(l => l.finalizedAt)) {
-      throw new Error("Audit already finalized");
+      // Check if already finalized
+      const already = await AuditLog.findOne({ jobIdHash, finalizedAt: { $ne: null } });
+      if (already) return { merkleRoot: already.merkleRoot, txHash: already.blockchainTxHash };
+      throw new Error("No audit logs found for this job");
     }
 
     const hashes = logs.map(l => l.hash);
     const merkleRoot = generateMerkleRoot(hashes);
 
-    // Save Merkle root locally
-    await AuditLog.updateMany(
-      { jobIdHash },
+    // 2. ATOMIC UPDATE: Only finalize if not already finalized
+    const updateResult = await AuditLog.updateMany(
+      { jobIdHash, finalizedAt: null },
       {
         $set: {
           merkleRoot,
@@ -71,6 +71,10 @@ export class AuditService {
         },
       }
     );
+
+    if (updateResult.modifiedCount === 0) {
+      throw new Error("Audit log finalization conflict — already processed");
+    }
 
     // Anchor on blockchain (optional)
     let txHash = null;

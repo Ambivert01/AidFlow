@@ -1,84 +1,141 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../services/api";
 
 export default function RequestAccess() {
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    role: "NGO",
-  });
-
-  const [msg, setMsg] = useState("");
+  const [formData, setFormData] = useState({ name: "", email: "", password: "", role: "NGO" });
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
 
-  const submit = async (e) => {
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setMsg("");
-    setError("");
-
+    setLoading(true); setError("");
+    
     try {
-      await api.post("/access/request", form);
-      setMsg("Request submitted. Await approval.");
+      // Use the open end-point to list in the pending PENDING state
+      await api.post("/access/request", { ...formData, role: formData.role });
+      setSuccess(true);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed");
+      setError(err.response?.data?.message || "Application failed. Email may already be in use.");
+    } finally {
+      setLoading(false);
     }
   };
 
+  if (success) {
+    return (
+      <div className="center-page" style={{ padding: "var(--space-6)", textAlign: "center" }}>
+        <div className="card shadow-lg stack-lg" style={{ maxWidth: "460px", width: "100%", padding: "var(--space-8)" }}>
+          <div style={{ fontSize: "64px", margin: "0 auto" }}>📨</div>
+          <h2 style={{ fontSize: "24px", fontWeight: "800" }}>Application Received</h2>
+          <p style={{ color: "var(--color-text-muted)" }}>
+             Your request to join AidFlow as a <strong>{formData.role}</strong> has been secured in our queue. 
+          </p>
+          <div className="alert alert-info" style={{ textAlign: "left", fontSize: "13px" }}>
+            <strong>KYC Review Process:</strong> A system administrator will review your organization details shortly. You will receive an email once your account has been approved and moved to ACTIVE status.
+          </div>
+          <Link to="/" className="btn btn-ghost mt-4">Return Home</Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gray-100">
-      <form
-        onSubmit={submit}
-        className="bg-white p-8 rounded shadow w-full max-w-md"
-      >
-        <h2 className="text-xl font-bold mb-4">Request Access</h2>
+    <div className="center-page" style={{ padding: "var(--space-6)" }}>
+      <div className="card shadow-lg" style={{ maxWidth: "500px", width: "100%", padding: "var(--space-8)" }}>
+        
+        <div style={{ textAlign: "center", marginBottom: "var(--space-6)" }}>
+          <h1 style={{ fontSize: "24px", fontWeight: "800", color: "var(--color-text)", marginBottom: "var(--space-2)" }}>
+            Partner Application
+          </h1>
+          <p style={{ color: "var(--color-text-muted)", fontSize: "14px", lineHeight: "1.6" }}>
+            NGOs, Merchants, and Government Authorities must undergo KYC review before accessing the AidFlow platform. Apply below.
+          </p>
+        </div>
 
-        {msg && <p className="text-green-600 mb-3">{msg}</p>}
-        {error && <p className="text-red-600 mb-3">{error}</p>}
+        {error && <div className="alert alert-danger" style={{ marginBottom: "var(--space-4)" }}>{error}</div>}
 
-        <select
-          className="w-full border p-2 mb-3"
-          onChange={(e) =>
-            setForm({ ...form, role: e.target.value })
-          }
-        >
-          <option value="NGO">NGO</option>
-          <option value="MERCHANT">Merchant</option>
-        </select>
+        <form onSubmit={handleSubmit} className="stack">
+          {/* Role selector buttons instead of a dropdown for better UX */}
+          <div className="form-group">
+             <label className="form-label">Organization Profile Type</label>
+             <div className="grid-3" style={{ gap: "8px" }}>
+                {[
+                  { value: "NGO", label: "NGO", icon: "🤝" },
+                  { value: "MERCHANT", label: "Merchant", icon: "🏪" },
+                  { value: "GOVERNMENT", label: "Government", icon: "🏛️" },
+                ].map(r => (
+                  <button
+                    key={r.value}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, role: r.value }))}
+                    className={`btn ${formData.role === r.value ? "btn-primary" : "btn-ghost"}`}
+                    style={{ padding: "12px 8px", flexDirection: "column", height: "auto", gap: "4px" }}
+                  >
+                     <span style={{ fontSize: "20px" }}>{r.icon}</span>
+                     <span style={{ fontSize: "11px" }}>{r.label}</span>
+                  </button>
+                ))}
+             </div>
+          </div>
 
-        <input
-          placeholder="Organization / Business Name"
-          className="w-full border p-2 mb-3"
-          onChange={(e) =>
-            setForm({ ...form, name: e.target.value })
-          }
-          required
-        />
+          <div className="form-group">
+            <label className="form-label">Organization / Representative Name</label>
+            <input
+              type="text"
+              name="name"
+              className="form-input"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder={formData.role === "MERCHANT" ? "Shop Name / Rep Name" : `${formData.role} Title`}
+              required
+            />
+          </div>
 
-        <input
-          type="email"
-          placeholder="Official Email"
-          className="w-full border p-2 mb-3"
-          onChange={(e) =>
-            setForm({ ...form, email: e.target.value })
-          }
-          required
-        />
+          <div className="form-group">
+            <label className="form-label">Official Email Address</label>
+            <input
+              type="email"
+              name="email"
+              className="form-input"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="contact@organization.org"
+              required
+            />
+          </div>
 
-        <input
-          type="password"
-          placeholder="Password"
-          className="w-full border p-2 mb-4"
-          onChange={(e) =>
-            setForm({ ...form, password: e.target.value })
-          }
-          required
-        />
+          <div className="form-group">
+            <label className="form-label">Account Password</label>
+            <input
+              type="password"
+              name="password"
+              className="form-input"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Minimum 6 characters"
+              minLength="6"
+              required
+            />
+          </div>
 
-        <button className="w-full bg-blue-700 text-white py-2 rounded">
-          Submit Request
-        </button>
-      </form>
+          <button 
+            type="submit" 
+            className="btn btn-primary btn-full btn-lg" 
+            disabled={loading}
+            style={{ marginTop: "var(--space-4)" }}
+          >
+            {loading ? "Submitting Application..." : "Submit Access Request"}
+          </button>
+        </form>
+
+        <div style={{ marginTop: "var(--space-6)", textAlign: "center", fontSize: "14px" }}>
+          <Link to="/login" className="btn btn-ghost btn-sm">← Back to Login</Link>
+        </div>
+      </div>
     </div>
   );
 }

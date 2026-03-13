@@ -18,3 +18,7 @@ app.add_middleware(
 @app.post("/check", response_model=EligibilityResponse)
 def check(request: EligibilityRequest):
     return check_eligibility(request)
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "service": "eligibility_agent"}

@@ -1,19 +1,24 @@
 import Navbar from "./Navbar";
-import Footer from "./Footer";
 
 export default function Layout({ children }) {
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
-      {/* Top Navigation */}
+    <div className="page-wrapper">
       <Navbar />
-
-      {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
+      <main className="page-content">
         {children}
       </main>
-
-      {/* Footer */}
-      <Footer />
+      <footer style={{
+        borderTop: "1px solid var(--color-border)",
+        padding: "16px 24px",
+        textAlign: "center",
+        fontSize: "12px",
+        color: "var(--color-text-faint)",
+        background: "var(--color-surface)",
+      }}>
+        AidFlow AI — Transparent Humanitarian Aid Infrastructure &nbsp;|&nbsp;
+        <a href="/public-audit" style={{ color: "var(--color-primary)" }}>Public Audit</a> &nbsp;|&nbsp;
+        <a href="/public/how-it-works" style={{ color: "var(--color-text-muted)" }}>How It Works</a>
+      </footer>
     </div>
   );
 }

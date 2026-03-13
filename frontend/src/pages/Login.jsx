@@ -1,130 +1,84 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import authService from "../services/auth.service";
-import { useAuth } from "../hooks/useAuth";
+import { Link } from "react-router-dom";
+import useAuthStore from "../store/authStore";
 
 export default function Login() {
-  const navigate = useNavigate();
-  const { setUser } = useAuth();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const { login, loading, error } = useAuthStore();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      const user = await authService.login({ email, password });
-      setUser(user);
-
-      switch (user.role) {
-        case "DONOR":
-          navigate("/donor");
-          break;
-        case "NGO":
-          navigate("/ngo");
-          break;
-        case "BENEFICIARY":
-          navigate("/beneficiary");
-          break;
-        case "MERCHANT":
-          navigate("/merchant");
-          break;
-        case "GOVERNMENT":
-          navigate("/government");
-          break;
-        default:
-          navigate("/unauthorized");
-      }
-    } catch (err) {
-      setError(
-        err?.response?.data?.message ||
-          "Login failed. Please verify your credentials."
-      );
-    } finally {
-      setLoading(false);
-    }
+    await login({ email, password });
+    
+    // AuthStore handles state. On success, App.jsx router will unrender login
+    // and route to the correct role dashboard automatically based on user.role
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="w-full max-w-md space-y-6">
-
-        {/* CONTEXT */}
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-blue-700">
-            AidFlow Secure Login
-          </h1>
-          <p className="text-sm text-gray-600 mt-2">
-            Access to AidFlow is restricted to verified participants only.
+    <div className="center-page" style={{ padding: "var(--space-6)" }}>
+      <div className="card shadow-lg" style={{ maxWidth: "400px", width: "100%", padding: "var(--space-8)" }}>
+        
+        <div style={{ textAlign: "center", marginBottom: "var(--space-8)" }}>
+          <div style={{ fontSize: "32px", fontWeight: "900", letterSpacing: "-0.05em", color: "var(--color-primary-dark)", marginBottom: "var(--space-2)" }}>
+            AidFlow<span style={{ color: "var(--color-primary)", fontSize: "40px", lineHeight: 0 }}>.</span>
+          </div>
+          <p style={{ color: "var(--color-text-muted)", fontSize: "14px" }}>
+            Sign in to your dashboard to manage, disburse, or receive transparent humanitarian aid.
           </p>
         </div>
 
-        {/* INFO BOX */}
-        <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded text-sm">
-          <p className="font-medium mb-1">Who can log in?</p>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>Registered Donors</li>
-            <li>Verified NGOs</li>
-            <li>Approved Merchants</li>
-            <li>Onboarded Beneficiaries</li>
-            <li>Government Authorities</li>
-          </ul>
-          <p className="mt-2 text-xs">
-            Roles are assigned during onboarding and cannot be selected manually.
-          </p>
-        </div>
+        {error && <div className="alert alert-danger" style={{ marginBottom: "var(--space-4)" }}>{error}</div>}
 
-        {/* LOGIN FORM */}
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white p-6 rounded shadow space-y-4"
-        >
-          {error && (
-            <div className="text-red-600 text-sm text-center">
-              {error}
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm mb-1">Email</label>
+        <form onSubmit={handleSubmit} className="stack">
+          <div className="form-group">
+            <label className="form-label">Email Address</label>
             <input
               type="email"
-              className="w-full border px-3 py-2 rounded"
+              className="form-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@organization.org"
               required
             />
           </div>
 
-          <div>
-            <label className="block text-sm mb-1">Password</label>
+          <div className="form-group">
+            <label className="form-label">Password</label>
             <input
               type="password"
-              className="w-full border px-3 py-2 rounded"
+              className="form-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
               required
             />
           </div>
 
-          <button
-            type="submit"
+          <button 
+            type="submit" 
+            className="btn btn-primary btn-full btn-lg" 
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+            style={{ marginTop: "var(--space-2)", boxShadow: "0 4px 14px 0 rgba(14,165,233, 0.39)" }}
           >
-            {loading ? "Authenticating…" : "Login"}
+            {loading ? "Authenticating..." : "Sign In"}
           </button>
         </form>
 
-        {/* TESTING NOTE */}
-        <p className="text-xs text-center text-gray-500">
-          Demo access uses pre-verified test accounts provided by the system.
-        </p>
+        <div style={{ marginTop: "var(--space-8)", paddingTop: "var(--space-6)", borderTop: "1px solid var(--color-border)", textAlign: "center", fontSize: "13px" }}>
+          <p style={{ color: "var(--color-text-muted)", marginBottom: "var(--space-4)" }}>
+            Don't have an account?
+          </p>
+          <div className="row" style={{ justifyContent: "center", gap: "var(--space-2)" }}>
+             <Link to="/register" className="btn btn-ghost btn-sm" style={{ fontWeight: "600", color: "var(--color-primary-dark)" }}>
+               Register as Donor
+             </Link>
+             <span style={{ color: "var(--color-border-strong)" }}>|</span>
+             <Link to="/request-access" className="btn btn-ghost btn-sm" style={{ fontWeight: "600", color: "var(--color-secondary)" }}>
+               Partners (NGO/Merchant)
+             </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

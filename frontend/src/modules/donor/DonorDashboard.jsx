@@ -1,146 +1,241 @@
 import { useEffect, useState } from "react";
-import { fetchCampaigns, fetchMyDonations } from "../../services/donor.service";
+import { Link } from "react-router-dom";
+import api from "../../services/api";
 import Donate from "./Donate";
 
-import RoleContextBanner from "../../components/RoleContextBanner";
-import InfoNotice from "../../components/InfoNotice";
-import { ROLES } from "../../utils/constants";
+const STATUS_BADGE = {
+  CREATED: "badge-gray",
+  PENDING_NGO_REVIEW: "badge-yellow",
+  NGO_APPROVED: "badge-blue",
+  HIGH_RISK_ESCALATED: "badge-orange",
+  APPROVED_BY_GOVT: "badge-green",
+  REJECTED_BY_GOVT: "badge-red",
+  WALLET_CREATING: "badge-blue",
+  READY_FOR_USE: "badge-green",
+  ELIGIBILITY_FAILED: "badge-red",
+  REJECTED: "badge-red",
+  AUDIT_FINALIZED: "badge-teal",
+};
+
+const STATUS_LABELS = {
+  CREATED: "Created",
+  PENDING_NGO_REVIEW: "Awaiting NGO",
+  NGO_APPROVED: "NGO Approved",
+  HIGH_RISK_ESCALATED: "Escalated to Govt",
+  APPROVED_BY_GOVT: "Govt Approved",
+  REJECTED_BY_GOVT: "Govt Rejected",
+  WALLET_CREATING: "Wallet Creating",
+  READY_FOR_USE: "Active — Aid Disbursed",
+  ELIGIBILITY_FAILED: "Eligibility Failed",
+  REJECTED: "Rejected",
+  AUDIT_FINALIZED: "Finalized ✓",
+};
 
 export default function DonorDashboard() {
-  const [campaigns, setCampaigns] = useState([]);
-  const [selected, setSelected] = useState(null);
+  const [stats, setStats] = useState(null);
   const [donations, setDonations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [campaignSearch, setCampaignSearch] = useState("");
+  const [campaigns, setCampaigns] = useState([]);
+  const [showCampaigns, setShowCampaigns] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
 
   useEffect(() => {
-    fetchCampaigns().then(setCampaigns);
-    fetchMyDonations().then((res) => setDonations(res.data));
+    const load = async () => {
+      try {
+        const [statsRes, donationsRes, campRes] = await Promise.all([
+          api.get("/donor/dashboard"),
+          api.get("/donor/donations"),
+          api.get("/public/campaigns"),
+        ]);
+        setStats(statsRes.data);
+        setDonations(donationsRes.data || []);
+        setCampaigns(campRes.data || []);
+      } catch (err) {
+        console.error("DONOR DASHBOARD ERROR:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, []);
 
+  const filteredCampaigns = campaigns.filter((c) =>
+    !campaignSearch || c.title.toLowerCase().includes(campaignSearch.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <div className="stack-lg">
+        <div className="page-header">
+          <div className="skeleton skeleton-title" />
+          <div className="skeleton skeleton-text" style={{ width: '30%' }} />
+        </div>
+        <div className="card skeleton" style={{ height: '80px' }} />
+        <div className="grid-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="stat-card skeleton" style={{ height: '100px' }} />
+          ))}
+        </div>
+        <div className="card skeleton" style={{ height: '200px', marginTop: 'var(--space-6)' }} />
+        <div className="card skeleton" style={{ height: '400px', marginTop: 'var(--space-6)' }} />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-10">
-      {/* ROLE CONTEXT */}
-      <RoleContextBanner
-        role={ROLES.DONOR}
-        message="Donate to verified campaigns and track every rupee through an immutable audit trail."
-      />
+    <div className="stack-lg">
+      {/* Page header */}
+      <div className="page-header">
+        <h1 className="page-title">Donor Dashboard</h1>
+        <p className="page-subtitle">Track your donations and see how your contributions are being used.</p>
+      </div>
 
-      {/* ================= ACTIVE CAMPAIGNS ================= */}
-      <section>
-        <InfoNotice
-          title="Active Relief Campaigns"
-          message="These campaigns are verified and policy-locked. Donations are processed through AI checks and recorded immutably."
-        />
-
-        <h2 className="text-2xl font-bold mb-4">Donate to a Campaign</h2>
-
-        {campaigns.length === 0 && (
-          <p className="text-gray-500">No active campaigns at the moment.</p>
-        )}
-
-        {campaigns.map((c) => (
-          <div key={c._id} className="border p-4 rounded mb-4 bg-white">
-            <h3 className="font-semibold text-lg">{c.title}</h3>
-            <p className="text-sm text-gray-600">{c.description}</p>
-
-            {/* POLICY SNAPSHOT */}
-            <details className="mt-2 text-sm">
-              <summary className="cursor-pointer font-medium">
-                Policy Snapshot (Locked)
-              </summary>
-              <pre className="bg-gray-100 p-2 rounded mt-2 text-xs">
-                {JSON.stringify(c.policySnapshot, null, 2)}
-              </pre>
-            </details>
-
-            <button
-              className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
-              onClick={() => setSelected(c)}
-            >
-              Donate
-            </button>
-          </div>
-        ))}
-
-        {selected && (
-          <Donate campaign={selected} onClose={() => setSelected(null)} />
-        )}
-      </section>
-
-      {/* ================= MY DONATIONS ================= */}
-      <section>
-        <InfoNotice
-          title="Your Donation Transparency"
-          message="Each donation generates an immutable audit trail that can be verified publicly."
-        />
-
-        <h2 className="text-xl font-bold mb-3">My Donations</h2>
-
-        {donations.length === 0 && (
-          <p className="text-gray-500">
-            You haven’t donated yet. Once you do, audit proofs will appear here.
-          </p>
-        )}
-
-        {donations.map((d) => (
-          <div
-            key={d.donationId}
-            className="border p-4 rounded mb-4 bg-gray-50 space-y-2"
-          >
-            <p>
-              <b>Campaign:</b> {d.campaign?.title}
-            </p>
-            <p>
-              <b>Amount:</b> ₹{d.amount}
-            </p>
-
-            <p>
-              <b>Status:</b>{" "}
-              {d.status === "READY_FOR_USE"
-                ? "Funds Released (Verified)"
-                : d.status.replaceAll("_", " ")}
-            </p>
-
-            {/* AUDIT ID */}
-            <div className="bg-white border rounded p-2 flex justify-between items-center">
-              <div className="text-xs break-all">
-                <b>Audit ID:</b> {d.donationId}
-              </div>
-
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(d.donationId);
-                  alert("Audit ID copied");
-                }}
-                className="px-3 py-1 text-xs bg-blue-600 text-white rounded"
-              >
-                Copy
-              </button>
+      {/* Stats row */}
+      {stats && (
+        <div className="grid-4">
+          {[
+            { label: "Total Donated", value: `₹${(stats.totalDonated || 0).toLocaleString("en-IN")}`, sub: "Across all donations" },
+            { label: "Total Donations", value: stats.totalDonations || 0, sub: "All records" },
+            { label: "Active Disbursements", value: stats.activeDonations || 0, sub: "Aid in use" },
+            { label: "Campaigns Supported", value: stats.campaignsSupported || 0, sub: "Unique campaigns" },
+          ].map((s) => (
+            <div key={s.label} className="stat-card">
+              <div className="stat-card-label">{s.label}</div>
+              <div className="stat-card-value">{s.value}</div>
+              <div className="stat-card-sub">{s.sub}</div>
             </div>
+          ))}
+        </div>
+      )}
 
-            {/* AUDIT STATUS */}
-            {d.auditHash ? (
-              <p className="text-green-700 text-sm">
-                ✔ Audit finalized & anchored on blockchain
-              </p>
-            ) : (
-              <p className="text-yellow-600 text-sm">
-                ⏳ Audit proof processing…
-              </p>
+      {/* Browse + donate */}
+      <div className="card">
+        <div className="row-between" style={{ marginBottom: "var(--space-4)" }}>
+          <h2 style={{ fontSize: "16px", fontWeight: "700" }}>Browse Active Campaigns</h2>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => setShowCampaigns(!showCampaigns)}
+          >
+            {showCampaigns ? "Hide" : "Show Campaigns"}
+          </button>
+        </div>
+
+        {showCampaigns && (
+          <>
+            <input
+              className="form-input"
+              placeholder="Search campaigns…"
+              value={campaignSearch}
+              onChange={(e) => setCampaignSearch(e.target.value)}
+              style={{ marginBottom: "var(--space-4)" }}
+            />
+            <div className="stack">
+              {filteredCampaigns.map((c) => (
+                <div key={c._id} className="card-sm row-between" style={{ alignItems: "flex-start" }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: "600", fontSize: "14px" }}>{c.title}</div>
+                    <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
+                      {c.disasterType} · {c.location?.district}, {c.location?.state}
+                    </div>
+                    {c.policySnapshot && (
+                      <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "2px" }}>
+                        Cap: ₹{c.policySnapshot.maxPerBeneficiary} per beneficiary · {c.policySnapshot.validityDays}d
+                        &nbsp;· {c.policySnapshot.allowedCategories?.join(", ")}
+                      </div>
+                    )}
+                  </div>
+                  <button 
+                    onClick={() => setSelectedCampaign(c)} 
+                    className="btn btn-primary btn-sm" 
+                    style={{ flexShrink: 0 }}
+                  >
+                    Donate
+                  </button>
+                </div>
+              ))}
+              {filteredCampaigns.length === 0 && (
+                <div className="empty-state">
+                  <div className="empty-state-title">No campaigns found</div>
+                </div>
+              )}
+            </div>
+            
+            {/* Inline donation form */}
+            {selectedCampaign && (
+              <Donate 
+                campaign={selectedCampaign} 
+                onClose={() => {
+                  setSelectedCampaign(null);
+                  api.get("/donor/donations").then(res => setDonations(res.data)); // Refresh donations
+                }} 
+              />
             )}
+          </>
+        )}
+      </div>
 
-            {/* PUBLIC VERIFY */}
-            <a href="/public" className="text-blue-600 text-sm underline">
-              Verify publicly
-            </a>
-            <a
-              href={`/donor/timeline/${d.donationId}`}
-              className="text-sm text-blue-700 underline"
-            >
-              View full audit timeline
-            </a>
+      {/* My Donations */}
+      <div className="card">
+        <h2 style={{ fontSize: "16px", fontWeight: "700", marginBottom: "var(--space-4)" }}>My Donation History</h2>
+        {donations.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">💰</div>
+            <div className="empty-state-title">No donations yet</div>
+            <div className="empty-state-desc">Browse campaigns above and make your first contribution.</div>
           </div>
-        ))}
-      </section>
+        ) : (
+          <div className="table-wrapper">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Campaign</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>AI Decision</th>
+                  <th>Audit</th>
+                  <th>Date</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {donations.map((d) => (
+                  <tr key={d.donationId}>
+                    <td>
+                      <div style={{ fontWeight: "600" }}>{d.campaign?.title || "—"}</div>
+                      <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>{d.campaign?.disasterType}</div>
+                    </td>
+                    <td style={{ fontWeight: "700" }}>₹{d.amount?.toLocaleString("en-IN")}</td>
+                    <td>
+                      <span className={`badge ${STATUS_BADGE[d.status] || "badge-gray"}`}>
+                        {STATUS_LABELS[d.status] || d.status}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: "13px" }}>{d.aiDecision || "—"}</td>
+                    <td>
+                      {d.auditFinalized ? (
+                        <a href={`/public-audit?job=${d.donationId}`} className="btn btn-ghost btn-sm" style={{ fontSize: "11px" }}>
+                          ✓ Verified
+                        </a>
+                      ) : (
+                        <span style={{ fontSize: "12px", color: "var(--color-text-faint)" }}>In Progress</span>
+                      )}
+                    </td>
+                    <td style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
+                      {new Date(d.createdAt).toLocaleDateString("en-IN")}
+                    </td>
+                    <td>
+                      <Link to={`/donor/donation/${d.donationId}`} className="btn btn-ghost btn-sm" style={{ fontSize: "12px" }}>
+                        Timeline →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

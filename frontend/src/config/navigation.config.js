@@ -28,4 +28,7 @@ export const NAVIGATION = {
   ],
 
   [ROLES.GOVERNMENT]: [{ label: "Dashboard", path: "/government" }],
+
+  ADMIN: [{ label: "Admin Panel", path: "/admin" }],
+  
 };

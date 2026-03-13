@@ -1,55 +1,61 @@
-// src/modules/merchant/GenerateQR.jsx
 import { useState } from "react";
 import api from "../../services/api";
+import { QRCodeCanvas } from "qrcode.react";
 
 export default function GenerateQR() {
+  const [payload, setPayload] = useState(null);
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
-  const [qr, setQr] = useState(null);
 
   const generate = async () => {
-    try {
-      const res = await api.post("/payments/generate-qr", {
-        amount: Number(amount),
-        category,
-      });
-      setQr(res.data.qrPayload);
-    } catch {
-      alert("QR generation failed");
-    }
+    const res = await api.post("/payments/generate-qr", {
+      amount: Number(amount),
+      category: "FOOD", // auto from merchant profile later
+    });
+
+    setPayload(res.data.qrPayload);
   };
 
   return (
-    <div className="bg-white p-5 rounded shadow max-w-md">
-      <h2 className="font-semibold mb-3">Generate Payment QR</h2>
+    <div className="bg-white p-4 rounded shadow space-y-3">
+      <h3 className="font-semibold">Generate Payment QR</h3>
 
       <input
         type="number"
         placeholder="Amount"
-        className="input w-full mb-2"
+        className="border p-2 w-full"
         value={amount}
-        onChange={e => setAmount(e.target.value)}
+        onChange={(e) => setAmount(e.target.value)}
       />
 
-      <select
-        className="input w-full mb-3"
-        value={category}
-        onChange={e => setCategory(e.target.value)}
+      <button
+        onClick={generate}
+        className="bg-green-600 text-white px-4 py-2 rounded"
       >
-        <option value="">Select Category</option>
-        <option value="food">Food</option>
-        <option value="medicine">Medicine</option>
-        <option value="shelter">Shelter</option>
-      </select>
-
-      <button onClick={generate} className="btn-primary w-full">
         Generate QR
       </button>
 
-      {qr && (
-        <pre className="mt-4 bg-gray-100 p-3 text-xs break-all rounded">
-          {qr}
-        </pre>
+      {payload && (
+        <>
+          <QRCodeCanvas value={payload} size={180} />
+
+          <textarea
+            className="border p-2 w-full text-xs"
+            rows={4}
+            readOnly
+            value={payload}
+          />
+
+          <button
+            onClick={() => navigator.clipboard.writeText(payload)}
+            className="bg-gray-800 text-white px-3 py-1 rounded"
+          >
+            Copy Payload
+          </button>
+
+          <p className="text-xs text-gray-500">
+            Share this payload with beneficiary (demo mode)
+          </p>
+        </>
       )}
     </div>
   );

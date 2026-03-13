@@ -5,6 +5,7 @@ function hash(data) {
 }
 
 export function buildMerkleTree(hashes) {
+  if (!hashes || hashes.length === 0) return [hash("EMPTY_LOG")];
   if (hashes.length === 1) return hashes;
 
   const newLevel = [];

@@ -8,8 +8,9 @@ export default function UsageHistory() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get("/wallets/me")
-      .then(res => setWallet(res.data))
+    api
+      .get("/wallet/me")
+      .then((res) => setWallet(res.data))
       .catch(() => setWallet(null))
       .finally(() => setLoading(false));
   }, []);
@@ -34,7 +35,14 @@ export default function UsageHistory() {
           <p>
             <b>{t.category.toUpperCase()}</b> – ₹{t.amount}
           </p>
-          <p className="text-sm text-gray-500">
+
+          <p className="text-sm text-gray-600">
+            Balance after: ₹{t.balanceAfter}
+          </p>
+
+          <p className="text-xs text-gray-500">Merchant ID: {t.reference}</p>
+
+          <p className="text-xs text-gray-500">
             {new Date(t.timestamp).toLocaleString()}
           </p>
         </div>

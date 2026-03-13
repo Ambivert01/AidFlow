@@ -69,17 +69,19 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // 2 Check verification status (NOW user exists)
-    if (user.verificationStatus === "PENDING") {
-      return res.status(403).json({
-        message: "Account pending admin approval",
-      });
-    }
+    // 2 Check verification status (ADMIN BYPASS)
+    if (user.role !== "ADMIN") {
+      if (user.verificationStatus === "PENDING") {
+        return res.status(403).json({
+          message: "Account pending admin approval",
+        });
+      }
 
-    if (user.verificationStatus === "REJECTED") {
-      return res.status(403).json({
-        message: "Access request rejected",
-      });
+      if (user.verificationStatus === "REJECTED") {
+        return res.status(403).json({
+          message: "Access request rejected",
+        });
+      }
     }
 
     // 3 Compare password
@@ -93,6 +95,7 @@ export const login = async (req, res) => {
       {
         id: user._id,
         role: user.role,
+        email: user.email,
       },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
@@ -106,6 +109,7 @@ export const login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        verificationStatus: user.verificationStatus,
       },
     });
   } catch (err) {
@@ -114,3 +118,25 @@ export const login = async (req, res) => {
   }
 };
 
+/*
+ * Get current user profile (token-based)
+ */
+export const me = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    return res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        verificationStatus: user.verificationStatus,
+        isActive: user.isActive,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to fetch profile" });
+  }
+};

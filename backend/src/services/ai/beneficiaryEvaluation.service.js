@@ -1,27 +1,25 @@
+// This module previously contained a random, non-deterministic mock AI.
+// The real implementation now lives in the dedicated FastAPI agents,
+// invoked via `backend/src/services/aiDecision.js`.
+//
+// We keep a minimal, deterministic fallback here only as a last-resort
+// safety net if aiDecision clients are ever unavailable at import-time.
+
 export async function evaluateBeneficiaryAI({ aadhaarHash, location }) {
-  // MOCK AI — replace later with real model
-  const eligibilityConfidence = Math.random();
-  const fraudRisk = Math.random();
-
-  let decision = "ALLOW";
-
-  if (fraudRisk > 0.7) decision = "BLOCK";
-  else if (eligibilityConfidence < 0.6) decision = "MANUAL_REVIEW";
-
   return {
     eligibility: {
-      eligible: decision !== "BLOCK",
-      confidence: eligibilityConfidence,
-      signals: { location },
+      eligible: true,
+      confidence: 0,
+      signals: { location, source: "STATIC_FALLBACK" },
     },
     fraud: {
-      riskScore: fraudRisk,
-      fraudRisk: fraudRisk > 0.7 ? "HIGH" : "LOW",
-      flags: fraudRisk > 0.7 ? ["DUPLICATE_PATTERN"] : [],
+      riskScore: 0,
+      fraudRisk: "LOW",
+      flags: ["AI_STATIC_FALLBACK"],
     },
     risk: {
-      finalRiskScore: (fraudRisk + (1 - eligibilityConfidence)) / 2,
-      decision,
+      finalRiskScore: 0,
+      decision: "MANUAL_REVIEW",
     },
   };
 }

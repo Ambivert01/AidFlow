@@ -1,6 +1,5 @@
 // backend/src/services/workflow.engine.js
 
-import { Donation } from "../models/Donation.model.js";
 import { Beneficiary } from "../models/Beneficiary.model.js";
 import { createWallet } from "./wallet.service.js";
 
@@ -14,10 +13,36 @@ export class WorkflowEngine {
 
   /*
    * STEP 0: Full donation intake workflow (AI + policy)
-   * Called immediately after donation creation
+   * Called immediately after donation creation.
+   *
+   * NOTE:
+   * - If a beneficiary is NOT yet assigned, we simply route the donation
+   *   into NGO review and let NGO assign a beneficiary later.
+   * - If a beneficiary IS present, we run the full AI pipeline.
    */
   async processDonation({ donation, campaign, beneficiary }) {
     const jobIdHash = donation._id.toString();
+
+    // If no beneficiary is attached yet, route to NGO review directly.
+    if (!beneficiary) {
+      donation.status = "PENDING_NGO_REVIEW";
+      donation.lastDecisionBy = "SYSTEM";
+      donation.reviewReason = "Beneficiary to be assigned by NGO";
+      await donation.save();
+
+      await this.auditService.log({
+        eventType: "DONATION_PENDING_NGO_REVIEW",
+        payload: {
+          donationId: donation._id,
+          reason: "NO_BENEFICIARY_ASSIGNED",
+        },
+        jobIdHash,
+        campaignId: campaign._id,
+        actorRole: "SYSTEM",
+      });
+
+      return;
+    }
 
     // 1 AI evaluate beneficiary
     const evaluatedBeneficiary = await this.evaluateBeneficiary({
@@ -32,6 +57,14 @@ export class WorkflowEngine {
       donation.lastDecisionBy = "AI";
       donation.decisionReason = "AI blocked beneficiary";
       await donation.save();
+
+      await this.auditService.log({
+        eventType: "DONATION_ELIGIBILITY_FAILED",
+        payload: { donationId: donation._id, reason: "AI_BLOCK" },
+        jobIdHash,
+        campaignId: campaign._id,
+        actorRole: "AI",
+      });
       return;
     }
 
@@ -48,6 +81,14 @@ export class WorkflowEngine {
         null;
 
       await donation.save();
+
+      await this.auditService.log({
+        eventType: "DONATION_PENDING_NGO_REVIEW",
+        payload: { donationId: donation._id, reason: "AI_MANUAL_REVIEW_REQUIRED" },
+        jobIdHash,
+        campaignId: campaign._id,
+        actorRole: "AI",
+      });
       return;
     }
 
@@ -56,6 +97,14 @@ export class WorkflowEngine {
     donation.lastDecisionBy = "SYSTEM";
     donation.reviewReason = "Eligible but requires NGO authorization";
     await donation.save();
+
+    await this.auditService.log({
+      eventType: "DONATION_PENDING_NGO_REVIEW",
+      payload: { donationId: donation._id, reason: "SYSTEM_ROUTING" },
+      jobIdHash,
+      campaignId: campaign._id,
+      actorRole: "SYSTEM",
+    });
   }
 
   /*
@@ -104,12 +153,13 @@ export class WorkflowEngine {
       evaluatedAt: new Date(),
     };
 
-    beneficiary.status =
-      risk.decision === "BLOCK"
-        ? "BLOCKED"
-        : risk.decision === "MANUAL_REVIEW"
-        ? "REGISTERED"
-        : "ELIGIBLE";
+    if (risk.decision === "BLOCK") {
+      beneficiary.status = "BLOCKED";
+    } else if (risk.decision === "MANUAL_REVIEW") {
+      beneficiary.status = "MANUAL_REVIEW";
+    } else {
+      beneficiary.status = "ELIGIBLE";
+    }
 
     await beneficiary.save();
 
@@ -134,7 +184,6 @@ export class WorkflowEngine {
   async resumeAfterNGOApproval({ donation, campaign }) {
     const jobIdHash = donation._id.toString();
 
-    // 1 Safety check
     if (!donation.beneficiary) {
       donation.status = "ELIGIBILITY_FAILED";
       donation.decisionReason = "No beneficiary assigned";
@@ -142,39 +191,52 @@ export class WorkflowEngine {
       return;
     }
 
-    // 2 Create Wallet (SINGLE SOURCE OF TRUTH)
-    await createWallet({
+    const beneficiary = await Beneficiary.findById(donation.beneficiary);
+    if (!beneficiary) {
+      donation.status = "ELIGIBILITY_FAILED";
+      donation.decisionReason = "Beneficiary not found";
+      await donation.save();
+      return;
+    }
+
+    // SECURITY GUARD: Ensure AI assessment was successful
+    if (!beneficiary.aiDecision) {
+      throw new Error("Cannot resume workflow: Beneficiary has no AI risk assessment");
+    }
+
+    donation.status = "WALLET_CREATING";
+    await donation.save();
+
+    const wallet = await createWallet({
       beneficiaryId: donation.beneficiary,
       campaign,
       amount: donation.amount,
       jobIdHash,
     });
 
-    donation.status = "FUNDS_LOCKED";
-    donation.lastDecisionBy = "SYSTEM";
-    await donation.save();
-
-    /*
-     * READY_FOR_USE should be set ONLY after wallet creation + audit
-     * NOT blindly overwritten
-     */
     donation.status = "READY_FOR_USE";
     await donation.save();
 
-    // 5 Audit disbursement
     await this.auditService.log({
-      eventType: "DONATION_DISBURSED_TO_WALLET",
+      eventType: "DONATION_READY_FOR_USE",
       payload: {
         donationId: donation._id,
-        beneficiaryId: donation.beneficiary,
-        amount: donation.amount,
+        walletId: wallet._id,
       },
       jobIdHash,
       campaignId: campaign._id,
       actorRole: "SYSTEM",
     });
 
-    return true;
+    await this.auditService.finalizeWorkflowAudit({
+      jobIdHash,
+      campaignId: campaign._id,
+    });
+
+    donation.status = "AUDIT_FINALIZED";
+    await donation.save();
+
+    return wallet;
   }
 
   /**

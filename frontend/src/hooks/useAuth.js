@@ -1,22 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import authService from "../services/auth.service";
 
 export function useAuth() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  // Restore session on app load
-  useEffect(() => {
+  const [user, setUser] = useState(() => {
     const storedUser = authService.getUser();
-
-    if (storedUser && authService.isAuthenticated()) {
-      setUser(storedUser);
-    } else {
-      setUser(null);
-    }
-
-    setLoading(false);
-  }, []);
+    return storedUser && authService.isAuthenticated() ? storedUser : null;
+  });
+  const [loading] = useState(false);
 
   const logout = () => {
     authService.logout();

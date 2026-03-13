@@ -1,10 +1,11 @@
 import { Donation } from "../models/Donation.model.js";
 import { Campaign } from "../models/Campaign.model.js";
 import { AuditService } from "../services/audit.service.js";
+import { createWorkflowEngine } from "../services/workflow.service.js";
 
 /*
  * DONOR → Create donation
- * NO workflow execution here
+ * Donation is queued for NGO review; downstream steps are handled by NGO + wallet engine.
  */
 export const donate = async (req, res) => {
   try {
@@ -21,7 +22,8 @@ export const donate = async (req, res) => {
       donor: req.user.id,
       campaign: campaignId,
       amount,
-      status: "CREATED",
+      // Final status and routing will be decided by workflow engine
+      status: "PENDING_NGO_REVIEW",
       lastDecisionBy: "SYSTEM",
     });
 
@@ -40,9 +42,20 @@ export const donate = async (req, res) => {
       actorRole: "DONOR",
     });
 
-    // 4 Move to NGO review (AI / Policy happens later)
-    donation.status = "PENDING_NGO_REVIEW";
-    await donation.save();
+    // 4 Kick off donation workflow (non-blocking from donor perspective)
+    try {
+      const workflow = createWorkflowEngine();
+      // At creation time there is typically no beneficiary yet; the engine
+      // will safely route to NGO review when beneficiary is null.
+      await workflow.processDonation({
+        donation,
+        campaign,
+        beneficiary: null,
+      });
+    } catch (workflowErr) {
+      // We keep donation valid and auditable even if workflow fails.
+      console.error("DONATION WORKFLOW ERROR →", workflowErr);
+    }
 
     // 5 Respond immediately
     return res.status(201).json({
