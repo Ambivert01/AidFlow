@@ -22,6 +22,8 @@ import ngoWorkflowRoutes from "./routes/ngoWorkflow.routes.js";
 import ngoDashboardRoutes from "./routes/ngoDashboard.routes.js";
 import accessRoutes from "./routes/access.routes.js";
 
+import { errorHandler } from "./middlewares/error.middleware.js";
+
 const app = express();
 
 /*
@@ -49,6 +51,8 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+app.use(errorHandler);
 
 app.use((req, res, next) => {
   if (req.method === "OPTIONS") return res.sendStatus(204);
