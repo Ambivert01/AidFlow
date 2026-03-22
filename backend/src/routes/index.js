@@ -22,7 +22,11 @@ import governmentRoutes from "../modules/governance/government.routes.js";
 
 import auditRoutes from "../modules/audit/audit.routes.js";
 
+import systemRoutes from "../modules/system/system.routes.js";
+
 const router = express.Router();
+
+router.use("/system", systemRoutes);
 
 // auth
 
