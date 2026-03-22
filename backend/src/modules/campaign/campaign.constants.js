@@ -1,0 +1,35 @@
+export const CAMPAIGN_STATUS = {
+  DRAFT: "DRAFT",
+
+  PENDING_APPROVAL: "PENDING_APPROVAL",
+
+  ACTIVE: "ACTIVE",
+
+  PAUSED: "PAUSED",
+
+  COMPLETED: "COMPLETED",
+
+  CLOSED: "CLOSED",
+
+  ARCHIVED: "ARCHIVED",
+
+  AUDIT_FINALIZED: "AUDIT_FINALIZED",
+};
+
+export const DISASTER_TYPES = [
+  "FLOOD",
+
+  "EARTHQUAKE",
+
+  "CYCLONE",
+
+  "FIRE",
+
+  "DROUGHT",
+
+  "PANDEMIC",
+
+  "WAR",
+
+  "OTHER",
+];
