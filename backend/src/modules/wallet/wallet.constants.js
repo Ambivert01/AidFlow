@@ -1,0 +1,15 @@
+export const WALLET_STATUS = {
+  ACTIVE: "ACTIVE",
+
+  FROZEN: "FROZEN",
+
+  EXPIRED: "EXPIRED",
+
+  CLOSED: "CLOSED",
+};
+
+export const TRANSACTION_TYPE = {
+  CREDIT: "CREDIT",
+
+  DEBIT: "DEBIT",
+};
