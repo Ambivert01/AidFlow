@@ -4,6 +4,7 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
+import "./config/env.config.js";
 
 // Routes
 import authRoutes from "./routes/auth.routes.js";
@@ -23,6 +24,9 @@ import ngoDashboardRoutes from "./routes/ngoDashboard.routes.js";
 import accessRoutes from "./routes/access.routes.js";
 
 import { errorHandler } from "./middlewares/error.middleware.js";
+import { requestIdMiddleware } from "./middlewares/requestId.middleware.js";
+import { loggingMiddleware } from "./middlewares/logging.middleware.js";
+
 
 const app = express();
 
@@ -53,6 +57,8 @@ app.use(
 );
 
 app.use(errorHandler);
+app.use(requestIdMiddleware);
+app.use(loggingMiddleware);
 
 app.use((req, res, next) => {
   if (req.method === "OPTIONS") return res.sendStatus(204);

@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { jwtConfig } from "../../config/jwt.config.js";
 
 export const hashPassword = async (password) => {
   const salt = await bcrypt.genSalt(12);
@@ -17,8 +18,9 @@ export const generateAccessToken = (user) => {
       role: user.role,
       type: "ACCESS",
     },
-    process.env.JWT_SECRET,
-    { expiresIn: "15m" }
+    jwtConfig.secret,
+
+    { expiresIn: jwtConfig.accessExpiry }
   );
 };
 
@@ -28,7 +30,8 @@ export const generateRefreshToken = (user) => {
       sub: user._id,
       type: "REFRESH",
     },
-    process.env.JWT_SECRET,
-    { expiresIn: "7d" }
+    jwtConfig.secret,
+
+    { expiresIn: jwtConfig.refreshExpiry }
   );
 };
