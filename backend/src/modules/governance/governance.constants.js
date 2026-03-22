@@ -1,0 +1,19 @@
+export const REVIEW_STATUS = {
+  PENDING: "PENDING",
+
+  APPROVED: "APPROVED",
+
+  REJECTED: "REJECTED",
+};
+
+export const ACTION_TYPES = [
+  "FREEZE_WALLET",
+
+  "BAN_MERCHANT",
+
+  "APPROVE_DONATION",
+
+  "REJECT_DONATION",
+
+  "OVERRIDE_AI",
+];
