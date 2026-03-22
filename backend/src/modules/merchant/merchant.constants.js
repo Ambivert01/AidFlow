@@ -1,0 +1,21 @@
+export const MERCHANT_STATUS = {
+  PENDING: "PENDING",
+
+  ACTIVE: "ACTIVE",
+
+  SUSPENDED: "SUSPENDED",
+
+  BANNED: "BANNED",
+};
+
+export const MERCHANT_CATEGORY = [
+  "FOOD",
+
+  "MEDICINE",
+
+  "SHELTER",
+
+  "WATER",
+
+  "OTHER",
+];
