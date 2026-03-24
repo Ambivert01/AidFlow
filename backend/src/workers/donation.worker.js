@@ -25,6 +25,8 @@ new Worker(
       decision: aiResult.decision,
 
       riskScore: aiResult.riskScore,
+
+      evaluatedAt:new Date()
     };
 
     donation.status =

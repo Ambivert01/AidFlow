@@ -1,111 +1,60 @@
-import { createAuditLog } from "../modules/audit/audit.service.js"
-import { createWalletForBeneficiary } from "../modules/wallet/wallet.service.js"
-import { runFraudCheck } from "../jobs/fraud.job.js"
-import { runAIDecision } from "../jobs/ai.job.js"
-import { updateTrustScore } from "../modules/governance/trustScore.service.js"
-import { anchorToBlockchain } from "../infrastructure/blockchain/audit.service.js"
+import { createAuditLog } from "../modules/audit/audit.service.js";
+import { addFraudCheckJob } from "../jobs/fraud.job.js";
+import { addAIDecisionJob } from "../jobs/ai.job.js";
 
 class WorkflowEngine {
-
   async handleDonationCreated(donation) {
-
     await createAuditLog({
-      entityType: "donation",
-      entityId: donation.id,
-      action: "DONATION_CREATED"
-    })
+      eventType: "DONATION_CREATED",
 
-    await runAIDecision({
-      type: "donation_risk",
-      donationId: donation.id
-    })
+      entityId: donation._id,
 
-    return true
+      actorRole: "SYSTEM",
+    });
+
+    await addAIDecisionJob({
+      type: "donation-risk",
+
+      payload: {
+        donationId: donation._id,
+        amount: donation.amount,
+      },
+    });
   }
 
-  async handleDonationApproved(donation) {
-
+  async handleTransactionCompleted(data) {
     await createAuditLog({
-      entityType: "donation",
-      entityId: donation.id,
-      action: "DONATION_APPROVED"
-    })
+      eventType: "TRANSACTION_COMPLETED",
 
-    return true
-  }
+      entityId: data.id,
 
-  async handleBeneficiaryVerified(beneficiary) {
+      actorRole: "SYSTEM",
+    });
 
-    const wallet = await createWalletForBeneficiary({
-      beneficiaryId: beneficiary.id,
-      campaignId: beneficiary.campaignId
-    })
-
-    await createAuditLog({
+    await addFraudCheckJob({
       entityType: "wallet",
-      entityId: wallet.id,
-      action: "WALLET_CREATED"
-    })
 
-    return wallet
-  }
+      entityId: data.id,
 
-  async handleTransactionCompleted(transaction) {
-
-    await createAuditLog({
-      entityType: "transaction",
-      entityId: transaction.id,
-      action: "TRANSACTION_COMPLETED"
-    })
-
-    await runFraudCheck({
-      transactionId: transaction.id
-    })
-
-    return true
-  }
-
-  async handleProofSubmitted(proof) {
-
-    await createAuditLog({
-      entityType: "proof",
-      entityId: proof.id,
-      action: "PROOF_SUBMITTED"
-    })
-
-    return true
-  }
-
-  async handleProofVerified(proof) {
-
-    await updateTrustScore({
-      entityType: "ngo",
-      entityId: proof.ngoId,
-      delta: +2
-    })
-
-    await createAuditLog({
-      entityType: "proof",
-      entityId: proof.id,
-      action: "PROOF_VERIFIED"
-    })
-
-    await anchorToBlockchain()
-
-    return true
+      signals: {
+        amount: data.amount,
+      },
+    });
   }
 
   async handleFraudDetected(event) {
-
     await createAuditLog({
-      entityType: event.entityType,
+      eventType: "FRAUD_DETECTED",
+
       entityId: event.entityId,
-      action: "FRAUD_DETECTED"
-    })
 
-    return true
+      actorRole: "AI",
+
+      payload: {
+        riskScore: event.riskScore,
+      },
+    });
   }
-
 }
 
-export default new WorkflowEngine()
+export default new WorkflowEngine();

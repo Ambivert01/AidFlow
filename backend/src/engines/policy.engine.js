@@ -1,5 +1,3 @@
-// src/engines/policy.engine.js
-
 class PolicyEngine {
   validateTransaction(policy, context) {
     this.checkExpiry(policy, context);
@@ -27,7 +25,7 @@ class PolicyEngine {
   }
 
   checkTransactionLimit(policy, context) {
-    if (context.amount > policy.maxAmountPerTxn) {
+    if (context.amount > policy.maxPerTransaction) {
       throw new Error("AMOUNT_EXCEEDS_LIMIT");
     }
   }

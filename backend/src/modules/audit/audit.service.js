@@ -10,6 +10,8 @@ export const createAuditLog = async (data) => {
 
     jobIdHash: data.jobIdHash,
 
+    sequence: data.sequence,
+
     campaignId: data.campaignId,
 
     actorRole: data.actorRole,

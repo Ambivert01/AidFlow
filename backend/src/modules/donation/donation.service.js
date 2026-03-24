@@ -6,8 +6,7 @@ import { withTransaction } from "../../core/transaction.js";
 import { createWallet } from "../wallet/wallet.service.js";
 
 import { addDonationJob } from "../../jobs/donation.job.js";
-
-
+import workflowEngine from "../../engines/workflow.engine.js";
 
 /*
 CREATE DONATION
@@ -16,9 +15,7 @@ Only DB-safe operations in transaction
 Heavy work → queue
 */
 export const createDonation = async (userId, data) => {
-
   return withTransaction(async (session) => {
-
     // 1 Validate campaign
     const campaign = await Campaign.findById(data.campaignId).session(session);
 
@@ -34,16 +31,17 @@ export const createDonation = async (userId, data) => {
           campaign: campaign._id,
           amount: data.amount,
 
+          policySnapshot: campaign.policySnapshot,
+
           status: "PAYMENT_SUCCESS",
           paymentStatus: "SUCCESS",
         },
       ],
-      { session }
+      { session },
     );
 
     // 3 Update campaign stats atomically
     await Campaign.updateOne(
-
       { _id: campaign._id },
 
       {
@@ -52,36 +50,27 @@ export const createDonation = async (userId, data) => {
         },
       },
 
-      { session }
-
+      { session },
     );
 
     // return donation created inside transaction
     return donation[0];
-
-  })
-  .then(async (donation) => {
+  }).then(async (donation) => {
+    await workflowEngine.handleDonationCreated(donation);
 
     // 4 queue heavy processing AFTER transaction commit
     await addDonationJob({
-
       donationId: donation._id,
-
     });
 
     return donation;
-
   });
-
 };
-
-
 
 /*
 NGO APPROVAL
 */
 export const approveDonationByNGO = async (donationId, ngoId) => {
-
   const donation = await Donation.findById(donationId);
 
   if (!donation) {
@@ -95,16 +84,12 @@ export const approveDonationByNGO = async (donationId, ngoId) => {
   await donation.save();
 
   return donation;
-
 };
-
-
 
 /*
 GOVERNMENT APPROVAL
 */
 export const approveDonationByGovernment = async (donationId, govId) => {
-
   const donation = await Donation.findById(donationId);
 
   if (!donation) {
@@ -118,19 +103,14 @@ export const approveDonationByGovernment = async (donationId, govId) => {
   await donation.save();
 
   return donation;
-
 };
-
-
 
 /*
 FINALIZE DONATION
 CREATE WALLET SAFELY
 */
 export const finalizeDonation = async (donationId, beneficiaryId) => {
-
   return withTransaction(async (session) => {
-
     const donation = await Donation.findById(donationId).session(session);
 
     if (!donation) {
@@ -139,15 +119,15 @@ export const finalizeDonation = async (donationId, beneficiaryId) => {
 
     // create wallet safely
     const wallet = await createWallet({
-
       beneficiary: beneficiaryId,
 
       campaign: donation.campaign,
 
       amount: donation.amount,
 
-      session,
+      policy: donation.policySnapshot,
 
+      session,
     });
 
     donation.wallet = wallet._id;
@@ -157,7 +137,32 @@ export const finalizeDonation = async (donationId, beneficiaryId) => {
     await donation.save({ session });
 
     return wallet;
-
   });
+};
 
+export const getDonationById = async (id) => {
+  const donation = await Donation.findById(id);
+
+  if (!donation) throw new AppError("Donation not found", 404);
+
+  return donation;
+};
+
+export const getDonorDonations = async (userId) => {
+  return Donation.find({
+    donor: userId,
+  }).sort({ createdAt: -1 });
+};
+
+export const governmentDecision = async (id, decision) => {
+  const donation = await Donation.findById(id);
+
+  if (!donation) throw new AppError("Donation not found", 404);
+
+  donation.status =
+    decision === "APPROVE" ? "APPROVED_BY_GOVT" : "REJECTED_BY_GOVT";
+
+  await donation.save();
+
+  return donation;
 };

@@ -39,9 +39,12 @@ export const registerBeneficiary = async (userId, data) => {
     // AI eligibility check (async)
 
     await addAIDecisionJob({
-      type: "BENEFICIARY_ELIGIBILITY",
-
-      beneficiaryId: beneficiary[0]._id,
+      type: "beneficiary-eligibility",
+      payload: {
+        beneficiaryId: beneficiary[0]._id,
+        familySize: data.familySize,
+        location: data.location,
+      },
     });
 
     return BaseService.created(beneficiary[0]);

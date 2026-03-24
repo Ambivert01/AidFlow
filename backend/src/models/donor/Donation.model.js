@@ -17,6 +17,14 @@ const donationSchema = new mongoose.Schema(
       index: true,
     },
 
+    // POLICY SNAPSHOT (immutable at donation time)
+    policySnapshot: {
+      allowedCategories: [String],
+      maxPerBeneficiary: Number,
+      maxPerTransaction: Number,
+      validityDays: Number,
+    },
+
     beneficiary: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Beneficiary",
@@ -217,7 +225,7 @@ const donationSchema = new mongoose.Schema(
       default: 1,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // INDEXES
@@ -225,5 +233,6 @@ donationSchema.index({ donor: 1, createdAt: -1 });
 donationSchema.index({ campaign: 1, status: 1 });
 donationSchema.index({ paymentReference: 1 });
 donationSchema.index({ jobIdHash: 1 });
+donationSchema.index({ status: 1, createdAt: -1 });
 
 export const Donation = mongoose.model("Donation", donationSchema);

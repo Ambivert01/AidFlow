@@ -40,14 +40,7 @@ const userSchema = new mongoose.Schema(
     // SYSTEM ROLE
     role: {
       type: String,
-      enum: [
-        "ADMIN",
-        "GOVERNMENT",
-        "NGO",
-        "DONOR",
-        "BENEFICIARY",
-        "MERCHANT",
-      ],
+      enum: ["ADMIN", "GOVERNMENT", "NGO", "DONOR", "BENEFICIARY", "MERCHANT"],
       required: true,
       index: true,
     },
@@ -148,7 +141,7 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // INDEXES

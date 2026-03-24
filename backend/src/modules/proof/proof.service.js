@@ -18,17 +18,21 @@ export const uploadProof = async (ngoId, data) => {
   }
 
   const proof = await Proof.create({
-    donationId: data.donationId,
+    campaign: donation.campaign,
+    beneficiary: data.beneficiaryId,
+    proofType: data.type,
 
-    beneficiaryId: data.beneficiaryId,
+    files: [
+      {
+        fileUrl: data.fileUrl,
+        fileType: "IMAGE",
+      },
+    ],
 
-    uploadedBy: ngoId,
-
-    type: data.type,
-
-    fileUrl: data.fileUrl,
-
-    geoLocation: data.geoLocation,
+    location: {
+      lat: data.geoLocation?.lat,
+      lng: data.geoLocation?.lng,
+    },
 
     status: "UPLOADED",
   });
@@ -36,9 +40,12 @@ export const uploadProof = async (ngoId, data) => {
   // AI verification job
 
   await addAIDecisionJob({
-    type: "PROOF_VERIFICATION",
-
-    proofId: proof._id,
+    type: "proof-validation",
+    payload: {
+      proofId: proof._id,
+      fileUrl: data.fileUrl,
+      geoLocation: data.geoLocation,
+    },
   });
 
   // audit log
@@ -60,7 +67,9 @@ export const uploadProof = async (ngoId, data) => {
 
 export const getDonationProofs = async (donationId) => {
   const proofs = await Proof.find({
-    donationId,
+    campaign: donation.campaign,
+
+    beneficiary: data.beneficiaryId,
   });
 
   return BaseService.success(proofs);

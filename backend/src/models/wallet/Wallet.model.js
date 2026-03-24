@@ -229,5 +229,6 @@ const walletSchema = new mongoose.Schema(
 walletSchema.index({ beneficiary: 1, campaign: 1 }, { unique: true });
 walletSchema.index({ status: 1 });
 walletSchema.index({ jobIdHash: 1 });
+walletSchema.index({ beneficiary: 1, status: 1 });
 
 export const Wallet = mongoose.model("Wallet", walletSchema);

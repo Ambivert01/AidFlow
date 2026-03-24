@@ -14,6 +14,12 @@ import { addFraudCheckJob } from "../../jobs/fraud.job.js";
 
 import { Beneficiary } from "../../models/Beneficiary.model.js";
 
+import policyEngine from "../../engines/policy.engine.js";
+
+import { createSettlementRecord } from "../settlement/settlement.service.js";
+
+import workflowEngine from "../../engines/workflow.engine.js";
+
 export const createWallet = async (data) => {
   const wallet = await Wallet.create({
     beneficiary: data.beneficiary,
@@ -22,7 +28,11 @@ export const createWallet = async (data) => {
 
     balance: data.amount,
 
-    policy: data.policy,
+    policy: {
+      ...data.policy,
+
+      expiresAt: new Date(Date.now() + data.policy.validityDays * 86400000),
+    },
 
     status: WALLET_STATUS.ACTIVE,
   });
@@ -46,17 +56,17 @@ export const spendWallet = async (beneficiaryId, data) => {
       throw new AppError("Insufficient balance", 400);
     }
 
-    // category validation
+    // // category validation
 
-    if (!wallet.policy.allowedCategories.includes(data.category)) {
-      throw new AppError("Category not allowed", 400);
-    }
+    // if (!wallet.policy.allowedCategories.includes(data.category)) {
+    //   throw new AppError("Category not allowed", 400);
+    // }
 
-    // per transaction limit
+    // // per transaction limit
 
-    if (data.amount > wallet.policy.maxPerTransaction) {
-      throw new AppError("Exceeds per transaction limit", 400);
-    }
+    // if (data.amount > wallet.policy.maxPerTransaction) {
+    //   throw new AppError("Exceeds per transaction limit", 400);
+    // }
 
     // merchant validation
 
@@ -66,7 +76,7 @@ export const spendWallet = async (beneficiaryId, data) => {
       throw new AppError("Invalid merchant", 400);
     }
 
-    // GEO VALIDATION 
+    // GEO VALIDATION
 
     // example simple distance check (km)
     const calculateDistance = (loc1, loc2) => {
@@ -102,6 +112,20 @@ export const spendWallet = async (beneficiaryId, data) => {
       }
     }
 
+    policyEngine.validateTransaction(
+      wallet.policy,
+
+      {
+        category: data.category,
+        merchantId: data.merchantId,
+        amount: data.amount,
+        todaySpent: 0,
+        walletExpiry: wallet.policy.expiresAt,
+        lat: beneficiary?.location?.lat,
+        lng: beneficiary?.location?.lng,
+      },
+    );
+
     // deduct balance
 
     wallet.balance -= data.amount;
@@ -113,7 +137,7 @@ export const spendWallet = async (beneficiaryId, data) => {
 
       category: data.category,
 
-      merchantId: merchant._id,
+      merchant: merchant._id,
 
       merchantName: merchant.shopName,
 
@@ -156,6 +180,22 @@ export const freezeWallet = async (walletId, reason, adminId) => {
   wallet.frozenBy = adminId;
 
   await wallet.save();
+
+  await createAuditLog({
+    eventType: "WALLET_FROZEN",
+
+    entityId: wallet._id,
+
+    actorRole: "ADMIN",
+
+    payload: { reason },
+  });
+
+  await workflowEngine.handleTransactionCompleted({
+    id: wallet._id,
+
+    amount: data.amount,
+  });
 
   return BaseService.updated(wallet);
 };

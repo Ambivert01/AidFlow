@@ -7,6 +7,8 @@ import { BaseService } from "../../core/base.service.js";
 
 import { AppError } from "../../utils/AppError.js";
 
+import workflowEngine from "../../engines/workflow.engine.js";
+
 export const allocateDonationToBeneficiary = async (ngoId, data) => {
   const donation = await Donation.findById(data.donationId);
 
@@ -26,10 +28,10 @@ export const allocateDonationToBeneficiary = async (ngoId, data) => {
 
   // create wallet
 
-  const wallet = await createWallet({
-    beneficiary: beneficiary._id,
+  const wallet = await workflowEngine.handleBeneficiaryVerified({
+    id: beneficiary._id,
 
-    campaign: donation.campaign,
+    campaignId: donation.campaign,
 
     amount: donation.amount,
 

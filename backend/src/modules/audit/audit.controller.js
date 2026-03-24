@@ -21,3 +21,9 @@ export const finalizeAudit = asyncHandler(async (req, res) => {
 
   res.json(result);
 });
+
+export const searchAudit = asyncHandler(async (req, res) => {
+  const result = await auditService.searchAudit(req.query);
+
+  res.json(result);
+});

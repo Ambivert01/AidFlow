@@ -222,6 +222,7 @@ beneficiarySchema.index(
 
 beneficiarySchema.index({ campaign: 1, status: 1 });
 beneficiarySchema.index({ riskScore: 1 });
+beneficiarySchema.index({ campaign: 1, riskScore: -1 });
 
 export const Beneficiary = mongoose.model(
   "Beneficiary",

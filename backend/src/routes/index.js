@@ -24,7 +24,15 @@ import auditRoutes from "../modules/audit/audit.routes.js";
 
 import systemRoutes from "../modules/system/system.routes.js";
 
+import notificationRoutes from "../modules/notification/notification.routes.js";
+
+import proofRoutes from "../modules/proof/proof.routes.js";
+
+import settlementRoutes from "../modules/settlement/settlement.routes.js";
+
 const router = express.Router();
+
+// system
 
 router.use("/system", systemRoutes);
 
@@ -32,40 +40,52 @@ router.use("/system", systemRoutes);
 
 router.use("/auth", authRoutes);
 
-// campaign
+// campaigns
 
 router.use("/campaigns", campaignRoutes);
 
-// donation
+// donations
 
 router.use("/donations", donationRoutes);
 
-// beneficiary
+// beneficiaries
 
 router.use("/beneficiaries", beneficiaryRoutes);
 
 // wallet
 
-router.use("/wallets", walletRoutes);
+router.use("/wallet", walletRoutes);
 
-// merchant
+// merchants
 
 router.use("/merchants", merchantRoutes);
 
-// NGO operations
+// NGO
 
 router.use("/ngo", ngoRoutes);
 
-// admin controls
+// admin
 
 router.use("/admin", adminRoutes);
 
-// government controls
+// government
 
 router.use("/government", governmentRoutes);
 
-// transparency audit
+// audit transparency
 
 router.use("/audit", auditRoutes);
+
+// notifications
+
+router.use("/notifications", notificationRoutes);
+
+// proofs
+
+router.use("/proofs", proofRoutes);
+
+// settlements
+
+router.use("/settlements", settlementRoutes);
 
 export default router;

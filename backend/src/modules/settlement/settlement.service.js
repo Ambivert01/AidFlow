@@ -6,19 +6,30 @@ import { BaseService } from "../../core/base.service.js";
 import { AppError } from "../../utils/AppError.js";
 
 import { createAuditLog } from "../audit/audit.service.js";
+import { settlementQueue } from "../../queues/settlement.queue.js";
 
 export const createSettlementRecord = async (data) => {
   const settlement = await Settlement.create({
     merchant: data.merchantId,
 
-    wallet: data.walletId,
+    batchId: `BATCH_${Date.now()}`,
+
+    transactions: [data.walletId],
 
     amount: data.amount,
 
-    type: "WALLET_SPEND",
+    transactionCount: 1,
 
-    status: "PENDING",
+    status: "CREATED",
   });
+
+  await settlementQueue.add(
+    "process-settlement",
+
+    {
+      settlementId: settlement._id,
+    },
+  );
 
   await createAuditLog({
     eventType: "MERCHANT_PAID",
