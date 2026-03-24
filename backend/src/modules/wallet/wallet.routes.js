@@ -10,6 +10,8 @@ import * as walletController from "./wallet.controller.js";
 
 import { spendWalletSchema } from "./wallet.validator.js";
 
+import { walletLimiter } from "../../middlewares/rateLimit.middleware.js";
+
 const router = express.Router();
 
 // beneficiary spends wallet
@@ -20,6 +22,8 @@ router.post(
   authenticate,
 
   authorize("BENEFICIARY"),
+
+  walletLimiter,
 
   validate(spendWalletSchema),
 

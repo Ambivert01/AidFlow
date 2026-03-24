@@ -3,7 +3,7 @@ import pino from "pino";
 const logger = pino();
 
 export const errorHandler = (err, req, res, next) => {
-  logger.error(err); 
+  logger.error(err);
 
   // Default values
   let statusCode = err.statusCode || 500;

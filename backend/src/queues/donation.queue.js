@@ -1,6 +1,3 @@
-import { Queue } from "bullmq";
-import { connection } from "./connection.js";
+import { createQueue } from "./base.queue.js";
 
-export const donationQueue = new Queue("donationQueue", {
-  connection,
-});
+export const donationQueue = createQueue("donation-processing");

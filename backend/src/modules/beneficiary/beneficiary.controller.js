@@ -35,3 +35,18 @@ export const getMyProfile = asyncHandler(async (req, res) => {
 
   res.json(result);
 });
+
+export const appealDecision = asyncHandler(async (req, res) => {
+  const result = await beneficiaryService.appealDecision(
+    req.params.id,
+    req.body.reason,
+  );
+
+  res.json(ApiResponse.updated(result));
+});
+
+export const bulkUpload = asyncHandler(async (req, res) => {
+  const result = await beneficiaryService.bulkUpload(req.body.list);
+
+  res.status(201).json(ApiResponse.created(result));
+});

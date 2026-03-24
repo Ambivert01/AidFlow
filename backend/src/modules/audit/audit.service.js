@@ -53,3 +53,14 @@ export const finalizeAuditWorkflow = async (jobIdHash) => {
     logsCount: logs.length,
   });
 };
+
+export const searchAudit = async(query)=>{
+
+ return AuditLog.find({
+
+  actorRole:query.role,
+  eventType:query.event
+
+ });
+
+};

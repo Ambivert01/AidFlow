@@ -1,11 +1,9 @@
 import { logger } from "../utils/logger.js";
 
 export const loggingMiddleware = (req, res, next) => {
-
   const start = Date.now();
 
   res.on("finish", () => {
-
     logger.info({
       requestId: req.requestId,
       method: req.method,
@@ -14,7 +12,6 @@ export const loggingMiddleware = (req, res, next) => {
       duration: Date.now() - start,
       user: req.user?._id,
     });
-
   });
 
   next();

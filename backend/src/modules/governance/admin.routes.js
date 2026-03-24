@@ -5,7 +5,31 @@ import { authorize } from "../../middlewares/authorize.middleware.js";
 
 import * as adminController from "./admin.controller.js";
 
+import * as fraudController from "./fraud.controller.js";
+
+import * as govController from "../governance/governance.controller.js";
+
 const router = express.Router();
+
+router.get(
+  "/fraud-cases",
+
+  authenticate,
+
+  authorize("ADMIN"),
+
+  fraudController.getFraudCases,
+);
+
+router.patch(
+  "/fraud-cases/:id/resolve",
+
+  authenticate,
+
+  authorize("ADMIN"),
+
+  fraudController.resolveFraudCase,
+);
 
 router.patch(
   "/users/:id/approve",
@@ -45,6 +69,13 @@ router.get(
   authorize("ADMIN"),
 
   adminController.getFraudAlerts,
+);
+
+router.patch(
+  "/policy",
+  authenticate,
+  authorize("GOVERNMENT"),
+  govController.updatePolicy,
 );
 
 export default router;

@@ -40,4 +40,11 @@ router.post(
   auditController.finalizeAudit,
 );
 
+router.get(
+ "/search",
+ authenticate,
+ authorize("ADMIN"),
+ auditController.searchAudit
+);
+
 export default router;

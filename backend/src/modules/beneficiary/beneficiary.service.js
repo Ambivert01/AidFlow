@@ -81,3 +81,25 @@ export const getMyBeneficiaryProfile = async (userId) => {
 
   return BaseService.success(beneficiary);
 };
+
+export const appealDecision = async (id, reason) => {
+  const beneficiary = await Beneficiary.findById(id);
+
+  beneficiary.status = "MANUAL_REVIEW";
+
+  beneficiary.appealReason = reason;
+
+  await beneficiary.save();
+
+  return beneficiary;
+};
+
+export const bulkUpload = async (list) => {
+  const inserted = [];
+
+  for (const b of list) {
+    inserted.push(await Beneficiary.create(b));
+  }
+
+  return inserted;
+};

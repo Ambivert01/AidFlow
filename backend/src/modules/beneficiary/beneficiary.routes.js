@@ -62,4 +62,18 @@ router.get(
   beneficiaryController.getMyProfile,
 );
 
+router.post(
+  "/:id/appeal",
+  authenticate,
+  authorize("BENEFICIARY"),
+  beneficiaryController.appealDecision,
+);
+
+router.post(
+ "/bulk",
+ authenticate,
+ authorize("NGO"),
+ beneficiaryController.bulkUpload
+);
+
 export default router;

@@ -12,6 +12,8 @@ import { WALLET_STATUS } from "./wallet.constants.js";
 
 import { addFraudCheckJob } from "../../jobs/fraud.job.js";
 
+import { Beneficiary } from "../../models/Beneficiary.model.js";
+
 export const createWallet = async (data) => {
   const wallet = await Wallet.create({
     beneficiary: data.beneficiary,
@@ -62,6 +64,42 @@ export const spendWallet = async (beneficiaryId, data) => {
 
     if (!merchant || merchant.status !== "ACTIVE") {
       throw new AppError("Invalid merchant", 400);
+    }
+
+    // GEO VALIDATION 
+
+    // example simple distance check (km)
+    const calculateDistance = (loc1, loc2) => {
+      const toRad = (v) => (v * Math.PI) / 180;
+
+      const R = 6371;
+
+      const dLat = toRad(loc2.lat - loc1.lat);
+
+      const dLon = toRad(loc2.lng - loc1.lng);
+
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(loc1.lat)) *
+          Math.cos(toRad(loc2.lat)) *
+          Math.sin(dLon / 2) ** 2;
+
+      return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    };
+
+    // fetch beneficiary
+
+    const beneficiary = await Beneficiary.findById(beneficiaryId);
+
+    if (beneficiary?.location?.lat && merchant?.location?.lat) {
+      const distance = calculateDistance(
+        beneficiary.location,
+        merchant.location,
+      );
+
+      if (distance > 50) {
+        throw new AppError("Merchant too far from beneficiary location", 400);
+      }
     }
 
     // deduct balance

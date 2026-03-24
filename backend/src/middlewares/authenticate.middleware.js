@@ -12,10 +12,7 @@ export const authenticate = async (req, res, next) => {
 
     const token = authHeader.split(" ")[1];
 
-    const decoded = jwt.verify(
-      token,
-      jwtConfig.secret,
-    );
+    const decoded = jwt.verify(token, jwtConfig.secret);
 
     const user = await User.findById(decoded.sub);
 

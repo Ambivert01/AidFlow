@@ -10,6 +10,8 @@ import * as donationController from "./donation.controller.js";
 
 import { createDonationSchema } from "./donation.validator.js";
 
+import { donationLimiter } from "../../middlewares/rateLimit.middleware.js";
+
 const router = express.Router();
 
 // donor creates donation
@@ -20,6 +22,8 @@ router.post(
   authenticate,
 
   authorize("DONOR"),
+
+  donationLimiter,
 
   validate(createDonationSchema),
 
@@ -70,6 +74,20 @@ router.patch(
   authorize("GOVERNMENT"),
 
   donationController.governmentDecision,
+);
+
+router.post(
+  "/recurring",
+  authenticate,
+  authorize("DONOR"),
+  donationController.createRecurringDonation,
+);
+
+router.get(
+  "/recurring",
+  authenticate,
+  authorize("DONOR"),
+  donationController.getRecurringDonations,
 );
 
 export default router;
