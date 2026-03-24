@@ -1,6 +1,6 @@
-import { Wallet } from "../../models/Wallet.model.js";
+import { Wallet } from "../../models/wallet/Wallet.model.js";
 
-import { Merchant } from "../../models/Merchant.model.js";
+import { Merchant } from "../../models/merchant/Merchant.model.js";
 
 import { AppError } from "../../utils/AppError.js";
 
@@ -12,7 +12,7 @@ import { WALLET_STATUS } from "./wallet.constants.js";
 
 import { addFraudCheckJob } from "../../jobs/fraud.job.js";
 
-import { Beneficiary } from "../../models/Beneficiary.model.js";
+import { Beneficiary } from "../../models/beneficiary/Beneficiary.model.js";
 
 import policyEngine from "../../engines/policy.engine.js";
 

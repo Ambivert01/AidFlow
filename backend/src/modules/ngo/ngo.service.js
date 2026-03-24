@@ -1,5 +1,5 @@
-import { Donation } from "../../models/Donation.model.js";
-import { Beneficiary } from "../../models/Beneficiary.model.js";
+import { Donation } from "../../models/donor/Donation.model.js";
+import { Beneficiary } from "../../models/beneficiary/Beneficiary.model.js";
 
 import { createWallet } from "../wallet/wallet.service.js";
 

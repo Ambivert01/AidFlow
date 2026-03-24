@@ -1,6 +1,6 @@
-import { Proof } from "../../models/Proof.model.js";
+import { Proof } from "../../models/proofs/Proof.model.js";
 
-import { Donation } from "../../models/Donation.model.js";
+import { Donation } from "../../models/donor/Donation.model.js";
 
 import { BaseService } from "../../core/base.service.js";
 

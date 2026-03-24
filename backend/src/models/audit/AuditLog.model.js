@@ -52,7 +52,6 @@ const auditLogSchema = new mongoose.Schema(
     jobIdHash: {
       type: String,
       required: true,
-      index: true,
     },
 
     campaignId: {
@@ -195,7 +194,7 @@ const auditLogSchema = new mongoose.Schema(
       default: "1.0",
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // INDEXES

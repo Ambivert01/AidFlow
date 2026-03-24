@@ -14,7 +14,6 @@ const settlementSchema = new mongoose.Schema(
     batchId: {
       type: String,
       required: true,
-      index: true,
     },
 
     settlementReference: {
@@ -51,12 +50,7 @@ const settlementSchema = new mongoose.Schema(
     // PAYMENT DETAILS
     paymentMethod: {
       type: String,
-      enum: [
-        "BANK_TRANSFER",
-        "UPI",
-        "PAYMENT_GATEWAY",
-        "CRYPTO",
-      ],
+      enum: ["BANK_TRANSFER", "UPI", "PAYMENT_GATEWAY", "CRYPTO"],
       default: "BANK_TRANSFER",
     },
 
@@ -68,19 +62,12 @@ const settlementSchema = new mongoose.Schema(
     bankReference: {
       type: String,
       default: null,
-      index: true,
     },
 
     // STATUS
     status: {
       type: String,
-      enum: [
-        "CREATED",
-        "PROCESSING",
-        "COMPLETED",
-        "FAILED",
-        "CANCELLED",
-      ],
+      enum: ["CREATED", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED"],
       default: "CREATED",
       index: true,
     },
@@ -132,7 +119,7 @@ const settlementSchema = new mongoose.Schema(
       default: 1,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // INDEXES

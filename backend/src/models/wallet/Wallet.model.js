@@ -52,7 +52,7 @@ const walletTransactionSchema = new mongoose.Schema(
       default: Date.now,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const walletSchema = new mongoose.Schema(
@@ -81,7 +81,6 @@ const walletSchema = new mongoose.Schema(
     // WORKFLOW TRACE
     jobIdHash: {
       type: String,
-      index: true,
       required: true,
     },
 
@@ -108,7 +107,6 @@ const walletSchema = new mongoose.Schema(
       type: String,
       enum: ["ACTIVE", "FROZEN", "EXPIRED", "CLOSED"],
       default: "ACTIVE",
-      index: true,
     },
 
     // POLICY SNAPSHOT
@@ -222,7 +220,7 @@ const walletSchema = new mongoose.Schema(
       default: 1,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // INDEXES

@@ -1,4 +1,4 @@
-import { Notification } from "../../models/Notification.model.js";
+import { Notification } from "../../models/system/Notification.model.js";
 
 import { BaseService } from "../../core/base.service.js";
 

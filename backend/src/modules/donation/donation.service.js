@@ -1,5 +1,5 @@
-import { Donation } from "../../models/Donation.model.js";
-import { Campaign } from "../../models/Campaign.model.js";
+import { Donation } from "../../models/donor/Donation.model.js";
+import { Campaign } from "../../models/ngo/Campaign.model.js";
 import { AppError } from "../../utils/AppError.js";
 import { withTransaction } from "../../core/transaction.js";
 

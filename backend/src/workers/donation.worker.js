@@ -1,7 +1,7 @@
 import { Worker } from "bullmq";
 import { redisConnection } from "../config/redis.config.js";
 
-import { Donation } from "../models/Donation.model.js";
+import { Donation } from "../models/donor/Donation.model.js";
 import aiService from "../infrastructure/ai/ai.service.js";
 import { createAuditLog } from "../modules/audit/audit.service.js";
 

@@ -1,7 +1,7 @@
-import { User } from "../../models/User.model.js";
-import { Wallet } from "../../models/Wallet.model.js";
-import { Merchant } from "../../models/Merchant.model.js";
-import { FraudAlert } from "../../models/FraudAlert.model.js";
+import { User } from "../../models/auth/User.model.js";
+import { Wallet } from "../../models/wallet/Wallet.model.js";
+import { Merchant } from "../../models/merchant/Merchant.model.js";
+import { FraudAlert } from "../../models/governance/FraudAlert.model.js";
 
 import { BaseService } from "../../core/base.service.js";
 import { AppError } from "../../utils/AppError.js";

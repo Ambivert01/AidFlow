@@ -13,3 +13,12 @@ export const reviewDonation = asyncHandler(async (req, res) => {
 
   res.json(result);
 });
+
+export const updatePolicy = asyncHandler(async (req, res) => {
+  const policy = await SystemPolicy.findOneAndUpdate({}, req.body, {
+    new: true,
+    upsert: true,
+  });
+
+  res.json(policy);
+});

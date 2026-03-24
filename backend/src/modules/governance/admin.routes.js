@@ -7,7 +7,7 @@ import * as adminController from "./admin.controller.js";
 
 import * as fraudController from "./fraud.controller.js";
 
-import * as govController from "../governance/governance.controller.js";
+import * as govController from "./government.controller.js";
 
 const router = express.Router();
 

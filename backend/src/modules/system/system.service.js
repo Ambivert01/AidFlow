@@ -2,6 +2,8 @@ import os from "os";
 
 import { SYSTEM_INFO } from "./system.constants.js";
 
+import { redisConnection } from "../../config/redis.config.js";
+
 export const getHealth = async () => {
   return {
     status: "ok",
@@ -31,5 +33,13 @@ export const getMetrics = async () => {
     cpuLoad: os.loadavg(),
 
     uptime: process.uptime(),
+  };
+};
+
+export const redisHealth = async () => {
+  const pong = await redisConnection.ping();
+
+  return {
+    redis: pong === "PONG" ? "ok" : "down",
   };
 };

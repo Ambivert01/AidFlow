@@ -1,4 +1,4 @@
-import { AuditLog } from "../../models/AuditLog.model.js";
+import { AuditLog } from "../../models/audit/AuditLog.model.js";
 
 import { BaseService } from "../../core/base.service.js";
 

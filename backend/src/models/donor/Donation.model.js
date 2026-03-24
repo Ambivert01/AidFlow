@@ -64,7 +64,6 @@ const donationSchema = new mongoose.Schema(
     paymentReference: {
       type: String,
       default: null,
-      index: true,
     },
 
     paymentStatus: {
@@ -88,7 +87,6 @@ const donationSchema = new mongoose.Schema(
     jobIdHash: {
       type: String,
       required: true,
-      index: true,
     },
 
     idempotencyKey: {

@@ -1,0 +1,241 @@
+sudo systemctl start redis-server
+npm run dev
+npm run workers
+
+CTRL + C
+sudo systemctl stop redis-server
+
+redis-cli ping
+
+========================================================================
+
+AidFlow uses queues + workers + redis + async jobs, so multiple processes run.
+
+AidFlow now has 2 types of processes
+
+1. API Server (Express app)
+
+Handles:
+
+login
+create donation
+create campaign
+wallet spend
+fetch data
+
+Run with: npm run dev
+
+
+2. Workers (background processors)
+
+Handle heavy tasks:
+
+AI decision
+fraud detection
+blockchain anchoring
+donation risk scoring
+wallet expiry
+recurring donations
+
+Run with: npm run workers  
+{"workers": "nodemon src/workers/index.js" in package.json}
+
+
+
+WHY WORKERS ARE NEEDED
+
+Example:
+User donates ₹5000
+
+System must:
+
+store donation
+call AI risk model
+calculate fraud probability
+write audit log
+maybe anchor blockchain
+
+If API waits → response slow 
+So we do:
+
+API: save donation → send job to queue → return response fast
+
+Worker: process AI + fraud in background
+
+
+Visual Flow:-
+
+User clicks donate
+        ↓
+Express API (npm run dev)
+        ↓
+job added to Redis queue
+        ↓
+Worker picks job (npm run workers)
+        ↓
+AI decision / fraud check
+        ↓
+DB updated
+
+
+WHAT EACH COMPONENT DOES:-
+
+EXPRESS SERVER:
+
+Command: npm run dev
+
+Starts:
+
+app.js
+routes
+controllers
+services
+middleware
+swagger docs
+queue dashboard UI
+
+Test: http://localhost:5000/health
+
+
+REDIS SERVER:
+
+Queue storage.
+BullMQ stores jobs here.
+
+Start once:
+
+Linux: sudo service redis-server start
+
+OR
+
+redis-server
+
+Check: redis-cli ping
+
+should return: PONG
+
+
+WORKERS:
+
+Command: npm run workers
+
+Runs:
+
+ai.worker
+donation.worker
+fraud.worker
+blockchain.worker
+walletExpiry.worker
+recurring.worker
+
+Workers continuously watch queue.
+
+
+QUEUES:
+
+Queues live in Redis.
+
+Example:
+
+ai-processing queue
+donation-processing queue
+fraud-detection queue
+blockchain-anchor queue
+
+Visible in dashboard: http://localhost:5000/admin/queues
+
+
+SWAGGER DOCS:
+
+API documentation UI.
+
+Open: http://localhost:5000/docs
+
+Lets you test APIs easily.
+
+
+HOW TO RUN EVERYTHING (STEP BY STEP)
+
+Open 3 terminals
+
+TERMINAL 1 — Start Redis
+redis-server
+
+or
+
+sudo service redis-server start
+TERMINAL 2 — Start backend
+npm run dev
+
+Output:
+
+MongoDB connected
+AidFlow server running on port 5000
+TERMINAL 3 — Start workers
+npm run workers
+
+Output:
+
+Workers started...
+AI worker ready
+Fraud worker ready
+Donation worker ready
+SIMPLE MEMORY TRICK
+Backend = brain
+Redis = memory
+Workers = hands
+
+Brain decides.
+Memory stores tasks.
+Hands execute tasks.
+
+WHEN EACH PART IS NEEDED
+component	needed when
+npm run dev	ALWAYS
+redis-server	when using queues
+npm run workers	when async jobs exist
+swagger	optional UI
+queue dashboard	debugging
+jobs folder	triggered automatically
+MINIMUM REQUIRED TO RUN SYSTEM
+
+Always run:
+
+1
+redis-server
+2
+npm run dev
+3
+npm run workers
+
+That's all.
+
+WHAT HAPPENS IF WORKERS NOT RUNNING?
+
+Example:
+
+create donation works
+
+BUT:
+
+AI decision never processed
+fraud check never runs
+wallet expiry never triggers
+
+System partially works.
+
+FINAL SIMPLE WORKFLOW
+
+Start project:
+
+redis-server
+npm run dev
+npm run workers
+
+open:
+
+/health
+/docs
+/admin/queues
+
+System fully active.

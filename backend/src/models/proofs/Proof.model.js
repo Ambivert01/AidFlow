@@ -33,7 +33,7 @@ const proofFileSchema = new mongoose.Schema(
       default: {},
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const proofSchema = new mongoose.Schema(
@@ -174,7 +174,6 @@ const proofSchema = new mongoose.Schema(
         "REJECTED",
       ],
       default: "UPLOADED",
-      index: true,
     },
 
     // AUDIT LINK
@@ -201,7 +200,7 @@ const proofSchema = new mongoose.Schema(
       default: 1,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // INDEXES

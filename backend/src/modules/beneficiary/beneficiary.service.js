@@ -1,4 +1,4 @@
-import { Beneficiary } from "../../models/Beneficiary.model.js";
+import { Beneficiary } from "../../models/beneficiary/Beneficiary.model.js";
 
 import { AppError } from "../../utils/AppError.js";
 

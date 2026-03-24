@@ -28,7 +28,6 @@ const campaignSchema = new mongoose.Schema(
         "OTHER",
       ],
       required: true,
-      index: true,
     },
 
     tags: {
@@ -65,7 +64,6 @@ const campaignSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      index: true,
     },
 
     // POLICY SNAPSHOT
@@ -232,12 +230,11 @@ const campaignSchema = new mongoose.Schema(
       default: 1,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // INDEXES
 campaignSchema.index({ createdBy: 1, status: 1 });
 campaignSchema.index({ disasterType: 1 });
-campaignSchema.index({ jobIdHash: 1 });
 
 export const Campaign = mongoose.model("Campaign", campaignSchema);

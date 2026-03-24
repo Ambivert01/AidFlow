@@ -1,6 +1,6 @@
-import { Settlement } from "../../models/Settlement.model.js";
-import { Wallet } from "../../models/Wallet.model.js";
-import { Merchant } from "../../models/Merchant.model.js";
+import { Settlement } from "../../models/merchant/Settlement.model.js";
+import { Wallet } from "../../models/wallet/Wallet.model.js";
+import { Merchant } from "../../models/merchant/Merchant.model.js";
 
 import { BaseService } from "../../core/base.service.js";
 import { AppError } from "../../utils/AppError.js";

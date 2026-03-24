@@ -1,4 +1,4 @@
-import { Merchant } from "../../models/Merchant.model.js";
+import { Merchant } from "../../models/merchant/Merchant.model.js";
 
 import { AppError } from "../../utils/AppError.js";
 

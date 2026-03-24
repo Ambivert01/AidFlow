@@ -1,7 +1,7 @@
 import { Worker } from "bullmq"
 import { redisConnection } from "../config/redis.config.js"
 
-import { Wallet } from "../models/Wallet.model.js"
+import { Wallet } from "../models/wallet/Wallet.model.js"
 import { createAuditLog } from "../modules/audit/audit.service.js"
 
 new Worker(

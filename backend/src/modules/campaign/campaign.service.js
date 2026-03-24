@@ -1,4 +1,4 @@
-import { Campaign } from "../../models/Campaign.model.js";
+import { Campaign } from "../../models/ngo/Campaign.model.js";
 
 import { AppError } from "../../utils/AppError.js";
 
