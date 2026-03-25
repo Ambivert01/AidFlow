@@ -1,7 +1,7 @@
 // src/infrastructure/blockchain/audit.service.js
 
 import crypto from "crypto";
-import logger from "../../utils/logger.js";
+import { logger } from "../../utils/logger.js";
 
 class BlockchainAuditService {
   constructor() {

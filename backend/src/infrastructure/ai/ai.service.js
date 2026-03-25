@@ -1,7 +1,5 @@
-// src/infrastructure/ai/ai.service.js
-
 import axios from "axios";
-import logger from "../../utils/logger.js";
+import { logger } from "../../utils/logger.js";
 
 class AIService {
   constructor() {
