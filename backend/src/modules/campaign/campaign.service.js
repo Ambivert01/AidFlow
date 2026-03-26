@@ -1,3 +1,5 @@
+import { User } from "../../models/auth/User.model.js";
+
 import { Campaign } from "../../models/ngo/Campaign.model.js";
 
 import { AppError } from "../../utils/AppError.js";
@@ -8,35 +10,44 @@ import { withTransaction } from "../../core/transaction.js";
 
 import { CAMPAIGN_STATUS } from "./campaign.constants.js";
 
+import { generateHash } from "../../utils/hash.util.js";
+
+
 export const createCampaign = async (ngoId, data) => {
+  const ngo = await User.findById(ngoId);
+
+  if (!ngo || ngo.verificationStatus !== "APPROVED") {
+    throw new AppError("NGO not verified by admin yet", 403);
+  }
+
   return withTransaction(async (session) => {
+    const jobIdHash = generateHash({
+      type: "CAMPAIGN",
+      ngoId,
+      timestamp: Date.now(),
+      title: data.title,
+    });
+
     const campaign = await Campaign.create(
       [
         {
           title: data.title,
-
           description: data.description,
-
           disasterType: data.disasterType,
-
           location: data.location,
-
           createdBy: ngoId,
+          jobIdHash,
 
           policySnapshot: {
             allowedCategories: data.policy.allowedCategories,
-
             maxPerBeneficiary: data.policy.maxPerBeneficiary,
-
             validityDays: data.policy.validityDays,
-
             maxPerTransaction: data.policy.maxPerTransaction,
           },
 
           status: CAMPAIGN_STATUS.DRAFT,
         },
       ],
-
       { session },
     );
 

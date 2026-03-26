@@ -1,19 +1,22 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
-import { User } from "../src/models/User.model.js";
+
+import { User } from "../src/models/auth/User.model.js";
 
 dotenv.config();
 
 async function createAdmin() {
   await mongoose.connect(process.env.MONGO_URI);
 
-  const email = "admin@aidflow.gov";
-  const password = "admin123";
+  const email = "admin@aidflow.com";
+  const password = "Admin@123";
 
   const exists = await User.findOne({ email });
+
   if (exists) {
     console.log("Admin already exists");
+
     process.exit();
   }
 
@@ -21,13 +24,20 @@ async function createAdmin() {
 
   await User.create({
     name: "System Administrator",
+
     email,
-    password: hashed,
+
+    passwordHash: hashed,
+
     role: "ADMIN",
+
+    isActive: true,
+
     verificationStatus: "APPROVED",
   });
 
-  console.log("Admin created");
+  console.log("Admin created successfully");
+
   process.exit();
 }
 

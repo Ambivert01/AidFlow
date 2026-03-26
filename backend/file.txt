@@ -239,3 +239,37 @@ open:
 /admin/queues
 
 System fully active.
+
+
+
+
+
+{
+ "email": "admin@aidflow.com",
+ "password": "Admin@123"
+}
+
+{
+"email":"gov@test.com",
+"password":"Gov12345"
+}
+
+{
+"email":"ngo@test.com",
+"password":"Ngo12345",
+}
+
+{
+"email":"donor@test.com",
+"password":"Donor123",
+}
+
+{
+"email":"beneficiary@test.com",
+"password":"Benef123",
+}
+
+{
+"email":"merchant@test.com",
+"password":"Merchant123",
+}
