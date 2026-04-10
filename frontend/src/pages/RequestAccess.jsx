@@ -16,7 +16,7 @@ export default function RequestAccess() {
     
     try {
       // Use the open end-point to list in the pending PENDING state
-      await api.post("/access/request", { ...formData, role: formData.role });
+      await api.post("/access/request", formData);
       setSuccess(true);
     } catch (err) {
       setError(err.response?.data?.message || "Application failed. Email may already be in use.");

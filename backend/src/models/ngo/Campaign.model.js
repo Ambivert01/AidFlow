@@ -15,6 +15,12 @@ const campaignSchema = new mongoose.Schema(
       required: true,
     },
 
+    targetAmount: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+
     disasterType: {
       type: String,
       enum: [

@@ -8,7 +8,7 @@ export default function PaymentHistory() {
 
   useEffect(() => {
     api.get("/wallet/transactions")
-      .then(res => setHistory(res.data || []))
+      .then(res => setHistory(res.data?.data || res.data || []))
       .finally(() => setLoading(false));
   }, []);
 

@@ -16,17 +16,16 @@ export default function BeneficiaryDashboard() {
     const fetch = async () => {
       try {
         const [walletsRes, txRes] = await Promise.all([
-          api.get("/wallet/me"), // This should return an array if multi-wallet is supported, but controller currently returns one. 
-          // I will assume for now it returns a single wallet object as per controller, 
-          // but I'll wrap it in an array to future-proof the UI.
-          api.get("/wallet/transactions").catch(() => ({ data: [] }))
+          api.get("/wallet/me"),
+          api.get("/wallet/transactions").catch(() => ({ data: { data: [] } }))
         ]);
         
-        const walletData = walletsRes.data ? [walletsRes.data] : [];
+        const walletData = walletsRes.data?.data ? [walletsRes.data.data] : [];
         setWallets(walletData);
         if (walletData.length > 0) setSelectedWallet(walletData[0]);
         
-        setTransactions(txRes.data.slice(0, 10) || []);
+        const txData = txRes.data?.data || txRes.data || [];
+        setTransactions(txData.slice(0, 10));
       } catch (err) {
         console.error("Beneficiary data fetch error", err);
       } finally {

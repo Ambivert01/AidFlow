@@ -12,7 +12,6 @@ import { CAMPAIGN_STATUS } from "./campaign.constants.js";
 
 import { generateHash } from "../../utils/hash.util.js";
 
-
 export const createCampaign = async (ngoId, data) => {
   const ngo = await User.findById(ngoId);
 
@@ -34,6 +33,7 @@ export const createCampaign = async (ngoId, data) => {
           title: data.title,
           description: data.description,
           disasterType: data.disasterType,
+          targetAmount: data.targetAmount,
           location: data.location,
           createdBy: ngoId,
           jobIdHash,
@@ -58,16 +58,10 @@ export const createCampaign = async (ngoId, data) => {
 export const activateCampaign = async (campaignId, ngoId) => {
   const campaign = await Campaign.findById(campaignId);
 
-  if (!campaign) {
-    throw new AppError("Campaign not found", 404);
-  }
-
-  if (!campaign.createdBy.equals(ngoId)) {
-    throw new AppError("Unauthorized", 403);
-  }
+  if (!campaign) throw new AppError("Campaign not found", 404);
+  if (!campaign.createdBy.equals(ngoId)) throw new AppError("Unauthorized", 403);
 
   campaign.status = CAMPAIGN_STATUS.ACTIVE;
-
   await campaign.save();
 
   return BaseService.updated(campaign);

@@ -1,75 +1,36 @@
 import api from "./api";
 
-/*
-Create new relief campaign
- */
+// NGO dashboard stats
+export const getNgoDashboard = () => api.get("/ngo/dashboard");
+
+// NGO's own campaigns
+export const fetchNgoCampaigns = () => api.get("/ngo/campaigns");
+
+// Create campaign
 export const createCampaign = (data) => api.post("/campaigns", data);
 
-/*
-Fetch NGO-owned campaigns
- */
-export const fetchNgoCampaigns = () => api.get("/campaigns/ngo");
+// Pending donations for NGO review
+export const fetchPendingDonations = () => api.get("/ngo/donations/pending");
 
-/*
-Add beneficiary to campaign
- */
-export const addBeneficiary = (data) => api.post("/beneficiary/register", data);
+// Assign beneficiary to donation
+export const assignBeneficiaryToDonation = (donationId, beneficiaryId) =>
+  api.post(`/ngo/donations/${donationId}/assign`, { beneficiaryId });
 
-/*
-Fetch beneficiaries of a campaign
- */
-export const fetchBeneficiaries = (campaignId) =>
-  api.get("/beneficiary", { params: { campaignId } });
-
-/*
- * Fetch NGO workflow visibility (PIPELINE VIEW)
- */
-export const fetchWorkflowStatus = (campaignId) =>
-  api.get(`/ngo/workflow/${campaignId}`);
-
-/*
- * Start workflow (OPTIONAL – if you expose button later)
- */
-export const startWorkflow = (campaignId) =>
-  Promise.resolve({ data: { message: "Workflow starts automatically for active campaigns", campaignId } });
-
-// NGO REVIEW (Approval Flow)
-
-// Fetch donations pending NGO review
-export const fetchPendingDonations = async () => {
-  const res = await api.get("/ngo/donations/pending");
-  return res.data;
-};
-
-// Approve donation
-export const approveDonation = async (donationId) => {
-  const res = await api.post(`/ngo/donations/${donationId}/approve`);
-  return res.data;
-};
+// Approve donation (creates wallet)
+export const approveDonation = (donationId) =>
+  api.post(`/ngo/donations/${donationId}/approve`);
 
 // Reject donation
-export const rejectDonation = async (donationId, reason) => {
-  const res = await api.post(`/ngo/donations/${donationId}/reject`, {
-    reason,
-  });
-  return res.data;
-};
+export const rejectDonation = (donationId, reason) =>
+  api.post(`/ngo/donations/${donationId}/reject`, { reason });
 
-/**
- * Fetch beneficiaries for NGO (used in review dropdown)
- */
-export const fetchNgoBeneficiaries = async () => {
-  const res = await api.get("/ngo/beneficiaries", { params: { status: "ACTIVE" } });
-  return res.data;
-};
+// NGO beneficiaries (all campaigns, optional status filter)
+export const fetchNgoBeneficiaries = (params = {}) =>
+  api.get("/ngo/beneficiaries", { params });
 
-/**
- * Assign beneficiary to donation (mandatory before approve)
- */
-export const assignBeneficiaryToDonation = async (
-  donationId,
-  beneficiaryId
-) => {
-  const res = await api.post(`/ngo/donations/${donationId}/assign`, { beneficiaryId });
-  return res.data;
-};
+// Campaign beneficiaries
+export const fetchBeneficiaries = (campaignId) =>
+  api.get(`/ngo/beneficiaries/${campaignId}`);
+
+// Register beneficiary
+export const addBeneficiary = (data) => api.post("/beneficiaries", data);

@@ -22,12 +22,12 @@ export default function NGODashboard() {
       try {
         const [statsRes, campRes, donRes] = await Promise.all([
           api.get("/ngo/dashboard"),
-          api.get("/campaigns/ngo").catch(() => ({ data: [] })), // Fixed route
-          api.get("/ngo/donations/pending").catch(() => ({ data: [] })),
+          api.get("/ngo/campaigns").catch(() => ({ data: { data: [] } })),
+          api.get("/ngo/donations/pending").catch(() => ({ data: { data: [] } })),
         ]);
-        setStats(statsRes.data);
-        setCampaigns(campRes.data?.slice(0, 5) || []);
-        setRecentDonations(donRes.data?.slice(0, 5) || []);
+        setStats(statsRes.data?.data || statsRes.data);
+        setCampaigns((campRes.data?.data || campRes.data || []).slice(0, 5));
+        setRecentDonations((donRes.data?.data || donRes.data || []).slice(0, 5));
       } catch (err) {
         console.error("NGO DASHBOARD ERROR:", err);
       } finally {

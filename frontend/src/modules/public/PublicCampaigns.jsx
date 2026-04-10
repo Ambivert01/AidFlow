@@ -13,14 +13,11 @@ export default function PublicCampaigns() {
   const fetchCampaigns = async () => {
     setLoading(true);
     try {
-      let url = "/public/campaigns";
-      const params = new URLSearchParams();
-      if (disasterFilter) params.append("disasterType", disasterFilter);
-      if (locationFilter) params.append("q", locationFilter);
-      if (params.toString()) url += `?${params.toString()}`;
-
-      const res = await api.get(url);
-      setCampaigns(res.data);
+      const params = {};
+      if (disasterFilter) params.disasterType = disasterFilter;
+      if (locationFilter) params.q = locationFilter;
+      const res = await api.get("/public/campaigns", { params });
+      setCampaigns(res.data?.data || res.data || []);
     } catch (err) {
       console.error("Failed to load campaigns", err);
     } finally {

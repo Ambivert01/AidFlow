@@ -10,7 +10,7 @@ export default function GovtDashboard() {
     const fetchOverview = async () => {
       try {
         const res = await api.get("/government/overview");
-        setStats(res.data);
+        setStats(res.data?.data || res.data);
       } catch (err) {
         console.error("Govt dashboard error", err);
       } finally {

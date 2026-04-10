@@ -10,7 +10,7 @@ export default function AdminDashboard() {
     const fetchAdminStats = async () => {
       try {
         const res = await api.get("/admin/stats");
-        setStats(res.data);
+        setStats(res.data?.data || res.data);
       } catch (err) {
         console.error("Admin dashboard error", err);
       } finally {

@@ -26,7 +26,7 @@ export default function GovtCampaigns() {
     setLoading(true);
     try {
       const res = await govtSvc.getCampaigns(statusFilter ? { status: statusFilter } : {});
-      setCampaigns(res.data || []);
+      setCampaigns(res.data?.data || res.data || []);
     } catch (err) {
       console.error("Campaigns load error", err);
     } finally {

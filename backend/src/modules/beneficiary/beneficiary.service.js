@@ -23,7 +23,9 @@ export const registerBeneficiary = async (userId, data) => {
 
           phone: data.phone,
 
-          familySize: data.familySize,
+          household: {
+            familySize: data.familySize,
+          },
 
           displacementStatus: data.displacementStatus,
 
@@ -41,8 +43,12 @@ export const registerBeneficiary = async (userId, data) => {
     await addAIDecisionJob({
       type: "beneficiary-eligibility",
       payload: {
-        beneficiaryId: beneficiary[0]._id,
+        entityId: beneficiary[0]._id,
+
         familySize: data.familySize,
+
+        incomeLevel: data.incomeLevel || "UNKNOWN",
+
         location: data.location,
       },
     });
@@ -58,7 +64,32 @@ export const approveBeneficiaryByNGO = async (beneficiaryId, ngoId) => {
     throw new AppError("Beneficiary not found", 404);
   }
 
+  /*
+  AI SAFETY CHECK
+  prevents NGO approving fraudulent beneficiary
+  */
+
+  if (beneficiary.aiDecision?.decision === "BLOCK") {
+    throw new AppError("Beneficiary blocked by AI risk engine", 403);
+  }
+
+  /*
+  prevent double approval
+  */
+
+  if (beneficiary.status === BENEFICIARY_STATUS.NGO_APPROVED) {
+    throw new AppError("Beneficiary already approved", 400);
+  }
+
   beneficiary.status = BENEFICIARY_STATUS.NGO_APPROVED;
+
+  beneficiary.overrideByNgo = {
+    decision: "APPROVED",
+
+    ngo: ngoId,
+
+    at: new Date(),
+  };
 
   await beneficiary.save();
 

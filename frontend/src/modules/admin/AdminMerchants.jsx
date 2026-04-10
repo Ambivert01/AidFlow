@@ -16,7 +16,7 @@ export default function AdminMerchants() {
     setLoading(true);
     try {
       const res = await adminSvc.getMerchants();
-      setMerchants(res.data || []);
+      setMerchants(res.data?.data || res.data || []);
     } catch (err) {
       console.error("Merchants load error", err);
     } finally {

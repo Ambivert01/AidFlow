@@ -8,8 +8,8 @@ export default function NgoCampaignList() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get("/campaigns/ngo")
-      .then(res => setCampaigns(res.data))
+    api.get("/ngo/campaigns")
+      .then(res => setCampaigns(res.data?.data || res.data || []))
       .finally(() => setLoading(false));
   }, []);
 

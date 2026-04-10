@@ -1,19 +1,16 @@
 import api from "./api";
 
-// Fetch all active campaigns
-export const fetchCampaigns = async () => {
-  const res = await api.get("/campaigns");
-  return res.data;
-};
+// Donor dashboard stats
+export const getDonorDashboard = () => api.get("/donations/dashboard");
 
-// Fetch donor donations (single source of truth)
-export const fetchMyDonations = () =>
-  api.get("/donor/donations");
+// Donor's own donations (populated)
+export const fetchMyDonations = () => api.get("/donations/my");
+
+// All active campaigns (public)
+export const fetchCampaigns = () => api.get("/public/campaigns");
 
 // Donate to a campaign
-export const donateToCampaign = (data) =>
-  api.post("/donations", data);
+export const donateToCampaign = (data) => api.post("/donations", data);
 
 // Public audit verification
-export const verifyAudit = (jobId) =>
-  api.get(`/audit/verify/${jobId}`);
+export const verifyAudit = (id) => api.get(`/public/audit/verify/${id}`);

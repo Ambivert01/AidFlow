@@ -24,6 +24,11 @@ export const createCampaignSchema = z.object({
       "OTHER",
     ]),
 
+    targetAmount: z
+      .number()
+      .positive("targetAmount must be greater than 0")
+      .max(1000000000),
+
     location: z.object({
       state: z.string(),
 

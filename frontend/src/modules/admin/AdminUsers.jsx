@@ -23,8 +23,9 @@ export default function AdminUsers() {
     setLoading(true);
     try {
       const res = await adminSvc.getUsers({ role: roleFilter || undefined, status: statusFilter || undefined, page, limit: 30 });
-      setUsers(res.data.users || []);
-      setTotal(res.data.total || 0);
+      const data = res.data?.data || res.data || {};
+      setUsers(Array.isArray(data) ? data : (data.users || []));
+      setTotal(data.total || (Array.isArray(data) ? data.length : 0));
     } catch (err) {
       console.error("Admin users load error", err);
     } finally {

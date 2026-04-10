@@ -16,8 +16,22 @@ export default function PublicAudit() {
     
     setLoading(true);
     try {
-      const res = await api.get(`/public/audit/${jobIdHash}`);
-      setAuditData(res.data);
+      const res = await api.get(`/public/audit/verify/${jobIdHash}`);
+      const d = res.data?.data || res.data;
+      setAuditData({
+        jobIdHash: d.jobIdHash,
+        auditFinalized: !!d.merkleRoot,
+        merkleRoot: d.merkleRoot,
+        blockchainTxHash: d.blockchainAnchor?.txHash,
+        timeline: (d.auditTrail || []).map(log => ({
+          label: log.eventType?.replaceAll("_", " "),
+          timestamp: log.createdAt,
+          actor: log.actor?.role || "SYSTEM",
+          hash: log.hash,
+          previousHash: log.previousHash,
+          payload: log.payload,
+        })),
+      });
     } catch (err) {
       showToast(err.response?.data?.message || "Audit trail not found", "error");
       setAuditData(null);

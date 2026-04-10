@@ -26,7 +26,7 @@ new Worker(
 
       riskScore: aiResult.riskScore,
 
-      evaluatedAt:new Date()
+      evaluatedAt: new Date(),
     };
 
     donation.status =
@@ -37,9 +37,19 @@ new Worker(
     await createAuditLog({
       eventType: "DONATION_AI_PROCESSED",
 
-      entityId: donation._id,
+      eventCategory: "DONATION",
+
+      entityType: "Donation",
+
+      entityId: donation._id.toString(),
+
+      jobIdHash: job.id,
 
       actorRole: "AI",
+
+      payload: {
+        riskScore: aiResult.riskScore,
+      },
     });
   },
 

@@ -10,18 +10,15 @@ export default function CreateCampaign() {
     title: "",
     description: "",
     disasterType: "",
-    location: {
-      state: "",
-      district: "",
-      ward: "",
-    },
+    targetAmount: 100000,
+    location: { state: "", district: "", ward: "" },
     policySnapshot: {
-      allowedCategories: ["food", "medicine"],
+      allowedCategories: ["FOOD", "MEDICINE"],
       maxPerBeneficiary: 5000,
+      maxPerTransaction: 1000,
       validityDays: 30,
-      cooldownDays: 90,
       minEligibilityConfidence: 0.6,
-      maxFraudRisk: 0.7,
+      maxFraudRisk: 0.4,
     },
   });
 
@@ -37,7 +34,19 @@ export default function CreateCampaign() {
 
   const submit = async () => {
     try {
-      await api.post("/campaigns", form);
+      await api.post("/campaigns", {
+        title: form.title,
+        description: form.description,
+        disasterType: form.disasterType,
+        targetAmount: form.targetAmount || 100000,
+        location: form.location,
+        policy: {
+          allowedCategories: form.policySnapshot.allowedCategories.map(c => c.toUpperCase()),
+          maxPerBeneficiary: form.policySnapshot.maxPerBeneficiary,
+          maxPerTransaction: form.policySnapshot.maxPerTransaction || 1000,
+          validityDays: form.policySnapshot.validityDays,
+        },
+      });
       alert("Campaign created as DRAFT");
       navigate("/ngo");
     } catch (err) {

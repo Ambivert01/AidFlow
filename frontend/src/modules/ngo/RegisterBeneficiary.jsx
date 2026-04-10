@@ -22,8 +22,8 @@ export default function RegisterBeneficiary() {
 
   // Load NGO campaigns
 useEffect(() => {
-  api.get("/campaigns/ngo")
-    .then(res => setCampaigns(res.data))
+  api.get("/ngo/campaigns")
+    .then(res => setCampaigns(res.data?.data || res.data || []))
     .catch(() => setCampaigns([]));
 }, []);
 
@@ -34,14 +34,16 @@ const submit = async (e) => {
   setMsg("");
 
   try {
-    await api.post("/beneficiary/register", {
+    await api.post("/beneficiaries", {
       name: form.name,
-      aadhaar: form.aadhaar,
       campaignId: form.campaignId,
+      phone: form.aadhaar || "0000000000",
+      familySize: 1,
+      displacementStatus: "UNKNOWN",
       location: {
+        state: form.location.state,
+        district: form.location.district,
         ward: form.location.ward,
-        lat: 0,
-        lng: 0,
       },
     });
 

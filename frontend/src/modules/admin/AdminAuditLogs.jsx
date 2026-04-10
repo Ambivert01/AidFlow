@@ -45,7 +45,7 @@ export default function AdminAuditLogs() {
         actorRole: actorFilter || undefined,
         limit: 100,
       });
-      setLogs(res.data || []);
+      setLogs(res.data?.data || res.data || []);
     } catch (err) {
       console.error("Audit logs error", err);
     } finally {

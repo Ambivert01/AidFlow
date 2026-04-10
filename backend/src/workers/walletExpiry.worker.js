@@ -1,47 +1,45 @@
-import { Worker } from "bullmq"
-import { redisConnection } from "../config/redis.config.js"
+import { Worker } from "bullmq";
+import { redisConnection } from "../config/redis.config.js";
 
-import { Wallet } from "../models/wallet/Wallet.model.js"
-import { createAuditLog } from "../modules/audit/audit.service.js"
+import { Wallet } from "../models/wallet/Wallet.model.js";
+import { createAuditLog } from "../modules/audit/audit.service.js";
 
 new Worker(
-
   "wallet-expiry",
 
-  async ()=>{
-
+  async () => {
     const wallets = await Wallet.find({
+      status: "ACTIVE",
 
-      status:"ACTIVE",
+      "policy.expiresAt": { $lt: new Date() },
+    });
 
-      "policy.expiresAt":{$lt:new Date()}
+    for (const wallet of wallets) {
+      wallet.status = "EXPIRED";
 
-    })
-
-    for(const wallet of wallets){
-
-      wallet.status="EXPIRED"
-
-      await wallet.save()
+      await wallet.save();
 
       await createAuditLog({
+        eventType: "WALLET_EXPIRED",
 
-        eventType:"WALLET_EXPIRED",
+        eventCategory: "WALLET",
 
-        entityId: wallet._id,
+        entityType: "Wallet",
 
-        actorRole:"SYSTEM"
+        entityId: wallet._id.toString(),
 
-      })
+        jobIdHash: wallet.jobIdHash || wallet._id.toString(),
 
+        actorRole: "SYSTEM",
+
+        payload: {
+          expiredAt: new Date(),
+        },
+      });
     }
-
   },
 
   {
-
-    connection: redisConnection
-
-  }
-
-)
+    connection: redisConnection,
+  },
+);

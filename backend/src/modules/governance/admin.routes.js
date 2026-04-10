@@ -1,81 +1,37 @@
 import express from "express";
-
 import { authenticate } from "../../middlewares/authenticate.middleware.js";
 import { authorize } from "../../middlewares/authorize.middleware.js";
-
 import * as adminController from "./admin.controller.js";
-
 import * as fraudController from "./fraud.controller.js";
-
-import * as govController from "./government.controller.js";
 
 const router = express.Router();
 
-router.get(
-  "/fraud-cases",
+// ── Stats ──────────────────────────────────────────────
+router.get("/stats", authenticate, authorize("ADMIN"), adminController.getStats);
 
-  authenticate,
+// ── Pending KYC requests ───────────────────────────────
+router.get("/access/pending", authenticate, authorize("ADMIN"), adminController.getPendingRequests);
+router.post("/access/:id/approve", authenticate, authorize("ADMIN"), adminController.approveUser);
+router.post("/access/:id/reject", authenticate, authorize("ADMIN"), adminController.rejectUser);
 
-  authorize("ADMIN"),
+// ── User management ────────────────────────────────────
+router.get("/users", authenticate, authorize("ADMIN"), adminController.getAllUsers);
+router.post("/users/:id/toggle-active", authenticate, authorize("ADMIN"), adminController.toggleUserActive);
 
-  fraudController.getFraudCases,
-);
+// ── Merchant management ────────────────────────────────
+router.get("/merchants", authenticate, authorize("ADMIN"), adminController.getAllMerchants);
+router.patch("/merchants/:id", authenticate, authorize("ADMIN"), adminController.updateMerchant);
+router.patch("/merchants/:id/ban", authenticate, authorize("ADMIN"), adminController.banMerchant);
 
-router.patch(
-  "/fraud-cases/:id/resolve",
+// ── Wallet management ──────────────────────────────────
+router.patch("/wallets/:id/freeze", authenticate, authorize("ADMIN"), adminController.freezeWallet);
 
-  authenticate,
+// ── Audit logs ─────────────────────────────────────────
+router.get("/audit-logs", authenticate, authorize("ADMIN"), adminController.getAuditLogs);
 
-  authorize("ADMIN"),
-
-  fraudController.resolveFraudCase,
-);
-
-router.patch(
-  "/users/:id/approve",
-
-  authenticate,
-
-  authorize("ADMIN"),
-
-  adminController.approveUser,
-);
-
-router.patch(
-  "/wallets/:id/freeze",
-
-  authenticate,
-
-  authorize("ADMIN"),
-
-  adminController.freezeWallet,
-);
-
-router.patch(
-  "/merchants/:id/ban",
-
-  authenticate,
-
-  authorize("ADMIN"),
-
-  adminController.banMerchant,
-);
-
-router.get(
-  "/fraud-alerts",
-
-  authenticate,
-
-  authorize("ADMIN"),
-
-  adminController.getFraudAlerts,
-);
-
-router.patch(
-  "/policy",
-  authenticate,
-  authorize("GOVERNMENT"),
-  govController.updatePolicy,
-);
+// ── Fraud ──────────────────────────────────────────────
+router.get("/fraud-alerts", authenticate, authorize("ADMIN"), adminController.getFraudAlerts);
+router.get("/fraud-cases", authenticate, authorize("ADMIN"), fraudController.getFraudCases);
+router.patch("/fraud-cases/:id/resolve", authenticate, authorize("ADMIN"), fraudController.resolveFraudCase);
 
 export default router;

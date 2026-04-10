@@ -12,7 +12,7 @@ export default function EscalatedDonations() {
     setLoading(true);
     try {
       const res = await api.get("/government/donations/escalated");
-      setDonations(res.data);
+      setDonations(res.data?.data || res.data || []);
     } catch {
       setError("Failed to fetch escalated donations.");
     } finally {

@@ -15,13 +15,14 @@ export default function ManageCampaign() {
     let cancelled = false;
     (async () => {
       const [campaignRes, benRes] = await Promise.all([
-        api.get(`/public/campaigns/${id}`),
-        api.get(`/ngo/beneficiaries`, { params: { campaignId: id } }),
+        api.get(`/campaigns/${id}`),
+        api.get(`/ngo/beneficiaries/${id}`),
       ]);
 
       if (cancelled) return;
-      setCampaign(campaignRes.data.campaign); // The public endpoint returns { campaign, stats }
-      setBeneficiaries(benRes.data);
+      const campData = campaignRes.data?.data || campaignRes.data;
+      setCampaign(campData);
+      setBeneficiaries(benRes.data?.data || benRes.data || []);
       setLoading(false);
     })();
 
@@ -35,11 +36,11 @@ export default function ManageCampaign() {
     if (!window.confirm("Activate campaign? Policy will be locked forever."))
       return;
 
-    await api.post(`/campaigns/${id}/activate`);
+    await api.patch(`/campaigns/${id}/activate`);
     alert("Campaign activated");
-    // re-fetch campaign detail
-    const campaignRes = await api.get(`/public/campaigns/${id}`);
-    setCampaign(campaignRes.data.campaign);
+    const campaignRes = await api.get(`/campaigns/${id}`);
+    const campData = campaignRes.data?.data || campaignRes.data;
+    setCampaign(campData);
   };
 
   if (loading) return <div className="page-loader"><div className="spinner"></div><p>Loading Mission Intel...</p></div>;

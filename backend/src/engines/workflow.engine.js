@@ -55,6 +55,25 @@ class WorkflowEngine {
       },
     });
   }
+
+  async handleBeneficiaryVerified(data) {
+    const wallet = await createWallet({
+      beneficiary: data.id,
+      campaign: data.campaignId,
+      amount: data.amount,
+      policy: data.policy,
+    });
+
+    await createAuditLog({
+      eventType: "WALLET_CREATED",
+
+      entityId: wallet._id,
+
+      actorRole: "SYSTEM",
+    });
+
+    return wallet;
+  }
 }
 
 export default new WorkflowEngine();

@@ -1,31 +1,27 @@
 import { asyncHandler } from "../../core/asyncHandler.js";
-
 import * as walletService from "./wallet.service.js";
 
 export const spendWallet = asyncHandler(async (req, res) => {
-  const result = await walletService.spendWallet(
-    req.user._id,
-
-    req.body,
-  );
-
+  const result = await walletService.spendWallet(req.user._id, req.body);
   res.json(result);
 });
 
 export const getMyWallet = asyncHandler(async (req, res) => {
-  const result = await walletService.getWallet(req.user._id);
+  const result = await walletService.getWalletByUserId(req.user._id);
+  res.json(result);
+});
 
+export const getMyTransactions = asyncHandler(async (req, res) => {
+  const result = await walletService.getWalletTransactions(req.user._id);
   res.json(result);
 });
 
 export const freezeWallet = asyncHandler(async (req, res) => {
-  const result = await walletService.freezeWallet(
-    req.params.id,
+  const result = await walletService.freezeWallet(req.params.id, req.body.reason, req.user._id);
+  res.json(result);
+});
 
-    req.body.reason,
-
-    req.user._id,
-  );
-
+export const unfreezeWallet = asyncHandler(async (req, res) => {
+  const result = await walletService.unfreezeWallet(req.params.id, req.user._id);
   res.json(result);
 });

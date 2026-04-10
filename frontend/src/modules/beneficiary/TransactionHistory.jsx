@@ -5,7 +5,7 @@ export default function TransactionHistory() {
   const [wallet, setWallet] = useState(null);
 
   useEffect(() => {
-    api.get("/wallet/me").then(res => setWallet(res.data));
+    api.get("/wallet/me").then(res => setWallet(res.data?.data || res.data));
   }, []);
 
   if (!wallet?.transactions?.length) {

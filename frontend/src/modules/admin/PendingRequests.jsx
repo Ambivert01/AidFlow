@@ -19,7 +19,7 @@ export default function PendingRequests() {
     setLoading(true);
     try {
       const res = await api.get("/admin/access/pending");
-      setRequests(res.data);
+      setRequests(res.data?.data || res.data || []);
     } catch {
       setError("Failed to fetch pending requests");
     } finally {

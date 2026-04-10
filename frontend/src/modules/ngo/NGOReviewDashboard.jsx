@@ -16,10 +16,10 @@ export default function NGOReviewDashboard() {
     try {
       const [donRes, benRes] = await Promise.all([
         api.get("/ngo/donations/pending"),
-        api.get("/ngo/beneficiaries?status=ACTIVE"), // Only active ones can receive donations
+        api.get("/ngo/beneficiaries", { params: { status: "ACTIVE" } }),
       ]);
-      setDonations(donRes.data || []);
-      setBeneficiaries(benRes.data || []);
+      setDonations(donRes.data?.data || donRes.data || []);
+      setBeneficiaries(benRes.data?.data || benRes.data || []);
     } catch {
       setError("Failed to load review data");
     } finally {

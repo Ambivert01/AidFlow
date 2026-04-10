@@ -19,8 +19,8 @@ export default function BeneficiarySelfApply() {
           benSvc.getActiveCampaigns(),
           benSvc.getMyBeneficiary().catch(() => ({ data: null })),
         ]);
-        setCampaigns(campRes.data || []);
-        setExistingRecord(meRes.data);
+        setCampaigns(campRes.data?.data || campRes.data || []);
+        setExistingRecord(meRes.data?.data || meRes.data);
       } catch (err) {
         console.error("BeneficiarySelfApply init error", err);
       } finally {

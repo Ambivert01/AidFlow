@@ -1,29 +1,24 @@
+import { asyncHandler } from "../../core/asyncHandler.js";
+import { ApiResponse } from "../../core/apiResponse.js";
 import * as authService from "./auth.service.js";
 
-export const register = async (req, res, next) => {
-  try {
-    const user = await authService.registerUser(req.body);
+export const register = asyncHandler(async (req, res) => {
+  const user = await authService.registerUser(req.body);
+  res.status(201).json(ApiResponse.created({
+    user,
+    message: user.verificationStatus === "APPROVED"
+      ? "Registration successful. You can now log in."
+      : "Registration submitted. Awaiting admin approval.",
+  }));
+});
 
-    res.status(201).json({
-      success: true,
-      user,
-    });
-  } catch (err) {
-    next(err);
-  }
-};
+export const login = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  const result = await authService.loginUser(email, password);
+  res.json(ApiResponse.success(result, "Login successful"));
+});
 
-export const login = async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-
-    const result = await authService.loginUser(email, password);
-
-    res.json({
-      success: true,
-      ...result,
-    });
-  } catch (err) {
-    next(err);
-  }
-};
+export const getMe = asyncHandler(async (req, res) => {
+  const user = await authService.getMe(req.user._id);
+  res.json(ApiResponse.success(user));
+});

@@ -16,10 +16,10 @@ export default function MerchantDashboard() {
       try {
         const [profileRes, txRes] = await Promise.all([
           api.get("/merchant/me"),
-          api.get("/merchant/transactions").catch(() => ({ data: [] })),
+          api.get("/merchant/transactions").catch(() => ({ data: { data: [] } })),
         ]);
 
-        const txns = txRes.data || [];
+        const txns = txRes.data?.data || txRes.data || [];
         const today = new Date();
         const sameDay = (d) =>
           d.getFullYear() === today.getFullYear() &&
@@ -31,7 +31,7 @@ export default function MerchantDashboard() {
         const totalSettled = txns.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
         setStats({
-          merchantProfile: profileRes.data,
+          merchantProfile: profileRes.data?.data || profileRes.data,
           todaySettled,
           todayCount: todayTx.length,
           totalSettled,

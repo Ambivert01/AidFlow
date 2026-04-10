@@ -1,91 +1,78 @@
 import express from "express";
 
-// module routes
-
 import authRoutes from "../modules/auth/auth.routes.js";
-
+import accessRoutes from "../modules/auth/access.routes.js";
 import campaignRoutes from "../modules/campaign/campaign.routes.js";
-
 import donationRoutes from "../modules/donation/donation.routes.js";
-
 import beneficiaryRoutes from "../modules/beneficiary/beneficiary.routes.js";
-
 import walletRoutes from "../modules/wallet/wallet.routes.js";
-
 import merchantRoutes from "../modules/merchant/merchant.routes.js";
-
+import paymentRoutes from "../modules/merchant/payment.routes.js";
 import ngoRoutes from "../modules/ngo/ngo.routes.js";
-
 import adminRoutes from "../modules/governance/admin.routes.js";
-
 import governmentRoutes from "../modules/governance/government.routes.js";
-
 import auditRoutes from "../modules/audit/audit.routes.js";
-
 import systemRoutes from "../modules/system/system.routes.js";
-
 import notificationRoutes from "../modules/notification/notification.routes.js";
-
 import proofRoutes from "../modules/proof/proof.routes.js";
-
 import settlementRoutes from "../modules/settlement/settlement.routes.js";
+import publicRoutes from "../modules/public/public.routes.js";
 
 const router = express.Router();
 
-// system
-
+// System health
 router.use("/system", systemRoutes);
 
-// auth
-
+// Auth
 router.use("/auth", authRoutes);
 
-// campaigns
+// Access requests (NGO / MERCHANT / GOVERNMENT apply here)
+router.use("/access", accessRoutes);
 
+// Public (no auth)
+router.use("/public", publicRoutes);
+
+// Campaigns
 router.use("/campaigns", campaignRoutes);
 
-// donations
-
+// Donations + donor dashboard
 router.use("/donations", donationRoutes);
+// Alias: /donor/donations and /donor/dashboard point to donation routes
+router.use("/donor", donationRoutes);
 
-// beneficiaries
-
+// Beneficiaries
 router.use("/beneficiaries", beneficiaryRoutes);
 
-// wallet
-
+// Wallet
 router.use("/wallet", walletRoutes);
 
-// merchants
+// Payments (QR scan/confirm)
+router.use("/payments", paymentRoutes);
 
+// Merchants
 router.use("/merchants", merchantRoutes);
+// Alias: /merchant/* → /merchants/*
+router.use("/merchant", merchantRoutes);
 
-// NGO
-
+// NGO operations
 router.use("/ngo", ngoRoutes);
 
-// admin
-
+// Admin governance
 router.use("/admin", adminRoutes);
 
-// government
-
+// Government oversight
 router.use("/government", governmentRoutes);
 
-// audit transparency
-
+// Audit transparency
 router.use("/audit", auditRoutes);
 
-// notifications
-
+// Notifications
 router.use("/notifications", notificationRoutes);
 
-// proofs
-
+// Proofs
 router.use("/proofs", proofRoutes);
 
-// settlements
-
+// Settlements
 router.use("/settlements", settlementRoutes);
 
 export default router;

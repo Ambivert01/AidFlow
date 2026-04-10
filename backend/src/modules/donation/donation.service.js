@@ -2,37 +2,35 @@ import { Donation } from "../../models/donor/Donation.model.js";
 import { Campaign } from "../../models/ngo/Campaign.model.js";
 import { AppError } from "../../utils/AppError.js";
 import { withTransaction } from "../../core/transaction.js";
-
 import { createWallet } from "../wallet/wallet.service.js";
-
 import { addDonationJob } from "../../jobs/donation.job.js";
 import workflowEngine from "../../engines/workflow.engine.js";
+import { generateHash } from "../../utils/hash.util.js";
 
-/*
-CREATE DONATION
-FAST API
-Only DB-safe operations in transaction
-Heavy work → queue
-*/
 export const createDonation = async (userId, data) => {
   return withTransaction(async (session) => {
-    // 1 Validate campaign
     const campaign = await Campaign.findById(data.campaignId).session(session);
 
     if (!campaign || campaign.status !== "ACTIVE") {
-      throw new AppError("Invalid campaign", 400, "INVALID_CAMPAIGN");
+      throw new AppError("Invalid or inactive campaign", 400, "INVALID_CAMPAIGN");
     }
 
-    // 2 Create donation
+    const jobIdHash = generateHash({
+      type: "DONATION",
+      userId: userId.toString(),
+      campaignId: data.campaignId,
+      amount: data.amount,
+      timestamp: Date.now(),
+    });
+
     const donation = await Donation.create(
       [
         {
           donor: userId,
           campaign: campaign._id,
           amount: data.amount,
-
           policySnapshot: campaign.policySnapshot,
-
+          jobIdHash,
           status: "PAYMENT_SUCCESS",
           paymentStatus: "SUCCESS",
         },
@@ -40,29 +38,16 @@ export const createDonation = async (userId, data) => {
       { session },
     );
 
-    // 3 Update campaign stats atomically
     await Campaign.updateOne(
       { _id: campaign._id },
-
-      {
-        $inc: {
-          totalDonated: data.amount,
-        },
-      },
-
+      { $inc: { totalDonated: data.amount } },
       { session },
     );
 
-    // return donation created inside transaction
     return donation[0];
   }).then(async (donation) => {
     await workflowEngine.handleDonationCreated(donation);
-
-    // 4 queue heavy processing AFTER transaction commit
-    await addDonationJob({
-      donationId: donation._id,
-    });
-
+    await addDonationJob({ donationId: donation._id });
     return donation;
   });
 };
@@ -77,9 +62,32 @@ export const approveDonationByNGO = async (donationId, ngoId) => {
     throw new AppError("Donation not found", 404);
   }
 
+  /*
+  must be processed by AI first
+  */
+
+  if (
+    donation.status !== "PENDING_NGO_REVIEW" &&
+    donation.status !== "HIGH_RISK_ESCALATED"
+  ) {
+    throw new AppError("Donation not ready for NGO approval", 400);
+  }
+
+  /*
+  prevent duplicate approval
+  */
+
+  if (donation.status === "NGO_APPROVED") {
+    throw new AppError("Donation already approved", 400);
+  }
+
   donation.status = "NGO_APPROVED";
 
   donation.lastDecisionBy = "NGO";
+
+  donation.approvedByNgo = ngoId;
+
+  donation.approvedAt = new Date();
 
   await donation.save();
 
@@ -115,6 +123,18 @@ export const finalizeDonation = async (donationId, beneficiaryId) => {
 
     if (!donation) {
       throw new AppError("Donation not found", 404);
+    }
+
+    /*
+    ADD THIS BLOCK
+    ensures NGO approved donation only
+    */
+
+    if (donation.status !== "NGO_APPROVED") {
+      throw new AppError(
+        "Donation must be approved by NGO before allocation",
+        400,
+      );
     }
 
     // create wallet safely

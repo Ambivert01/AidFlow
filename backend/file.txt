@@ -256,20 +256,20 @@ System fully active.
 
 {
 "email":"ngo@test.com",
-"password":"Ngo12345",
+"password":"Ngo12345"
 }
 
 {
 "email":"donor@test.com",
-"password":"Donor123",
+"password":"Donor123"
 }
 
 {
 "email":"beneficiary@test.com",
-"password":"Benef123",
+"password":"Benef123"
 }
 
 {
 "email":"merchant@test.com",
-"password":"Merchant123",
+"password":"Merchant123"
 }

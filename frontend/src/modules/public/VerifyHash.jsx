@@ -17,8 +17,13 @@ export default function VerifyHash() {
     
     setLoading(true); setError(""); setResult(null);
     try {
-      const res = await api.post("/public/verify", { hash });
-      setResult(res.data);
+      const res = await api.get(`/public/audit/verify/${hash}`);
+      const d = res.data?.data || res.data;
+      setResult({
+        isValid: !!(d.auditTrail?.length),
+        timestamp: d.auditTrail?.[0]?.createdAt,
+        merkleRoot: d.merkleRoot,
+      });
     } catch (err) {
       setError(err.response?.data?.message || "Verification failed. The hash could not be validated against the network.");
     } finally {

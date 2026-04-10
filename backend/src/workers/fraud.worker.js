@@ -32,7 +32,13 @@ new Worker(
       await createAuditLog({
         eventType: "FRAUD_DETECTED",
 
-        entityId,
+        eventCategory: "SECURITY",
+
+        entityType: entityType || "User",
+
+        entityId: String(entityId),
+
+        jobIdHash: job.id.toString(),
 
         actorRole: "AI",
 

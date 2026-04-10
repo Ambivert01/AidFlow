@@ -44,13 +44,13 @@ export default function DonorDashboard() {
     const load = async () => {
       try {
         const [statsRes, donationsRes, campRes] = await Promise.all([
-          api.get("/donor/dashboard"),
-          api.get("/donor/donations"),
+          api.get("/donations/dashboard"),
+          api.get("/donations/my"),
           api.get("/public/campaigns"),
         ]);
-        setStats(statsRes.data);
-        setDonations(donationsRes.data || []);
-        setCampaigns(campRes.data || []);
+        setStats(statsRes.data?.data || statsRes.data);
+        setDonations(donationsRes.data?.data || donationsRes.data || []);
+        setCampaigns(campRes.data?.data || campRes.data || []);
       } catch (err) {
         console.error("DONOR DASHBOARD ERROR:", err);
       } finally {

@@ -5,37 +5,26 @@ import {
   generateAccessToken,
   generateRefreshToken,
 } from "./auth.utils.js";
-
+import { AppError } from "../../utils/AppError.js";
 import { AUTH_ERRORS } from "./auth.constants.js";
 
 export const registerUser = async (data) => {
-  const existing = await User.findOne({
-    email: data.email.toLowerCase(),
-  });
+  const existing = await User.findOne({ email: data.email.toLowerCase() });
 
-  if (existing) {
-    throw new Error("Email already registered");
-  }
+  if (existing) throw new AppError("Email already registered", 409, "DUPLICATE_EMAIL");
 
   const passwordHash = await hashPassword(data.password);
 
+  // DONORS auto-approved so they can login immediately
+  // All other roles (NGO, MERCHANT, GOVERNMENT) stay PENDING until admin approves
+  const verificationStatus = data.role === "DONOR" ? "APPROVED" : "PENDING";
+
   const user = await User.create({
     name: data.name,
-
     email: data.email.toLowerCase(),
-
     passwordHash,
-
     role: data.role,
-
-    /*
-    ZERO TRUST MODEL
-    every role needs approval
-    except system-created admin
-    */
-
-    verificationStatus: "PENDING",
-
+    verificationStatus,
     isActive: true,
   });
 
@@ -43,62 +32,35 @@ export const registerUser = async (data) => {
 };
 
 export const loginUser = async (email, password) => {
-  const user = await User.findOne({
-    email: email.toLowerCase(),
-  }).select("+passwordHash");
+  const user = await User.findOne({ email: email.toLowerCase() }).select("+passwordHash");
 
-  if (!user) {
-    throw new Error(AUTH_ERRORS.INVALID_CREDENTIALS);
-  }
+  if (!user) throw new AppError(AUTH_ERRORS.INVALID_CREDENTIALS, 401, "INVALID_CREDENTIALS");
 
-  /*
-  account disabled check
-  */
-
-  if (!user.isActive) {
-    throw new Error(AUTH_ERRORS.ACCOUNT_DISABLED);
-  }
-
-  /*
-  ZERO TRUST LOGIN CONTROL
-  only approved users allowed
-  */
+  if (!user.isActive) throw new AppError(AUTH_ERRORS.ACCOUNT_DISABLED, 403, "ACCOUNT_DISABLED");
 
   if (user.verificationStatus !== "APPROVED") {
-    throw new Error("Account pending admin approval");
+    throw new AppError("Account pending admin approval. You will be notified once approved.", 403, "PENDING_APPROVAL");
   }
-
-  /*
-  password validation
-  */
 
   const valid = await comparePassword(password, user.passwordHash);
 
-  if (!valid) {
-    throw new Error(AUTH_ERRORS.INVALID_CREDENTIALS);
-  }
-
-  /*
-  token generation
-  */
+  if (!valid) throw new AppError(AUTH_ERRORS.INVALID_CREDENTIALS, 401, "INVALID_CREDENTIALS");
 
   const accessToken = generateAccessToken(user);
-
   const refreshToken = generateRefreshToken(user);
 
-  /*
-  login tracking
-  */
-
   user.lastLoginAt = new Date();
-
   await user.save();
 
-  return {
-    user,
+  // Return user without passwordHash
+  const safeUser = user.toObject();
+  delete safeUser.passwordHash;
 
-    accessToken,
+  return { user: safeUser, accessToken, refreshToken };
+};
 
-    refreshToken,
-  };
+export const getMe = async (userId) => {
+  const user = await User.findById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  return user;
 };

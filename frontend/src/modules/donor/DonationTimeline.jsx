@@ -24,8 +24,34 @@ export default function DonationTimeline() {
 
   useEffect(() => {
     api
-      .get(`/donor/donations/${id}`)
-      .then((res) => setData(res.data))
+      .get(`/donations/${id}`)
+      .then((res) => {
+        const d = res.data?.data || res.data;
+        // Shape: donation doc + audit trail from public verify endpoint
+        setData({ donation: d, audit: null });
+        // Also fetch audit trail
+        return api.get(`/public/audit/verify/${id}`).catch(() => null);
+      })
+      .then((auditRes) => {
+        if (auditRes) {
+          const a = auditRes.data?.data || auditRes.data;
+          setData(prev => ({
+            ...prev,
+            audit: {
+              finalized: !!a?.merkleRoot,
+              merkleRoot: a?.merkleRoot,
+              blockchainTxHash: a?.blockchainAnchor?.txHash,
+              timeline: (a?.auditTrail || []).map(log => ({
+                event: log.eventType,
+                label: log.eventType?.replaceAll("_", " "),
+                timestamp: log.createdAt,
+                actor: log.actor?.role || "SYSTEM",
+                payload: log.payload,
+              })),
+            },
+          }));
+        }
+      })
       .catch(() => setError("Could not load donation detail."))
       .finally(() => setLoading(false));
   }, [id]);

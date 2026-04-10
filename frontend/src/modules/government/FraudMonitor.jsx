@@ -10,7 +10,14 @@ export default function FraudMonitor() {
     const fetchAlerts = async () => {
       try {
         const res = await api.get("/government/fraud-alerts");
-        setData(res.data);
+        const d = res.data?.data || res.data || {};
+        // Backend returns array of FraudAlert docs — shape for UI
+        const alerts = Array.isArray(d) ? d : [];
+        setData({
+          frozenWallets: alerts.filter(a => a.alertType === "WALLET_ABUSE" || a.automatedActions?.walletFrozen),
+          merchantViolations: alerts.filter(a => a.alertType === "MERCHANT_COLLUSION" || a.alertType === "SUSPICIOUS_TRANSACTION"),
+          suspiciousDonations: alerts.filter(a => a.alertType === "DONATION_LAUNDERING" || a.alertType === "AI_ANOMALY"),
+        });
       } catch {
         setError("Failed to load fraud analytics.");
       } finally {

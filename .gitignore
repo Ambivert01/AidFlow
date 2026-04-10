@@ -1,6 +1,4 @@
-# =========================
 # Global
-# =========================
 .env
 .env.*
 !.env.example
@@ -13,26 +11,20 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# =========================
 # Frontend (React)
-# =========================
 frontend/aidflow-ui/node_modules/
 frontend/aidflow-ui/dist/
 frontend/aidflow-ui/.env
 frontend/aidflow-ui/.env.*
 
-# =========================
 # Backend (Express)
-# =========================
 backend/aidflow-api/node_modules/
 backend/aidflow-api/logs/
 backend/aidflow-api/.env.
 backend/aidflow-api/.env.*
-backend/src/scripts/seed.js
+backend/src/scripts/
 
-# =========================
 # Blockchain (Hardhat)
-# =========================
 blockchain/node_modules/
 blockchain/artifacts/
 blockchain/cache/
@@ -40,9 +32,7 @@ blockchain/coverage/
 blockchain/.env
 blockchain/.env.*
 
-# =========================
 # IDE / Editor
-# =========================
 .vscode/
 .idea/
 *.swp

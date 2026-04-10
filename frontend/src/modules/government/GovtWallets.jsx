@@ -13,7 +13,7 @@ export default function GovtWallets() {
     setLoading(true);
     try {
       const res = await govtSvc.getWallets(statusFilter ? { status: statusFilter } : {});
-      setWallets(res.data.wallets || res.data || []);
+      setWallets(res.data?.data || res.data || []);
     } catch (err) {
       console.error("Wallets load error", err);
     } finally {

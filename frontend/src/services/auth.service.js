@@ -6,11 +6,10 @@ const USER_KEY = "aidflow_user";
 const authService = {
   async login(credentials) {
     const res = await api.post("/auth/login", credentials);
-
-    localStorage.setItem(TOKEN_KEY, res.data.token);
-    localStorage.setItem(USER_KEY, JSON.stringify(res.data.user));
-
-    return res.data.user;
+    const { user, accessToken } = res.data.data;
+    localStorage.setItem(TOKEN_KEY, accessToken);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    return user;
   },
 
   logout() {
