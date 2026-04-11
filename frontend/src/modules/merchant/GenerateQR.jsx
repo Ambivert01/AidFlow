@@ -7,12 +7,9 @@ export default function GenerateQR() {
   const [amount, setAmount] = useState("");
 
   const generate = async () => {
-    const res = await api.post("/payments/generate-qr", {
-      amount: Number(amount),
-      category: "FOOD", // auto from merchant profile later
-    });
-
-    setPayload(res.data.qrPayload);
+    // Merchants don't generate QR — beneficiaries do via /wallet/qr
+    // This component is a demo helper only
+    setPayload(`DEMO_QR_${Date.now()}_amount_${amount}`);
   };
 
   return (

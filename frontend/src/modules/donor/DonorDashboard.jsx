@@ -167,7 +167,7 @@ export default function DonorDashboard() {
                 campaign={selectedCampaign} 
                 onClose={() => {
                   setSelectedCampaign(null);
-                  api.get("/donor/donations").then(res => setDonations(res.data)); // Refresh donations
+                  api.get("/donations/my").then(res => setDonations(res.data?.data || res.data || [])); // Refresh donations
                 }} 
               />
             )}

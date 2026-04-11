@@ -8,8 +8,8 @@ export default function NgoWorkflowList() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get("/campaigns/ngo")
-      .then(res => setCampaigns(res.data))
+    api.get("/ngo/campaigns")
+      .then(res => setCampaigns(res.data?.data || res.data || []))
       .finally(() => setLoading(false));
   }, []);
 
@@ -24,21 +24,12 @@ export default function NgoWorkflowList() {
       )}
 
       {campaigns.map(c => (
-        <div
-          key={c._id}
-          className="bg-white border p-4 rounded flex justify-between"
-        >
+        <div key={c._id} className="bg-white border p-4 rounded flex justify-between">
           <div>
             <p className="font-semibold">{c.title}</p>
-            <p className="text-sm text-gray-500">
-              Status: {c.status}
-            </p>
+            <p className="text-sm text-gray-500">Status: {c.status}</p>
           </div>
-
-          <Link
-            to={`/ngo/workflow/${c._id}`}
-            className="text-blue-600 hover:underline"
-          >
+          <Link to={`/ngo/campaigns/${c._id}`} className="text-blue-600 hover:underline">
             View Workflow →
           </Link>
         </div>
