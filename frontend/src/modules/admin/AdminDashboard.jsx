@@ -49,22 +49,22 @@ export default function AdminDashboard() {
 
       {stats && (
         <div className="grid-4">
-          <div className="stat-card">
+          <div className="stat-card stagger-item number-animate">
              <div className="stat-card-label">Total Users</div>
              <div className="stat-card-value">{stats.totalUsers || 0}</div>
              <div className="stat-card-sub">Active platform accounts</div>
           </div>
-          <div className="stat-card" style={{ borderTopColor: "var(--color-primary)" }}>
+          <div className="stat-card stagger-item number-animate" style={{ borderTopColor: "var(--color-primary)" }}>
              <div className="stat-card-label">Organizations</div>
              <div className="stat-card-value">{stats.totalNGOs || 0} NGOs</div>
              <div className="stat-card-sub">{stats.totalMerchants || 0} Merchants</div>
           </div>
-          <div className="stat-card" style={{ borderTopColor: "var(--color-success)" }}>
+          <div className="stat-card stagger-item number-animate" style={{ borderTopColor: "var(--color-success)" }}>
              <div className="stat-card-label">Total Volume</div>
              <div className="stat-card-value">₹{(stats.totalDonationVolume || 0).toLocaleString("en-IN")}</div>
              <div className="stat-card-sub">Through system lifetime</div>
           </div>
-          <div className="stat-card" style={{ borderTopColor: "var(--color-purple)" }}>
+          <div className="stat-card stagger-item number-animate" style={{ borderTopColor: "var(--color-purple)" }}>
              <div className="stat-card-label">Immutable Logs</div>
              <div className="stat-card-value">{stats.totalAuditLogs || 0}</div>
              <div className="stat-card-sub">Cryptographically hashed actions</div>
@@ -74,7 +74,7 @@ export default function AdminDashboard() {
 
       <div className="grid-2">
         {/* Pending Approvals Widget */}
-        <div className="card stack">
+        <div className="card stack hover-lift">
            <div className="row-between">
              <h2 style={{ fontSize: "16px", fontWeight: "700" }}>Action Required</h2>
              {stats?.pendingRequests > 0 && <span className="badge badge-red">{stats.pendingRequests} Pending</span>}

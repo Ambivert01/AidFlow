@@ -103,21 +103,43 @@ export default function Navbar() {
             >
               {role}
             </span>
-            <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.55)" }}>
+            <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.65)", transition: "color 200ms ease" }}>
               {user?.name?.split(" ")[0]}
             </span>
             <button
               onClick={handleLogout}
-              className="btn btn-ghost btn-sm"
-              style={{ borderColor: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.65)" }}
+              className="btn btn-sm"
+              style={{ 
+                borderColor: "rgba(255,255,255,0.25)", 
+                color: "rgba(255,255,255,0.7)",
+                background: "transparent",
+                transition: "all 250ms ease",
+                border: "1px solid rgba(255,255,255,0.25)"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+                e.currentTarget.style.borderColor = "rgba(255,255,255,0.4)";
+                e.currentTarget.style.color = "#fff";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)";
+                e.currentTarget.style.color = "rgba(255,255,255,0.7)";
+              }}
             >
               Logout
             </button>
           </>
         ) : (
           <>
-            <Link to="/login" className="btn btn-ghost btn-sm"
-              style={{ borderColor: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.65)" }}>
+            <Link to="/login" className="btn btn-sm"
+              style={{ 
+                borderColor: "rgba(255,255,255,0.25)", 
+                color: "rgba(255,255,255,0.7)",
+                background: "transparent",
+                transition: "all 250ms ease",
+                border: "1px solid rgba(255,255,255,0.25)"
+              }}>
               Sign In
             </Link>
             <Link to="/register" className="btn btn-primary btn-sm">

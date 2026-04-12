@@ -66,24 +66,24 @@ export default function NGODashboard() {
 
       {stats && (
         <div className="grid-4">
-          <div className="stat-card">
+          <div className="stat-card stagger-item">
             <div className="stat-card-label">Active Campaigns</div>
-            <div className="stat-card-value text-primary">{stats.activeCampaigns || 0}</div>
+            <div className="stat-card-value text-primary number-animate">{stats.activeCampaigns || 0}</div>
             <div className="stat-card-sub">from {stats.totalCampaigns || 0} total programs</div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card stagger-item">
             <div className="stat-card-label">Approved Victims</div>
-            <div className="stat-card-value text-green-600">{stats.activeBeneficiaries || 0}</div>
+            <div className="stat-card-value text-green-600 number-animate">{stats.activeBeneficiaries || 0}</div>
             <div className="stat-card-sub">{stats.pendingBeneficiaries || 0} awaiting AI/NGO review</div>
           </div>
-          <div className="stat-card highlight-orange">
+          <div className="stat-card highlight-orange stagger-item">
             <div className="stat-card-label">Pending Aid</div>
-            <div className="stat-card-value">{stats.pendingDonations || 0}</div>
+            <div className="stat-card-value number-animate">{stats.pendingDonations || 0}</div>
             <div className="stat-card-sub">Donations requiring assignment</div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card stagger-item">
             <div className="stat-card-label">Total Disbursed</div>
-            <div className="stat-card-value tracking-tight">₹{(stats.totalDonated || 0).toLocaleString("en-IN")}</div>
+            <div className="stat-card-value tracking-tight number-animate">₹{(stats.totalDonated || 0).toLocaleString("en-IN")}</div>
             <div className="stat-card-sub">Across all secure wallets</div>
           </div>
         </div>
@@ -91,7 +91,7 @@ export default function NGODashboard() {
 
       <div className="grid-2 gap-8">
         {/* Quick Actions */}
-        <div className="card shadow-sm border-0 bg-slate-50">
+        <div className="card shadow-sm border-0 bg-gradient-to-br from-slate-50 to-blue-50/30 hover-lift">
           <h2 className="text-lg font-bold mb-4 text-slate-800">Mission Oversight</h2>
           <div className="grid-2 gap-4">
             <Link to="/ngo/campaigns/create" className="action-button group">
@@ -134,10 +134,10 @@ export default function NGODashboard() {
         </div>
 
         {/* Pending Donations Tracker */}
-        <div className="card shadow-sm border-0">
+        <div className="card shadow-sm border-0 hover-lift">
           <div className="row-between mb-4">
             <h2 className="text-lg font-bold text-slate-800">Real-time Aid Intake</h2>
-            <Link to="/ngo/reviews" className="text-primary text-xs font-bold hover:underline">Full Queue →</Link>
+            <Link to="/ngo/reviews" className="text-primary text-xs font-bold hover:underline transition-smooth">Full Queue →</Link>
           </div>
           
           {recentDonations.length === 0 ? (
@@ -148,13 +148,13 @@ export default function NGODashboard() {
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
-              {recentDonations.map(d => (
-                <div key={d._id} className="py-3 flex justify-between items-center group hover:bg-slate-50 rounded px-2 transition-colors">
+              {recentDonations.map((d, idx) => (
+                <div key={d._id} className="py-3 flex justify-between items-center group hover:bg-slate-50 rounded px-2 transition-smooth stagger-item" style={{ '--index': idx }}>
                   <div>
                     <div className="text-[13px] font-bold text-slate-800">₹{d.amount?.toLocaleString("en-IN")}</div>
                     <div className="text-[11px] text-slate-500">Intake from: {d.donor?.name || "Private Donor"}</div>
                   </div>
-                  <Link to="/ngo/reviews" className="px-3 py-1 bg-slate-100 hover:bg-primary hover:text-white text-[10px] font-bold rounded transition-all uppercase tracking-wider">Assign Aid</Link>
+                  <Link to="/ngo/reviews" className="px-3 py-1 bg-slate-100 hover:bg-primary hover:text-white text-[10px] font-bold rounded transition-smooth uppercase tracking-wider hover-scale">Assign Aid</Link>
                 </div>
               ))}
             </div>
@@ -163,7 +163,7 @@ export default function NGODashboard() {
       </div>
 
       {/* Campaign List */}
-      <div className="card shadow-sm border-0">
+      <div className="card shadow-sm border-0 hover-lift">
          <div className="row-between mb-4">
             <h2 className="text-lg font-bold text-slate-800">Program Management</h2>
           </div>
@@ -174,10 +174,10 @@ export default function NGODashboard() {
             </div>
           ) : (
             <div className="grid-1 gap-3">
-               {campaigns.map(c => (
-                <div key={c._id} className="p-4 border border-slate-100 rounded-lg flex justify-between items-center hover:shadow-md transition-shadow">
+               {campaigns.map((c, idx) => (
+                <div key={c._id} className="p-4 border border-slate-100 rounded-lg flex justify-between items-center hover:shadow-lg transition-smooth hover:border-primary/30 stagger-item" style={{ '--index': idx }}>
                   <div className="flex gap-4 items-center">
-                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center text-xl ${c.status === 'ACTIVE' ? 'bg-green-100' : 'bg-slate-100'}`}>
+                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center text-xl transition-transform ${c.status === 'ACTIVE' ? 'bg-gradient-to-br from-green-100 to-emerald-100' : 'bg-slate-100'}`}>
                       {c.disasterType === 'FLOOD' ? '🌊' : c.disasterType === 'EARTHQUAKE' ? '🌋' : '📦'}
                     </div>
                     <div>
@@ -186,10 +186,10 @@ export default function NGODashboard() {
                     </div>
                   </div>
                   <div className="flex items-center gap-6">
-                    <span className={`px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-tighter ${
+                    <span className={`px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-tighter transition-smooth ${
                       c.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
                     }`}>{c.status}</span>
-                    <Link to={`/ngo/campaigns/${c._id}`} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
+                    <Link to={`/ngo/campaigns/${c._id}`} className="p-2 hover:bg-primary hover:text-white rounded-full transition-smooth text-slate-400 hover-scale">
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
                     </Link>
                   </div>

@@ -99,8 +99,8 @@ export default function DonorDashboard() {
             { label: "Total Donations", value: stats.totalDonations || 0, sub: "All records" },
             { label: "Active Disbursements", value: stats.activeDonations || 0, sub: "Aid in use" },
             { label: "Campaigns Supported", value: stats.campaignsSupported || 0, sub: "Unique campaigns" },
-          ].map((s) => (
-            <div key={s.label} className="stat-card">
+          ].map((s, idx) => (
+            <div key={s.label} className="stat-card stagger-item number-animate" style={{ '--index': idx }}>
               <div className="stat-card-label">{s.label}</div>
               <div className="stat-card-value">{s.value}</div>
               <div className="stat-card-sub">{s.sub}</div>
@@ -110,7 +110,7 @@ export default function DonorDashboard() {
       )}
 
       {/* Browse + donate */}
-      <div className="card">
+      <div className="card hover-lift">
         <div className="row-between" style={{ marginBottom: "var(--space-4)" }}>
           <h2 style={{ fontSize: "16px", fontWeight: "700" }}>Browse Active Campaigns</h2>
           <button
