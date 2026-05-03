@@ -41,13 +41,15 @@ export default function CreateCampaign() {
         targetAmount: form.targetAmount || 100000,
         location: form.location,
         policy: {
-          allowedCategories: form.policySnapshot.allowedCategories.map(c => c.toUpperCase()),
+          allowedCategories: form.policySnapshot.allowedCategories.map((c) =>
+            c.toUpperCase(),
+          ),
           maxPerBeneficiary: form.policySnapshot.maxPerBeneficiary,
           maxPerTransaction: form.policySnapshot.maxPerTransaction || 1000,
           validityDays: form.policySnapshot.validityDays,
         },
       });
-      alert("Campaign created as DRAFT");
+      alert("Campaign created as DRAFT. Submit for approval to activate.");
       navigate("/ngo");
     } catch (err) {
       alert(err.response?.data?.message || "Campaign creation failed");
@@ -73,16 +75,12 @@ export default function CreateCampaign() {
       <textarea
         className="input"
         placeholder="Description"
-        onChange={(e) =>
-          setForm({ ...form, description: e.target.value })
-        }
+        onChange={(e) => setForm({ ...form, description: e.target.value })}
       />
 
       <select
         className="input"
-        onChange={(e) =>
-          setForm({ ...form, disasterType: e.target.value })
-        }
+        onChange={(e) => setForm({ ...form, disasterType: e.target.value })}
       >
         <option value="">Select Disaster Type</option>
         <option value="FLOOD">Flood</option>
@@ -141,18 +139,14 @@ export default function CreateCampaign() {
         type="number"
         className="input"
         placeholder="Wallet Validity (days)"
-        onChange={(e) =>
-          updatePolicy("validityDays", Number(e.target.value))
-        }
+        onChange={(e) => updatePolicy("validityDays", Number(e.target.value))}
       />
 
       <input
         type="number"
         className="input"
         placeholder="Cooldown Days"
-        onChange={(e) =>
-          updatePolicy("cooldownDays", Number(e.target.value))
-        }
+        onChange={(e) => updatePolicy("cooldownDays", Number(e.target.value))}
       />
 
       <input
@@ -170,9 +164,7 @@ export default function CreateCampaign() {
         step="0.1"
         className="input"
         placeholder="Max Fraud Risk (0–1)"
-        onChange={(e) =>
-          updatePolicy("maxFraudRisk", Number(e.target.value))
-        }
+        onChange={(e) => updatePolicy("maxFraudRisk", Number(e.target.value))}
       />
 
       <button

@@ -65,6 +65,33 @@ const campaignSchema = new mongoose.Schema(
       default: null,
     },
 
+    // APPROVAL LIFECYCLE FIELDS
+    submittedAt: {
+      type: Date,
+      default: null,
+    },
+
+    approvedAt: {
+      type: Date,
+      default: null,
+    },
+
+    rejectionReason: {
+      type: String,
+      default: null,
+    },
+
+    rejectedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    rejectedAt: {
+      type: Date,
+      default: null,
+    },
+
     // WORKFLOW TRACE
     jobIdHash: {
       type: String,
@@ -188,6 +215,7 @@ const campaignSchema = new mongoose.Schema(
         "CLOSED",
         "ARCHIVED",
         "AUDIT_FINALIZED",
+        "REJECTED",
       ],
       default: "DRAFT",
       index: true,

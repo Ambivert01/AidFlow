@@ -59,11 +59,13 @@ APPROVE USER
 for NGO/MERCHANT/GOVERNMENT — also creates Merchant profile if role is MERCHANT
 */
 export const approveUser = async (userId, adminId, extraData = {}) => {
-  if (!mongoose.Types.ObjectId.isValid(userId)) throw new AppError("Invalid user id", 400);
+  if (!mongoose.Types.ObjectId.isValid(userId))
+    throw new AppError("Invalid user id", 400);
 
   const user = await User.findById(userId);
   if (!user) throw new AppError("User not found", 404);
-  if (user.verificationStatus === "APPROVED") return BaseService.success(user, "Already approved");
+  if (user.verificationStatus === "APPROVED")
+    return BaseService.success(user, "Already approved");
 
   user.verificationStatus = "APPROVED";
   user.approvedBy = adminId;
@@ -92,7 +94,8 @@ export const approveUser = async (userId, adminId, extraData = {}) => {
 REJECT USER
 */
 export const rejectUser = async (userId, adminId, reason) => {
-  if (!mongoose.Types.ObjectId.isValid(userId)) throw new AppError("Invalid user id", 400);
+  if (!mongoose.Types.ObjectId.isValid(userId))
+    throw new AppError("Invalid user id", 400);
 
   const user = await User.findById(userId);
   if (!user) throw new AppError("User not found", 404);
@@ -158,7 +161,9 @@ export const getAllMerchants = async (query = {}) => {
 UPDATE MERCHANT (category / status)
 */
 export const updateMerchant = async (merchantId, data) => {
-  const merchant = await Merchant.findByIdAndUpdate(merchantId, data, { new: true });
+  const merchant = await Merchant.findByIdAndUpdate(merchantId, data, {
+    new: true,
+  });
   if (!merchant) throw new AppError("Merchant not found", 404);
   return BaseService.updated(merchant);
 };
@@ -172,9 +177,7 @@ export const getAuditLogs = async (query = {}) => {
   if (query.entityType) filter.entityType = query.entityType;
   if (query.actorRole) filter["actor.role"] = query.actorRole;
 
-  const logs = await AuditLog.find(filter)
-    .sort({ createdAt: -1 })
-    .limit(200);
+  const logs = await AuditLog.find(filter).sort({ createdAt: -1 }).limit(200);
 
   return BaseService.success(logs);
 };
@@ -183,7 +186,8 @@ export const getAuditLogs = async (query = {}) => {
 FREEZE WALLET (admin)
 */
 export const freezeWallet = async (walletId, reason, adminId) => {
-  if (!mongoose.Types.ObjectId.isValid(walletId)) throw new AppError("Invalid wallet id", 400);
+  if (!mongoose.Types.ObjectId.isValid(walletId))
+    throw new AppError("Invalid wallet id", 400);
 
   const wallet = await Wallet.findById(walletId);
   if (!wallet) throw new AppError("Wallet not found", 404);
@@ -201,7 +205,8 @@ export const freezeWallet = async (walletId, reason, adminId) => {
 BAN MERCHANT (admin)
 */
 export const banMerchant = async (merchantId, reason) => {
-  if (!mongoose.Types.ObjectId.isValid(merchantId)) throw new AppError("Invalid merchant id", 400);
+  if (!mongoose.Types.ObjectId.isValid(merchantId))
+    throw new AppError("Invalid merchant id", 400);
 
   const merchant = await Merchant.findById(merchantId);
   if (!merchant) throw new AppError("Merchant not found", 404);
@@ -218,6 +223,143 @@ export const banMerchant = async (merchantId, reason) => {
 GET FRAUD ALERTS
 */
 export const getFraudAlerts = async () => {
-  const alerts = await FraudAlert.find({ status: "OPEN" }).sort({ createdAt: -1 });
+  const alerts = await FraudAlert.find({ status: "OPEN" }).sort({
+    createdAt: -1,
+  });
   return BaseService.success(alerts);
+};
+
+/*
+GET PENDING CAMPAIGNS
+Query campaigns with status PENDING_APPROVAL, populate NGO details, sort by submittedAt
+*/
+export const getPendingCampaigns = async () => {
+  const campaigns = await Campaign.find({ status: "PENDING_APPROVAL" })
+    .populate("createdBy", "name email profile")
+    .sort({ submittedAt: -1 });
+
+  return BaseService.success(campaigns);
+};
+
+/*
+APPROVE CAMPAIGN
+Validate, change to ACTIVE, set approvedBy/approvedAt, create audit log, notify NGO
+*/
+export const approveCampaign = async (campaignId, adminId) => {
+  if (!mongoose.Types.ObjectId.isValid(campaignId))
+    throw new AppError("Invalid campaign id", 400);
+
+  const campaign = await Campaign.findById(campaignId);
+  if (!campaign) throw new AppError("Campaign not found", 404);
+  if (campaign.status !== "PENDING_APPROVAL") {
+    throw new AppError("Campaign is not pending approval", 400);
+  }
+
+  // Update campaign status to ACTIVE
+  campaign.status = "ACTIVE";
+  campaign.approvedBy = adminId;
+  campaign.approvedAt = new Date();
+  await campaign.save();
+
+  // Create audit log entry
+  await AuditLog.create({
+    eventType: "CAMPAIGN_APPROVED",
+    eventCategory: "CAMPAIGN",
+    entityType: "Campaign",
+    entityId: campaign._id,
+    jobIdHash: campaign.jobIdHash,
+    campaignId: campaign._id,
+    actor: {
+      userId: adminId,
+      role: "ADMIN",
+    },
+    payload: {
+      campaignTitle: campaign.title,
+      approvedBy: adminId,
+      approvedAt: campaign.approvedAt,
+    },
+  });
+
+  // Send notification to NGO
+  const { createNotification } =
+    await import("../notification/notification.service.js");
+  await createNotification({
+    userId: campaign.createdBy,
+    role: "NGO",
+    type: "CAMPAIGN_APPROVED",
+    title: "Campaign Approved",
+    message: `Your campaign "${campaign.title}" has been approved and is now active.`,
+    entityType: "Campaign",
+    entityId: campaign._id.toString(),
+    priority: "HIGH",
+  });
+
+  // Initialize campaign workflow
+  const workflowEngine = (await import("../../engines/workflow.engine.js"))
+    .default;
+  await workflowEngine.initializeCampaignWorkflow(campaign._id.toString());
+
+  return BaseService.updated(campaign);
+};
+
+/*
+REJECT CAMPAIGN
+Validate, change to REJECTED, set rejection fields, create audit log, notify NGO
+*/
+export const rejectCampaign = async (campaignId, adminId, rejectionReason) => {
+  if (!mongoose.Types.ObjectId.isValid(campaignId))
+    throw new AppError("Invalid campaign id", 400);
+
+  if (!rejectionReason || rejectionReason.trim() === "") {
+    throw new AppError("Rejection reason is required", 400);
+  }
+
+  const campaign = await Campaign.findById(campaignId);
+  if (!campaign) throw new AppError("Campaign not found", 404);
+  if (campaign.status !== "PENDING_APPROVAL") {
+    throw new AppError("Campaign is not pending approval", 400);
+  }
+
+  // Update campaign status to REJECTED
+  campaign.status = "REJECTED";
+  campaign.rejectionReason = rejectionReason;
+  campaign.rejectedBy = adminId;
+  campaign.rejectedAt = new Date();
+  await campaign.save();
+
+  // Create audit log entry
+  await AuditLog.create({
+    eventType: "CAMPAIGN_REJECTED",
+    eventCategory: "CAMPAIGN",
+    entityType: "Campaign",
+    entityId: campaign._id,
+    jobIdHash: campaign.jobIdHash,
+    campaignId: campaign._id,
+    actor: {
+      userId: adminId,
+      role: "ADMIN",
+    },
+    payload: {
+      campaignTitle: campaign.title,
+      rejectedBy: adminId,
+      rejectedAt: campaign.rejectedAt,
+      rejectionReason: rejectionReason,
+    },
+  });
+
+  // Send notification to NGO with rejection reason
+  const { createNotification } =
+    await import("../notification/notification.service.js");
+  await createNotification({
+    userId: campaign.createdBy,
+    role: "NGO",
+    type: "CAMPAIGN_REJECTED",
+    title: "Campaign Rejected",
+    message: `Your campaign "${campaign.title}" has been rejected. Reason: ${rejectionReason}`,
+    entityType: "Campaign",
+    entityId: campaign._id.toString(),
+    priority: "HIGH",
+  });
+
+  return BaseService.updated(campaign);
 };

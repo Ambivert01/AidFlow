@@ -1,31 +1,26 @@
 import express from "express";
 import { asyncHandler } from "../../core/asyncHandler.js";
-import { Campaign } from "../../models/ngo/Campaign.model.js";
 import { AuditLog } from "../../models/audit/AuditLog.model.js";
 import { Donation } from "../../models/donor/Donation.model.js";
 import { ApiResponse } from "../../core/apiResponse.js";
+import * as publicController from "./public.controller.js";
 
 const router = express.Router();
 
-// Public campaigns — no auth required
-router.get(
-  "/campaigns",
-  asyncHandler(async (req, res) => {
-    const filter = { status: "ACTIVE" };
-    if (req.query.disasterType) filter.disasterType = req.query.disasterType;
-    if (req.query.q) {
-      filter.$or = [
-        { title: { $regex: req.query.q, $options: "i" } },
-        { "location.state": { $regex: req.query.q, $options: "i" } },
-        { "location.district": { $regex: req.query.q, $options: "i" } },
-      ];
-    }
-    const campaigns = await Campaign.find(filter)
-      .populate("createdBy", "name")
-      .sort({ createdAt: -1 });
-    res.json(ApiResponse.success(campaigns));
-  })
-);
+// Homepage statistics
+router.get("/stats", publicController.getStats);
+
+// Public campaigns list
+router.get("/campaigns", publicController.getCampaigns);
+
+// Get campaign by ID
+router.get("/campaigns/:id", publicController.getCampaignById);
+
+// Recent transactions for transparency
+router.get("/recent-transactions", publicController.getRecentTransactions);
+
+// Blockchain status
+router.get("/blockchain-status", publicController.getBlockchainStatus);
 
 // Public audit verify — anyone can verify by donationId or jobIdHash
 router.get(
@@ -47,22 +42,31 @@ router.get(
     const logs = await AuditLog.find({ jobIdHash }).sort({ sequence: 1 });
 
     if (!logs.length) {
-      return res.status(404).json({ success: false, message: "No audit trail found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "No audit trail found" });
     }
 
     const lastLog = logs[logs.length - 1];
 
-    res.json(ApiResponse.success({
-      jobIdHash,
-      donation: donation
-        ? { id: donation._id, amount: donation.amount, status: donation.status, campaign: donation.campaign }
-        : null,
-      auditTrail: logs,
-      merkleRoot: lastLog.merkleRoot || null,
-      blockchainAnchor: lastLog.blockchainAnchor || null,
-      totalEvents: logs.length,
-    }));
-  })
+    res.json(
+      ApiResponse.success({
+        jobIdHash,
+        donation: donation
+          ? {
+              id: donation._id,
+              amount: donation.amount,
+              status: donation.status,
+              campaign: donation.campaign,
+            }
+          : null,
+        auditTrail: logs,
+        merkleRoot: lastLog.merkleRoot || null,
+        blockchainAnchor: lastLog.blockchainAnchor || null,
+        totalEvents: logs.length,
+      }),
+    );
+  }),
 );
 
 export default router;

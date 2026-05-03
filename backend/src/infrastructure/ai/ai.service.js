@@ -5,20 +5,26 @@ class AIService {
   constructor() {
     // Each agent runs on its own port with its own endpoint path
     this.urls = {
-      eligibility: process.env.AI_ELIGIBILITY_URL,   // http://localhost:8001
-      fraud: process.env.AI_FRAUD_URL,               // http://localhost:8002
-      risk: process.env.AI_RISK_URL,                 // http://localhost:8003
+      eligibility: process.env.AI_ELIGIBILITY_URL, // http://localhost:8001
+      fraud: process.env.AI_FRAUD_URL, // http://localhost:8002
+      risk: process.env.AI_RISK_URL, // http://localhost:8003
     };
     this.timeout = 8000;
   }
 
   async callAI(url, payload, type) {
     if (!url) {
-      logger.warn({ type: "AI_SKIPPED", service: type, reason: "URL_NOT_CONFIGURED" });
+      logger.warn({
+        type: "AI_SKIPPED",
+        service: type,
+        reason: "URL_NOT_CONFIGURED",
+      });
       return this.mockResponse(type);
     }
     try {
-      const response = await axios.post(url, payload, { timeout: this.timeout });
+      const response = await axios.post(url, payload, {
+        timeout: this.timeout,
+      });
       return response.data;
     } catch (error) {
       logger.error({ type: "AI_ERROR", service: type, message: error.message });
@@ -45,7 +51,7 @@ class AIService {
           severity: data.severity || 1.0,
         },
       },
-      "eligibility"
+      "eligibility",
     );
   }
 
@@ -63,7 +69,7 @@ class AIService {
         merchantId: String(data.merchantId || ""),
         timeWindowHours: data.timeWindowHours || 24,
       },
-      "fraud"
+      "fraud",
     );
   }
 
@@ -85,7 +91,7 @@ class AIService {
           minEligibilityConfidence: policy?.minEligibilityConfidence || 0.6,
         },
       },
-      "risk"
+      "risk",
     );
   }
 
@@ -103,7 +109,37 @@ class AIService {
         merchantId: "",
         timeWindowHours: 24,
       },
-      "fraud"
+      "fraud",
+    );
+  }
+
+  // Campaign risk evaluation — uses risk agent with campaign signals
+  async evaluateCampaignRisk(data) {
+    return this.callAI(
+      this.urls.risk ? `${this.urls.risk}/evaluate` : null,
+      {
+        campaign: {
+          title: data.title || "",
+          description: data.description || "",
+          targetAmount: data.targetAmount || 0,
+          disasterType: data.disasterType || "OTHER",
+          location: data.location || {},
+        },
+        ngo: {
+          id: String(data.ngoId || ""),
+          name: data.ngoName || "",
+          verificationStatus: data.ngoVerificationStatus || "PENDING",
+          pastCampaigns: data.ngoPastCampaigns || 0,
+          successRate: data.ngoSuccessRate || 0,
+        },
+        signals: {
+          targetAmountReasonable:
+            data.targetAmount > 0 && data.targetAmount < 10000000,
+          hasValidLocation: !!(data.location?.state && data.location?.district),
+          ngoVerified: data.ngoVerificationStatus === "APPROVED",
+        },
+      },
+      "campaign-risk",
     );
   }
 
@@ -120,11 +156,35 @@ class AIService {
   mockResponse(type) {
     switch (type) {
       case "eligibility":
-        return { eligible: true, confidence: 0.82, signals: {}, reason: "Mock: eligible", xai_explanation: null };
+        return {
+          eligible: true,
+          confidence: 0.82,
+          signals: {},
+          reason: "Mock: eligible",
+          xai_explanation: null,
+        };
       case "fraud":
-        return { fraudRisk: "LOW", riskScore: 0.1, flags: [], explanation: "Mock: no fraud detected" };
+        return {
+          fraudRisk: "LOW",
+          riskScore: 0.1,
+          flags: [],
+          explanation: "Mock: no fraud detected",
+        };
       case "risk":
-        return { finalRiskScore: 10, decision: "ALLOW", reason: "Mock: all clear", escalate: false };
+        return {
+          finalRiskScore: 10,
+          decision: "ALLOW",
+          reason: "Mock: all clear",
+          escalate: false,
+        };
+      case "campaign-risk":
+        return {
+          riskScore: 15,
+          decision: "ALLOW",
+          flags: [],
+          reason: "Mock: campaign appears legitimate",
+          confidence: 0.85,
+        };
       case "proof-validation":
         return { valid: true, confidence: 0.9, flags: [] };
       case "anomaly-detection":

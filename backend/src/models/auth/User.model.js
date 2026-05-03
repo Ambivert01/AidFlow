@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { ROLES, VERIFICATION_STATUS } from "../../constants/roles.constants.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -40,7 +41,7 @@ const userSchema = new mongoose.Schema(
     // SYSTEM ROLE
     role: {
       type: String,
-      enum: ["ADMIN", "GOVERNMENT", "NGO", "DONOR", "BENEFICIARY", "MERCHANT"],
+      enum: Object.values(ROLES),
       required: true,
       index: true,
     },
@@ -48,8 +49,8 @@ const userSchema = new mongoose.Schema(
     // ACCOUNT VERIFICATION
     verificationStatus: {
       type: String,
-      enum: ["PENDING", "APPROVED", "REJECTED"],
-      default: "PENDING",
+      enum: Object.values(VERIFICATION_STATUS),
+      default: VERIFICATION_STATUS.PENDING,
       index: true,
     },
 

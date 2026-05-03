@@ -56,7 +56,12 @@ export const createAuditLog = async (data = {}, session = null) => {
 
   logPayload.hash = generateHash(logPayload);
 
-  return AuditLog.create(logPayload, { session });
+  if (session) {
+    const result = await AuditLog.create([logPayload], { session });
+    return result[0];
+  }
+
+  return AuditLog.create(logPayload);
 };
 
 /*

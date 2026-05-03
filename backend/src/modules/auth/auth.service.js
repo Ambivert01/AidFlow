@@ -7,17 +7,25 @@ import {
 } from "./auth.utils.js";
 import { AppError } from "../../utils/AppError.js";
 import { AUTH_ERRORS } from "./auth.constants.js";
+import {
+  ROLES,
+  VERIFICATION_STATUS,
+  requiresApproval,
+} from "../../constants/roles.constants.js";
 
 export const registerUser = async (data) => {
   const existing = await User.findOne({ email: data.email.toLowerCase() });
 
-  if (existing) throw new AppError("Email already registered", 409, "DUPLICATE_EMAIL");
+  if (existing)
+    throw new AppError("Email already registered", 409, "DUPLICATE_EMAIL");
 
   const passwordHash = await hashPassword(data.password);
 
   // DONORS auto-approved so they can login immediately
   // All other roles (NGO, MERCHANT, GOVERNMENT) stay PENDING until admin approves
-  const verificationStatus = data.role === "DONOR" ? "APPROVED" : "PENDING";
+  const verificationStatus = requiresApproval(data.role)
+    ? VERIFICATION_STATUS.PENDING
+    : VERIFICATION_STATUS.APPROVED;
 
   const user = await User.create({
     name: data.name,
@@ -32,19 +40,36 @@ export const registerUser = async (data) => {
 };
 
 export const loginUser = async (email, password) => {
-  const user = await User.findOne({ email: email.toLowerCase() }).select("+passwordHash");
+  const user = await User.findOne({ email: email.toLowerCase() }).select(
+    "+passwordHash",
+  );
 
-  if (!user) throw new AppError(AUTH_ERRORS.INVALID_CREDENTIALS, 401, "INVALID_CREDENTIALS");
+  if (!user)
+    throw new AppError(
+      AUTH_ERRORS.INVALID_CREDENTIALS,
+      401,
+      "INVALID_CREDENTIALS",
+    );
 
-  if (!user.isActive) throw new AppError(AUTH_ERRORS.ACCOUNT_DISABLED, 403, "ACCOUNT_DISABLED");
+  if (!user.isActive)
+    throw new AppError(AUTH_ERRORS.ACCOUNT_DISABLED, 403, "ACCOUNT_DISABLED");
 
-  if (user.verificationStatus !== "APPROVED") {
-    throw new AppError("Account pending admin approval. You will be notified once approved.", 403, "PENDING_APPROVAL");
+  if (user.verificationStatus !== VERIFICATION_STATUS.APPROVED) {
+    throw new AppError(
+      "Account pending admin approval. You will be notified once approved.",
+      403,
+      "PENDING_APPROVAL",
+    );
   }
 
   const valid = await comparePassword(password, user.passwordHash);
 
-  if (!valid) throw new AppError(AUTH_ERRORS.INVALID_CREDENTIALS, 401, "INVALID_CREDENTIALS");
+  if (!valid)
+    throw new AppError(
+      AUTH_ERRORS.INVALID_CREDENTIALS,
+      401,
+      "INVALID_CREDENTIALS",
+    );
 
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);

@@ -36,3 +36,7 @@ blockchain/.env.*
 .vscode/
 .idea/
 *.swp
+
+Build/
+recommendations
+.kiro/

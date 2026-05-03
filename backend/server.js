@@ -53,6 +53,11 @@ SERVER START
 const startServer = async () => {
   await connectDB();
 
+  // Start campaign completion cron job
+  const { startCampaignCompletionJob } =
+    await import("./src/jobs/campaign.job.js");
+  startCampaignCompletionJob();
+
   app.listen(PORT, () => {
     logger.info(`AidFlow server running on port ${PORT}`);
   });

@@ -22,12 +22,18 @@ new Worker(
         if (donation) {
           const riskScore = Math.round((result.riskScore || 0.1) * 100);
           donation.aiDecision = {
-            decision: riskScore > 80 ? "BLOCK" : riskScore > 40 ? "MANUAL_REVIEW" : "ALLOW",
+            decision:
+              riskScore > 80
+                ? "BLOCK"
+                : riskScore > 40
+                  ? "MANUAL_REVIEW"
+                  : "ALLOW",
             riskScore,
             fraudSignals: result.flags || [],
             evaluatedAt: new Date(),
           };
-          donation.status = riskScore > 80 ? "HIGH_RISK_ESCALATED" : "PENDING_NGO_REVIEW";
+          donation.status =
+            riskScore > 80 ? "HIGH_RISK_ESCALATED" : "PENDING_NGO_REVIEW";
           await donation.save();
         }
         break;
@@ -42,7 +48,9 @@ new Worker(
             eligibilityConfidence: result.confidence ?? 0.75,
             fraudRisk: 0.1,
             decision: result.eligible ? "ALLOW" : "BLOCK",
-            flags: result.signals ? Object.keys(result.signals).filter(k => !result.signals[k]) : [],
+            flags: result.signals
+              ? Object.keys(result.signals).filter((k) => !result.signals[k])
+              : [],
             reason: result.reason || "",
             evaluatedAt: new Date(),
           };
@@ -54,6 +62,43 @@ new Worker(
 
       case "fraud-score": {
         result = await aiService.evaluateFraudProbability(payload);
+        break;
+      }
+
+      case "campaign-risk": {
+        const { Campaign } = await import("../models/ngo/Campaign.model.js");
+        const { AIDecisionLog } =
+          await import("../models/system/AIDecisionLog.model.js");
+        const { User } = await import("../models/auth/User.model.js");
+
+        result = await aiService.evaluateCampaignRisk(payload);
+
+        const campaign = await Campaign.findById(payload.campaignId);
+        if (campaign) {
+          // Update campaign with AI risk score
+          campaign.aiRiskScore = result.riskScore || 15;
+          campaign.aiFlags = result.flags || [];
+          await campaign.save();
+
+          // Create AI decision log
+          const ngo = await User.findById(campaign.createdBy);
+          await AIDecisionLog.create({
+            entityType: "CAMPAIGN",
+            entityId: campaign._id,
+            decisionType: "CAMPAIGN_RISK_EVALUATION",
+            decision: result.decision || "ALLOW",
+            confidence: result.confidence || 0.85,
+            riskScore: result.riskScore || 15,
+            flags: result.flags || [],
+            reason: result.reason || "Campaign risk evaluation completed",
+            metadata: {
+              campaignTitle: campaign.title,
+              ngoName: ngo?.name || "Unknown",
+              targetAmount: campaign.targetAmount,
+              disasterType: campaign.disasterType,
+            },
+          });
+        }
         break;
       }
 
@@ -83,7 +128,7 @@ new Worker(
 
     return result;
   },
-  { connection: redisConnection, concurrency: 5 }
+  { connection: redisConnection, concurrency: 5 },
 );
 
 function mapCategory(type) {
@@ -91,6 +136,7 @@ function mapCategory(type) {
     "donation-risk": "DONATION",
     "beneficiary-eligibility": "BENEFICIARY",
     "fraud-score": "SECURITY",
+    "campaign-risk": "CAMPAIGN",
     "proof-validation": "PROOF",
     "anomaly-detection": "TRANSACTION",
   };
@@ -102,6 +148,7 @@ function mapEntity(type) {
     "donation-risk": "Donation",
     "beneficiary-eligibility": "Beneficiary",
     "fraud-score": "User",
+    "campaign-risk": "Campaign",
     "proof-validation": "Proof",
     "anomaly-detection": "Wallet",
   };

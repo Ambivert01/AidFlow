@@ -12,12 +12,20 @@ export const getPendingRequests = asyncHandler(async (req, res) => {
 });
 
 export const approveUser = asyncHandler(async (req, res) => {
-  const result = await adminService.approveUser(req.params.id, req.user._id, req.body);
+  const result = await adminService.approveUser(
+    req.params.id,
+    req.user._id,
+    req.body,
+  );
   res.json(result);
 });
 
 export const rejectUser = asyncHandler(async (req, res) => {
-  const result = await adminService.rejectUser(req.params.id, req.user._id, req.body.reason);
+  const result = await adminService.rejectUser(
+    req.params.id,
+    req.user._id,
+    req.body.reason,
+  );
   res.json(result);
 });
 
@@ -47,7 +55,11 @@ export const getAuditLogs = asyncHandler(async (req, res) => {
 });
 
 export const freezeWallet = asyncHandler(async (req, res) => {
-  const result = await adminService.freezeWallet(req.params.id, req.body.reason, req.user._id);
+  const result = await adminService.freezeWallet(
+    req.params.id,
+    req.body.reason,
+    req.user._id,
+  );
   res.json(result);
 });
 
@@ -59,4 +71,42 @@ export const banMerchant = asyncHandler(async (req, res) => {
 export const getFraudAlerts = asyncHandler(async (req, res) => {
   const result = await adminService.getFraudAlerts();
   res.json(result);
+});
+
+export const getPendingCampaigns = asyncHandler(async (req, res) => {
+  const result = await adminService.getPendingCampaigns();
+  res.json(result);
+});
+
+export const approveCampaign = asyncHandler(async (req, res) => {
+  const result = await adminService.approveCampaign(
+    req.params.id,
+    req.user._id,
+  );
+  res.json(result);
+});
+
+export const rejectCampaign = asyncHandler(async (req, res) => {
+  const result = await adminService.rejectCampaign(
+    req.params.id,
+    req.user._id,
+    req.body.reason,
+  );
+  res.json(result);
+});
+
+export const pauseCampaign = asyncHandler(async (req, res) => {
+  const { pauseCampaign } = await import("../campaign/campaign.service.js");
+  const result = await pauseCampaign(
+    req.params.id,
+    req.user._id,
+    req.body.reason,
+  );
+  res.status(200).json(result);
+});
+
+export const resumeCampaign = asyncHandler(async (req, res) => {
+  const { resumeCampaign } = await import("../campaign/campaign.service.js");
+  const result = await resumeCampaign(req.params.id, req.user._id);
+  res.status(200).json(result);
 });

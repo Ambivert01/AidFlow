@@ -8,7 +8,10 @@ import { validate } from "../../middlewares/validate.middleware.js";
 
 import * as campaignController from "./campaign.controller.js";
 
-import { createCampaignSchema } from "./campaign.validator.js";
+import {
+  createCampaignSchema,
+  updateCampaignSchema,
+} from "./campaign.validator.js";
 
 const router = express.Router();
 
@@ -26,18 +29,6 @@ router.post(
   campaignController.createCampaign,
 );
 
-// NGO activates campaign
-
-router.patch(
-  "/:id/activate",
-
-  authenticate,
-
-  authorize("NGO"),
-
-  campaignController.activateCampaign,
-);
-
 // public sees active campaigns
 
 router.get(
@@ -52,6 +43,44 @@ router.get(
   "/:id",
 
   campaignController.getCampaign,
+);
+
+// NGO updates campaign (only DRAFT or REJECTED)
+
+router.patch(
+  "/:id",
+
+  authenticate,
+
+  authorize("NGO"),
+
+  validate(updateCampaignSchema),
+
+  campaignController.updateCampaign,
+);
+
+// NGO submits campaign for approval
+
+router.post(
+  "/:id/submit",
+
+  authenticate,
+
+  authorize("NGO"),
+
+  campaignController.submitCampaignForApproval,
+);
+
+// NGO deletes DRAFT campaign
+
+router.delete(
+  "/:id",
+
+  authenticate,
+
+  authorize("NGO"),
+
+  campaignController.deleteCampaign,
 );
 
 export default router;
