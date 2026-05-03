@@ -167,6 +167,7 @@ const proofSchema = new mongoose.Schema(
       type: String,
       enum: [
         "UPLOADED",
+        "UNDER_VALIDATION",
         "AI_VERIFIED",
         "FLAGGED",
         "MANUAL_REVIEW",
@@ -189,6 +190,11 @@ const proofSchema = new mongoose.Schema(
       index: true,
     },
 
+    blockchainTxHash: {
+      type: String,
+      default: null,
+    },
+
     // SYSTEM METADATA
     metadata: {
       type: Object,
@@ -208,5 +214,10 @@ proofSchema.index({ campaign: 1, proofType: 1 });
 proofSchema.index({ beneficiary: 1 });
 proofSchema.index({ merchant: 1 });
 proofSchema.index({ status: 1 });
+proofSchema.index({ campaign: 1, status: 1 }); // For campaign proof queries
+proofSchema.index({ "files.checksum": 1 }); // For duplicate detection
+proofSchema.index({ status: 1, createdAt: -1 }); // For admin review queue
+proofSchema.index({ "aiValidation.evaluatedAt": 1 }); // For AI validation tracking
+proofSchema.index({ campaign: 1, status: 1, capturedAt: -1 }); // For donor timeline
 
 export const Proof = mongoose.model("Proof", proofSchema);

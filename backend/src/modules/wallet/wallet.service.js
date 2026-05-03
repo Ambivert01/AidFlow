@@ -1,42 +1,148 @@
 import { Wallet } from "../../models/wallet/Wallet.model.js";
 import { Merchant } from "../../models/merchant/Merchant.model.js";
 import { Beneficiary } from "../../models/beneficiary/Beneficiary.model.js";
+import { Campaign } from "../../models/ngo/Campaign.model.js";
 import { AppError } from "../../utils/AppError.js";
 import { BaseService } from "../../core/base.service.js";
 import { withTransaction } from "../../core/transaction.js";
-import { WALLET_STATUS } from "./wallet.constants.js";
+import {
+  WALLET_STATUS,
+  WALLET_ERROR_CODES,
+  AUDIT_EVENT_TYPES,
+} from "./wallet.constants.js";
 import policyEngine from "../../engines/policy.engine.js";
 import { addFraudCheckJob } from "../../jobs/fraud.job.js";
 import { createAuditLog } from "../audit/audit.service.js";
 import { generateHash } from "../../utils/hash.util.js";
+import { sendNotification } from "../notification/notification.service.js";
 
 /*
 CREATE WALLET
 called after NGO assigns donation to beneficiary
 */
 export const createWallet = async (data) => {
-  const jobIdHash = data.jobIdHash || generateHash({
-    type: "WALLET",
-    beneficiary: data.beneficiary?.toString(),
-    campaign: data.campaign?.toString(),
-    timestamp: Date.now(),
-  });
+  return withTransaction(async (session) => {
+    // Check beneficiary approval status
+    const beneficiary = await Beneficiary.findById(data.beneficiaryId).session(
+      session,
+    );
+    if (!beneficiary) {
+      throw new AppError(WALLET_ERROR_CODES.BENEFICIARY_NOT_FOUND, 404);
+    }
+    if (beneficiary.status !== "APPROVED") {
+      throw new AppError(WALLET_ERROR_CODES.BENEFICIARY_NOT_APPROVED, 400);
+    }
 
-  const wallet = await Wallet.create({
-    beneficiary: data.beneficiary,
-    campaign: data.campaign,
-    donation: data.donation || null,
-    balance: data.amount,
-    initialAmount: data.amount,
-    jobIdHash,
-    policy: {
-      ...data.policy,
-      expiresAt: new Date(Date.now() + (data.policy?.validityDays || 14) * 86400000),
-    },
-    status: WALLET_STATUS.ACTIVE,
-  });
+    // Check for existing wallet (idempotency via natural key)
+    const existingWallet = await Wallet.findOne({
+      beneficiary: data.beneficiaryId,
+      campaign: data.campaignId,
+    }).session(session);
 
-  return wallet;
+    if (existingWallet) {
+      return existingWallet;
+    }
+
+    // Get campaign for policy snapshot
+    const campaign = await Campaign.findById(data.campaignId).session(session);
+    if (!campaign) {
+      throw new AppError("Campaign not found", 404);
+    }
+
+    // Generate jobIdHash
+    const jobIdHash =
+      data.jobIdHash ||
+      generateHash({
+        type: "WALLET",
+        beneficiary: data.beneficiaryId?.toString(),
+        campaign: data.campaignId?.toString(),
+        timestamp: Date.now(),
+      });
+
+    // Calculate expiry date
+    const validityDays = campaign.policySnapshot?.validityDays || 14;
+    const expiresAt = new Date(Date.now() + validityDays * 86400000);
+
+    // Create wallet with complete policy snapshot
+    const wallet = await Wallet.create(
+      [
+        {
+          beneficiary: data.beneficiaryId,
+          campaign: data.campaignId,
+          donation: data.donation || null,
+          createdBy: data.createdBy,
+          balance: data.amount,
+          initialAmount: data.amount,
+          jobIdHash,
+          policy: {
+            allowedCategories: campaign.policySnapshot?.allowedCategories || [
+              "FOOD",
+              "MEDICINE",
+              "SHELTER",
+            ],
+            maxPerTransaction:
+              campaign.policySnapshot?.maxPerTransaction || 1000,
+            dailyLimit: campaign.policySnapshot?.dailyLimit || 2000,
+            weeklyLimit: campaign.policySnapshot?.weeklyLimit || 5000,
+            expiresAt,
+            allowedMerchants: data.policy?.allowedMerchants || [],
+            maxDistanceKm: data.policy?.maxDistanceKm || 50,
+            allowedDistricts: data.policy?.allowedDistricts || [],
+          },
+          status: WALLET_STATUS.ACTIVE,
+        },
+      ],
+      { session },
+    );
+
+    // Update campaign metrics
+    await Campaign.findByIdAndUpdate(
+      data.campaignId,
+      {
+        $inc: {
+          totalAllocated: data.amount,
+          totalWalletsCreated: 1,
+        },
+      },
+      { session },
+    );
+
+    // Create audit log
+    await createAuditLog(
+      {
+        eventType: AUDIT_EVENT_TYPES.WALLET_CREATED,
+        entityType: "Wallet",
+        entityId: wallet[0]._id,
+        actorRole: "NGO",
+        actorId: data.createdBy,
+        payload: {
+          beneficiaryId: data.beneficiaryId,
+          campaignId: data.campaignId,
+          initialAmount: data.amount,
+        },
+      },
+      session,
+    );
+
+    // Send notification
+    try {
+      await sendNotification({
+        userId: beneficiary.user,
+        type: "WALLET_CREATED",
+        data: {
+          walletId: wallet[0]._id,
+          balance: wallet[0].balance,
+          expiresAt: wallet[0].policy.expiresAt,
+          allowedCategories: wallet[0].policy.allowedCategories,
+        },
+      });
+    } catch (error) {
+      // Log but don't fail wallet creation
+      console.error("Failed to send wallet created notification:", error);
+    }
+
+    return wallet[0];
+  });
 };
 
 /*
@@ -47,57 +153,58 @@ export const spendWallet = async (beneficiaryId, data) => {
   return withTransaction(async (session) => {
     const wallet = await Wallet.findById(data.walletId).session(session);
 
-    if (!wallet) throw new AppError("Wallet not found", 404);
-    if (wallet.status !== WALLET_STATUS.ACTIVE) throw new AppError("Wallet not active", 400);
-    if (wallet.balance < data.amount) throw new AppError("Insufficient balance", 400);
+    if (!wallet) throw new AppError(WALLET_ERROR_CODES.WALLET_NOT_FOUND, 404);
+    if (wallet.status !== WALLET_STATUS.ACTIVE)
+      throw new AppError(WALLET_ERROR_CODES.WALLET_NOT_ACTIVE, 400);
+    if (wallet.balance < data.amount)
+      throw new AppError(WALLET_ERROR_CODES.INSUFFICIENT_BALANCE, 400);
 
     const merchant = await Merchant.findById(data.merchantId).session(session);
-    if (!merchant || merchant.status !== "ACTIVE") throw new AppError("Invalid merchant", 400);
+    if (!merchant || merchant.status !== "ACTIVE")
+      throw new AppError(WALLET_ERROR_CODES.INVALID_MERCHANT, 400);
 
-    // Policy: category check
-    if (!wallet.policy.allowedCategories.includes(data.category)) {
-      throw new AppError("Category not allowed under this relief policy", 400);
-    }
+    const beneficiary =
+      await Beneficiary.findById(beneficiaryId).session(session);
+    if (!beneficiary)
+      throw new AppError(WALLET_ERROR_CODES.BENEFICIARY_NOT_FOUND, 404);
 
-    // Policy: per-transaction limit
-    if (data.amount > wallet.policy.maxPerTransaction) {
-      throw new AppError("Amount exceeds per transaction limit", 400);
-    }
-
-    // Policy: daily limit
-    if ((wallet.dailySpent || 0) + data.amount > (wallet.policy.dailyLimit || Infinity)) {
-      throw new AppError("Daily spending limit exceeded", 400);
-    }
-
-    // Policy: expiry
-    if (wallet.policy.expiresAt && new Date() > new Date(wallet.policy.expiresAt)) {
-      throw new AppError("Wallet has expired", 400);
-    }
-
-    // Geo check: merchant should be near beneficiary
-    const beneficiary = await Beneficiary.findById(beneficiaryId).session(session);
+    // Calculate distance
+    let distance = null;
     if (beneficiary?.location?.lat && merchant?.location?.lat) {
-      const toRad = (v) => (v * Math.PI) / 180;
-      const R = 6371;
-      const dLat = toRad(merchant.location.lat - beneficiary.location.lat);
-      const dLon = toRad(merchant.location.lng - beneficiary.location.lng);
-      const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos(toRad(beneficiary.location.lat)) *
-          Math.cos(toRad(merchant.location.lat)) *
-          Math.sin(dLon / 2) ** 2;
-      const distance = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      if (distance > 50) throw new AppError("Merchant too far from beneficiary location", 400);
+      distance = policyEngine.calculateDistance(
+        beneficiary.location.lat,
+        beneficiary.location.lng,
+        merchant.location.lat,
+        merchant.location.lng,
+      );
     }
 
-    // Deduct balance
+    // Comprehensive policy validation
+    try {
+      policyEngine.validateTransaction(wallet.policy, {
+        category: data.category,
+        merchantId: merchant._id,
+        amount: data.amount,
+        todaySpent: wallet.dailySpent || 0,
+        weekSpent: wallet.weeklySpent || 0,
+        walletExpiry: wallet.policy.expiresAt,
+        beneficiaryLocation: beneficiary.location,
+        merchantLocation: merchant.location,
+        merchantDistrict: merchant.location?.district,
+      });
+    } catch (error) {
+      throw new AppError(error.message, 403);
+    }
+
+    // Deduct balance and update counters
     wallet.balance -= data.amount;
     wallet.totalSpent = (wallet.totalSpent || 0) + data.amount;
     wallet.dailySpent = (wallet.dailySpent || 0) + data.amount;
+    wallet.weeklySpent = (wallet.weeklySpent || 0) + data.amount;
     wallet.transactionCount = (wallet.transactionCount || 0) + 1;
     wallet.lastTransactionAt = new Date();
 
-    // Ledger entry
+    // Append transaction record with metadata
     wallet.transactions.push({
       type: "DEBIT",
       amount: data.amount,
@@ -106,57 +213,299 @@ export const spendWallet = async (beneficiaryId, data) => {
       merchantName: merchant.shopName,
       balanceAfter: wallet.balance,
       timestamp: new Date(),
+      metadata: {
+        beneficiaryLocation: beneficiary.location,
+        merchantLocation: merchant.location,
+        distance,
+        deviceId: data.deviceId,
+        ipAddress: data.ipAddress,
+      },
     });
 
     await wallet.save({ session });
 
-    // Async fraud check
-    await addFraudCheckJob({
-      entityType: "wallet",
-      entityId: wallet._id,
-      signals: { amount: data.amount, merchantId: merchant._id, beneficiaryId },
-    });
+    // Update merchant settlement balance
+    await Merchant.findByIdAndUpdate(
+      data.merchantId,
+      {
+        $inc: {
+          pendingBalance: data.amount,
+          totalAidProcessed: data.amount,
+          transactionCount: 1,
+        },
+        $set: {
+          lastTransactionAt: new Date(),
+        },
+      },
+      { session },
+    );
 
-    await createAuditLog({
-      eventType: "WALLET_SPENT",
-      entityType: "Wallet",
-      entityId: wallet._id,
-      actorRole: "BENEFICIARY",
-      payload: { amount: data.amount, merchant: merchant.shopName, category: data.category },
-    });
+    // Update campaign metrics
+    await Campaign.findByIdAndUpdate(
+      wallet.campaign,
+      {
+        $inc: {
+          totalSpent: data.amount,
+        },
+      },
+      { session },
+    );
+
+    // Enqueue fraud check job (async)
+    try {
+      await addFraudCheckJob({
+        entityType: "wallet",
+        entityId: wallet._id,
+        signals: {
+          amount: data.amount,
+          merchantId: merchant._id,
+          beneficiaryId,
+          category: data.category,
+          location: data.location,
+          timestamp: new Date(),
+        },
+      });
+    } catch (error) {
+      console.error("Failed to enqueue fraud check:", error);
+    }
+
+    // Create audit log
+    await createAuditLog(
+      {
+        eventType: AUDIT_EVENT_TYPES.WALLET_SPENT,
+        entityType: "Wallet",
+        entityId: wallet._id,
+        actorRole: "BENEFICIARY",
+        payload: {
+          amount: data.amount,
+          merchant: merchant.shopName,
+          category: data.category,
+        },
+      },
+      session,
+    );
+
+    // Check for low balance and send notification
+    if (wallet.balance < wallet.initialAmount * 0.2) {
+      try {
+        await sendNotification({
+          userId: beneficiary.user,
+          type: "LOW_BALANCE",
+          data: {
+            walletId: wallet._id,
+            balance: wallet.balance,
+            percentage: (wallet.balance / wallet.initialAmount) * 100,
+          },
+        });
+      } catch (error) {
+        console.error("Failed to send low balance notification:", error);
+      }
+    }
 
     return BaseService.updated(wallet);
   });
 };
 
 /*
-GET WALLET BY BENEFICIARY USER ID
-looks up beneficiary record first, then wallet
+CREDIT WALLET
+NGO adds funds to existing wallet
 */
-export const getWalletByUserId = async (userId) => {
-  const beneficiary = await Beneficiary.findOne({ user: userId });
-  if (!beneficiary) throw new AppError("Beneficiary profile not found", 404);
+export const creditWallet = async (walletId, amount, ngoUserId) => {
+  return withTransaction(async (session) => {
+    const wallet = await Wallet.findById(walletId).session(session);
+    if (!wallet) throw new AppError(WALLET_ERROR_CODES.WALLET_NOT_FOUND, 404);
+    if (wallet.status !== WALLET_STATUS.ACTIVE)
+      throw new AppError(WALLET_ERROR_CODES.WALLET_NOT_ACTIVE, 400);
+    if (amount <= 0) throw new AppError(WALLET_ERROR_CODES.INVALID_AMOUNT, 400);
 
-  const wallet = await Wallet.findOne({ beneficiary: beneficiary._id })
-    .populate("campaign", "title disasterType location")
-    .populate("beneficiary", "name");
+    // Increment balance
+    wallet.balance += amount;
 
-  if (!wallet) throw new AppError("No active wallet found", 404);
+    // Append transaction record
+    wallet.transactions.push({
+      type: "CREDIT",
+      amount,
+      balanceAfter: wallet.balance,
+      timestamp: new Date(),
+      metadata: {
+        creditedBy: ngoUserId,
+      },
+    });
 
-  return BaseService.success(wallet);
+    await wallet.save({ session });
+
+    // Update campaign metrics
+    await Campaign.findByIdAndUpdate(
+      wallet.campaign,
+      {
+        $inc: {
+          totalAllocated: amount,
+        },
+      },
+      { session },
+    );
+
+    // Create audit log
+    await createAuditLog(
+      {
+        eventType: AUDIT_EVENT_TYPES.WALLET_CREDITED,
+        entityType: "Wallet",
+        entityId: wallet._id,
+        actorRole: "NGO",
+        actorId: ngoUserId,
+        payload: { amount },
+      },
+      session,
+    );
+
+    // Send notification
+    try {
+      const beneficiary = await Beneficiary.findById(wallet.beneficiary);
+      if (beneficiary) {
+        await sendNotification({
+          userId: beneficiary.user,
+          type: "WALLET_CREDITED",
+          data: {
+            walletId: wallet._id,
+            amount,
+            newBalance: wallet.balance,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Failed to send wallet credited notification:", error);
+    }
+
+    return BaseService.updated(wallet);
+  });
 };
 
 /*
-GET WALLET TRANSACTIONS
+ADJUST WALLET
+Admin makes balance adjustment
 */
-export const getWalletTransactions = async (userId) => {
-  const beneficiary = await Beneficiary.findOne({ user: userId });
-  if (!beneficiary) throw new AppError("Beneficiary profile not found", 404);
+export const adjustWallet = async (walletId, amount, reason, adminId) => {
+  return withTransaction(async (session) => {
+    const wallet = await Wallet.findById(walletId).session(session);
+    if (!wallet) throw new AppError(WALLET_ERROR_CODES.WALLET_NOT_FOUND, 404);
 
-  const wallet = await Wallet.findOne({ beneficiary: beneficiary._id });
-  if (!wallet) throw new AppError("No wallet found", 404);
+    // Prevent negative balance
+    if (wallet.balance + amount < 0) {
+      throw new AppError(WALLET_ERROR_CODES.INVALID_ADJUSTMENT, 400);
+    }
 
-  return BaseService.success(wallet.transactions || []);
+    // Update balance
+    wallet.balance += amount;
+
+    // Append transaction record
+    wallet.transactions.push({
+      type: "ADJUSTMENT",
+      amount,
+      balanceAfter: wallet.balance,
+      timestamp: new Date(),
+      metadata: {
+        adjustmentReason: reason,
+        adjustedBy: adminId,
+      },
+    });
+
+    await wallet.save({ session });
+
+    // Create audit log
+    await createAuditLog(
+      {
+        eventType: AUDIT_EVENT_TYPES.WALLET_ADJUSTED,
+        entityType: "Wallet",
+        entityId: wallet._id,
+        actorRole: "ADMIN",
+        actorId: adminId,
+        payload: { amount, reason },
+      },
+      session,
+    );
+
+    // Send notification
+    try {
+      const beneficiary = await Beneficiary.findById(wallet.beneficiary);
+      if (beneficiary) {
+        await sendNotification({
+          userId: beneficiary.user,
+          type: "WALLET_ADJUSTED",
+          data: {
+            walletId: wallet._id,
+            amount,
+            reason,
+            newBalance: wallet.balance,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Failed to send wallet adjusted notification:", error);
+    }
+
+    return BaseService.updated(wallet);
+  });
+};
+
+/*
+CLOSE WALLET
+Admin closes wallet
+*/
+export const closeWallet = async (walletId, reason, adminId) => {
+  return withTransaction(async (session) => {
+    const wallet = await Wallet.findById(walletId).session(session);
+    if (!wallet) throw new AppError(WALLET_ERROR_CODES.WALLET_NOT_FOUND, 404);
+
+    // Verify wallet status is ACTIVE or EXPIRED
+    if (
+      wallet.status !== WALLET_STATUS.ACTIVE &&
+      wallet.status !== WALLET_STATUS.EXPIRED
+    ) {
+      throw new AppError(WALLET_ERROR_CODES.INVALID_STATE_TRANSITION, 400);
+    }
+
+    // Transition to CLOSED
+    wallet.status = WALLET_STATUS.CLOSED;
+    wallet.closedBy = adminId;
+    wallet.closedAt = new Date();
+    wallet.closeReason = reason;
+    wallet.remainingBalanceAtClosure = wallet.balance;
+
+    await wallet.save({ session });
+
+    // Create audit log
+    await createAuditLog(
+      {
+        eventType: AUDIT_EVENT_TYPES.WALLET_CLOSED,
+        entityType: "Wallet",
+        entityId: wallet._id,
+        actorRole: "ADMIN",
+        actorId: adminId,
+        payload: { reason, remainingBalance: wallet.balance },
+      },
+      session,
+    );
+
+    // Send notification
+    try {
+      const beneficiary = await Beneficiary.findById(wallet.beneficiary);
+      if (beneficiary) {
+        await sendNotification({
+          userId: beneficiary.user,
+          type: "WALLET_CLOSED",
+          data: {
+            walletId: wallet._id,
+            reason,
+            remainingBalance: wallet.balance,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Failed to send wallet closed notification:", error);
+    }
+
+    return BaseService.updated(wallet);
+  });
 };
 
 /*
@@ -165,22 +514,46 @@ admin or government action
 */
 export const freezeWallet = async (walletId, reason, adminId) => {
   const wallet = await Wallet.findById(walletId);
-  if (!wallet) throw new AppError("Wallet not found", 404);
-  if (wallet.status === WALLET_STATUS.FROZEN) throw new AppError("Wallet already frozen", 400);
+  if (!wallet) throw new AppError(WALLET_ERROR_CODES.WALLET_NOT_FOUND, 404);
+  if (wallet.status === WALLET_STATUS.SUSPENDED)
+    throw new AppError(WALLET_ERROR_CODES.WALLET_ALREADY_FROZEN, 400);
 
-  wallet.status = WALLET_STATUS.FROZEN;
+  // Verify wallet status is ACTIVE
+  if (wallet.status !== WALLET_STATUS.ACTIVE) {
+    throw new AppError(WALLET_ERROR_CODES.WALLET_NOT_ACTIVE, 400);
+  }
+
+  wallet.status = WALLET_STATUS.SUSPENDED;
   wallet.freezeReason = reason;
   wallet.frozenBy = adminId;
   wallet.frozenAt = new Date();
   await wallet.save();
 
   await createAuditLog({
-    eventType: "WALLET_FROZEN",
+    eventType: AUDIT_EVENT_TYPES.WALLET_FROZEN,
     entityType: "Wallet",
     entityId: wallet._id,
     actorRole: "ADMIN",
+    actorId: adminId,
     payload: { reason },
   });
+
+  // Send notification
+  try {
+    const beneficiary = await Beneficiary.findById(wallet.beneficiary);
+    if (beneficiary) {
+      await sendNotification({
+        userId: beneficiary.user,
+        type: "WALLET_FROZEN",
+        data: {
+          walletId: wallet._id,
+          reason,
+        },
+      });
+    }
+  } catch (error) {
+    console.error("Failed to send wallet frozen notification:", error);
+  }
 
   return BaseService.updated(wallet);
 };
@@ -190,20 +563,68 @@ UNFREEZE WALLET
 */
 export const unfreezeWallet = async (walletId, adminId) => {
   const wallet = await Wallet.findById(walletId);
-  if (!wallet) throw new AppError("Wallet not found", 404);
-  if (wallet.status !== WALLET_STATUS.FROZEN) throw new AppError("Wallet is not frozen", 400);
+  if (!wallet) throw new AppError(WALLET_ERROR_CODES.WALLET_NOT_FOUND, 404);
+  if (wallet.status !== WALLET_STATUS.SUSPENDED)
+    throw new AppError(WALLET_ERROR_CODES.WALLET_NOT_FROZEN, 400);
 
   wallet.status = WALLET_STATUS.ACTIVE;
   wallet.freezeReason = null;
   await wallet.save();
 
   await createAuditLog({
-    eventType: "WALLET_UNFROZEN",
+    eventType: AUDIT_EVENT_TYPES.WALLET_UNFROZEN,
     entityType: "Wallet",
     entityId: wallet._id,
     actorRole: "ADMIN",
+    actorId: adminId,
     payload: { unfrozenBy: adminId },
   });
 
   return BaseService.updated(wallet);
+};
+
+/*
+GET WALLET BY BENEFICIARY USER ID
+looks up beneficiary record first, then wallet
+*/
+export const getWalletByUserId = async (userId) => {
+  const beneficiary = await Beneficiary.findOne({ user: userId });
+  if (!beneficiary)
+    throw new AppError(WALLET_ERROR_CODES.BENEFICIARY_NOT_FOUND, 404);
+
+  const wallet = await Wallet.findOne({ beneficiary: beneficiary._id })
+    .populate("campaign", "title disasterType location")
+    .populate("beneficiary", "name");
+
+  if (!wallet) throw new AppError(WALLET_ERROR_CODES.WALLET_NOT_FOUND, 404);
+
+  return BaseService.success(wallet);
+};
+
+/*
+GET WALLET TRANSACTIONS
+*/
+export const getWalletTransactions = async (userId, options = {}) => {
+  const { page = 1, limit = 50 } = options;
+
+  const beneficiary = await Beneficiary.findOne({ user: userId });
+  if (!beneficiary)
+    throw new AppError(WALLET_ERROR_CODES.BENEFICIARY_NOT_FOUND, 404);
+
+  const wallet = await Wallet.findOne({ beneficiary: beneficiary._id });
+  if (!wallet) throw new AppError(WALLET_ERROR_CODES.WALLET_NOT_FOUND, 404);
+
+  // Sort transactions by timestamp descending and paginate
+  const transactions = wallet.transactions
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice((page - 1) * limit, page * limit);
+
+  return BaseService.success({
+    transactions,
+    pagination: {
+      page,
+      limit,
+      total: wallet.transactions.length,
+    },
+  });
 };

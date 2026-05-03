@@ -144,13 +144,15 @@ const merchantSchema = new mongoose.Schema(
       default: null,
     },
 
+    // SETTLEMENT TRACKING
+    pendingBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     // SETTLEMENT SYSTEM
     settlement: {
-      pendingBalance: {
-        type: Number,
-        default: 0,
-      },
-
       totalSettled: {
         type: Number,
         default: 0,
@@ -184,7 +186,7 @@ const merchantSchema = new mongoose.Schema(
       default: 1,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // INDEXES

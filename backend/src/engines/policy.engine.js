@@ -5,7 +5,9 @@ class PolicyEngine {
     this.checkMerchant(policy, context);
     this.checkTransactionLimit(policy, context);
     this.checkDailyLimit(policy, context);
+    this.checkWeeklyLimit(policy, context);
     this.checkGeoFence(policy, context);
+    this.checkDistrict(policy, context);
 
     return true;
   }
@@ -36,6 +38,12 @@ class PolicyEngine {
     }
   }
 
+  checkWeeklyLimit(policy, context) {
+    if (context.weekSpent + context.amount > policy.weeklyLimit) {
+      throw new Error("WEEKLY_LIMIT_EXCEEDED");
+    }
+  }
+
   checkExpiry(policy, context) {
     const now = new Date();
 
@@ -45,17 +53,39 @@ class PolicyEngine {
   }
 
   checkGeoFence(policy, context) {
-    if (!policy.geoFence) return;
+    // Skip if no geo restrictions or no location data
+    if (
+      !policy.maxDistanceKm ||
+      !context.beneficiaryLocation ||
+      !context.merchantLocation
+    ) {
+      return;
+    }
 
     const distance = this.calculateDistance(
-      policy.geoFence.lat,
-      policy.geoFence.lng,
-      context.lat,
-      context.lng,
+      context.beneficiaryLocation.lat,
+      context.beneficiaryLocation.lng,
+      context.merchantLocation.lat,
+      context.merchantLocation.lng,
     );
 
-    if (distance > policy.geoFence.radiusKm) {
-      throw new Error("OUTSIDE_ALLOWED_AREA");
+    if (distance > policy.maxDistanceKm) {
+      throw new Error("MERCHANT_TOO_FAR");
+    }
+  }
+
+  checkDistrict(policy, context) {
+    // Skip if no district restrictions
+    if (!policy.allowedDistricts || policy.allowedDistricts.length === 0) {
+      return;
+    }
+
+    if (!context.merchantDistrict) {
+      return; // Cannot validate without merchant district
+    }
+
+    if (!policy.allowedDistricts.includes(context.merchantDistrict)) {
+      throw new Error("DISTRICT_NOT_ALLOWED");
     }
   }
 

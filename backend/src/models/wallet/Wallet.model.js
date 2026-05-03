@@ -78,6 +78,14 @@ const walletSchema = new mongoose.Schema(
       default: null,
     },
 
+    // CREATOR TRACKING
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+
     // WORKFLOW TRACE
     jobIdHash: {
       type: String,
@@ -94,7 +102,8 @@ const walletSchema = new mongoose.Schema(
 
     initialAmount: {
       type: Number,
-      default: 0,
+      required: true,
+      min: 0,
     },
 
     totalSpent: {
@@ -105,8 +114,9 @@ const walletSchema = new mongoose.Schema(
     // WALLET STATUS
     status: {
       type: String,
-      enum: ["ACTIVE", "FROZEN", "EXPIRED", "CLOSED"],
+      enum: ["ACTIVE", "SUSPENDED", "EXPIRED", "CLOSED"],
       default: "ACTIVE",
+      index: true,
     },
 
     // POLICY SNAPSHOT
@@ -135,6 +145,24 @@ const walletSchema = new mongoose.Schema(
       expiresAt: {
         type: Date,
         default: null,
+      },
+
+      // MERCHANT WHITELIST
+      allowedMerchants: {
+        type: [mongoose.Schema.Types.ObjectId],
+        ref: "Merchant",
+        default: [],
+      },
+
+      // GEO RESTRICTIONS
+      maxDistanceKm: {
+        type: Number,
+        default: 50,
+      },
+
+      allowedDistricts: {
+        type: [String],
+        default: [],
       },
     },
 
@@ -176,20 +204,7 @@ const walletSchema = new mongoose.Schema(
       default: [],
     },
 
-    // GEO RESTRICTIONS
-    geoPolicy: {
-      allowedDistricts: {
-        type: [String],
-        default: [],
-      },
-
-      maxDistanceKm: {
-        type: Number,
-        default: null,
-      },
-    },
-
-    // ADMIN ACTIONS
+    // ADMIN ACTIONS - FREEZE
     freezeReason: {
       type: String,
       default: null,
@@ -202,6 +217,34 @@ const walletSchema = new mongoose.Schema(
     },
 
     frozenAt: {
+      type: Date,
+      default: null,
+    },
+
+    // ADMIN ACTIONS - CLOSE
+    closedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    closedAt: {
+      type: Date,
+      default: null,
+    },
+
+    closeReason: {
+      type: String,
+      default: null,
+    },
+
+    remainingBalanceAtClosure: {
+      type: Number,
+      default: null,
+    },
+
+    // EXPIRY TRACKING
+    expiredAt: {
       type: Date,
       default: null,
     },
@@ -220,7 +263,10 @@ const walletSchema = new mongoose.Schema(
       default: 1,
     },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    optimisticConcurrency: true,
+  },
 );
 
 // INDEXES
@@ -228,5 +274,8 @@ walletSchema.index({ beneficiary: 1, campaign: 1 }, { unique: true });
 walletSchema.index({ status: 1 });
 walletSchema.index({ jobIdHash: 1 });
 walletSchema.index({ beneficiary: 1, status: 1 });
+walletSchema.index({ "policy.expiresAt": 1, status: 1 });
+walletSchema.index({ riskScore: -1 });
+walletSchema.index({ createdBy: 1 });
 
 export const Wallet = mongoose.model("Wallet", walletSchema);

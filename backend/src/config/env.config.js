@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export const env = {
-
   NODE_ENV: process.env.NODE_ENV,
 
   PORT: process.env.PORT,
@@ -26,10 +25,30 @@ export const env = {
 
   AI_RISK_URL: process.env.AI_RISK_URL,
 
+  AI_PROOF_URL: process.env.AI_PROOF_URL,
+
   RPC_URL: process.env.RPC_URL,
 
   AUDIT_CONTRACT_ADDRESS: process.env.AUDIT_CONTRACT_ADDRESS,
 
   BLOCKCHAIN_PRIVATE_KEY: process.env.BLOCKCHAIN_PRIVATE_KEY,
-
 };
+
+// Export individual constants for convenience
+export const {
+  NODE_ENV,
+  PORT,
+  FRONTEND_URL,
+  MONGO_URI,
+  JWT_SECRET,
+  JWT_EXPIRES_IN,
+  REDIS_HOST,
+  REDIS_PORT,
+  AI_ELIGIBILITY_URL,
+  AI_FRAUD_URL,
+  AI_RISK_URL,
+  AI_PROOF_URL,
+  RPC_URL,
+  AUDIT_CONTRACT_ADDRESS,
+  BLOCKCHAIN_PRIVATE_KEY,
+} = env;

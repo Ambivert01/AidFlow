@@ -97,16 +97,21 @@ const beneficiarySchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
+        "PENDING", // Initial registration
+        "UNDER_REVIEW", // AI evaluation complete, awaiting NGO decision
+        "APPROVED", // NGO approved
+        "REJECTED", // NGO rejected
+        "BLOCKED", // AI or admin blocked
+        "MANUAL_REVIEW", // Appeal submitted or AI flagged for manual review
+        // Legacy statuses (keep for backward compatibility)
         "REGISTERED",
         "AI_EVALUATED",
         "ELIGIBLE",
-        "BLOCKED",
-        "MANUAL_REVIEW",
         "NGO_APPROVED",
         "NGO_REJECTED",
         "ACTIVE",
       ],
-      default: "REGISTERED",
+      default: "PENDING",
       index: true,
     },
 
@@ -124,12 +129,7 @@ const beneficiarySchema = new mongoose.Schema(
 
       decision: {
         type: String,
-        enum: [
-          "ALLOW",
-          "ALLOW_WITH_MONITORING",
-          "MANUAL_REVIEW",
-          "BLOCK",
-        ],
+        enum: ["ALLOW", "ALLOW_WITH_MONITORING", "MANUAL_REVIEW", "BLOCK"],
         default: null,
       },
 
@@ -200,6 +200,51 @@ const beneficiarySchema = new mongoose.Schema(
       default: "NGO",
     },
 
+    // APPEAL SYSTEM
+    appeal: {
+      reason: { type: String, default: null },
+      documents: { type: [String], default: [] },
+      submittedAt: { type: Date, default: null },
+      decision: {
+        type: String,
+        enum: ["APPROVED", "REJECTED"],
+        default: null,
+      },
+      decisionReason: { type: String, default: null },
+      decidedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+      decidedAt: { type: Date, default: null },
+    },
+
+    // VERIFICATION HISTORY
+    verificationHistory: [
+      {
+        action: {
+          type: String,
+          enum: [
+            "REGISTERED",
+            "AI_EVALUATED",
+            "APPROVED",
+            "REJECTED",
+            "APPEAL_SUBMITTED",
+            "APPEAL_DECIDED",
+            "BLOCKED",
+          ],
+          required: true,
+        },
+        performedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          default: null,
+        },
+        reason: { type: String, default: null },
+        timestamp: { type: Date, default: Date.now },
+      },
+    ],
+
     // SYSTEM METADATA
     metadata: {
       type: Object,
@@ -211,20 +256,23 @@ const beneficiarySchema = new mongoose.Schema(
       default: 1,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // INDEXES
 beneficiarySchema.index(
   { aadhaarHash: 1, campaign: 1 },
-  { unique: true, sparse: true }
+  { unique: true, sparse: true },
 );
 
 beneficiarySchema.index({ campaign: 1, status: 1 });
 beneficiarySchema.index({ riskScore: 1 });
 beneficiarySchema.index({ campaign: 1, riskScore: -1 });
 
-export const Beneficiary = mongoose.model(
-  "Beneficiary",
-  beneficiarySchema
-);
+// NEW INDEXES FOR ENHANCED QUERIES
+beneficiarySchema.index({ status: 1, "aiDecision.decision": 1 });
+beneficiarySchema.index({ "overrideByNgo.ngo": 1, status: 1 });
+beneficiarySchema.index({ "appeal.submittedAt": 1 });
+beneficiarySchema.index({ phoneHash: 1 }, { sparse: true });
+
+export const Beneficiary = mongoose.model("Beneficiary", beneficiarySchema);

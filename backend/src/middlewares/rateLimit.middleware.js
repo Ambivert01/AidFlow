@@ -24,9 +24,10 @@ export const donationLimiter = rateLimit({
 });
 
 export const walletLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 20,
-  message: "Too many wallet requests",
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // 10 requests per minute per beneficiary
+  keyGenerator: (req) => req.user?.id || req.ip,
+  message: "Too many spending requests, please try again later",
 });
 
 /*

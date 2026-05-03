@@ -70,7 +70,7 @@ router.use("/audit", auditRoutes);
 router.use("/notifications", notificationRoutes);
 
 // Proofs
-router.use("/proofs", proofRoutes);
+router.use("/proof", proofRoutes);
 
 // Settlements
 router.use("/settlements", settlementRoutes);

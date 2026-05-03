@@ -16,6 +16,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1041.0",
     "@bull-board/api": "^6.20.6",
     "@bull-board/express": "^6.20.6",
     "axios": "^1.13.2",
@@ -35,6 +36,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.3.2",
     "morgan": "^1.10.1",
+    "multer": "^2.1.1",
     "node-cron": "^4.2.1",
     "pino": "^10.3.1",
     "swagger-jsdoc": "^6.2.8",

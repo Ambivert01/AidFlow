@@ -1,61 +1,163 @@
 import { Worker } from "bullmq";
-
 import { redisConnection } from "../config/redis.config.js";
-
 import aiService from "../infrastructure/ai/ai.service.js";
-
 import { createAuditLog } from "../modules/audit/audit.service.js";
-
 import workflowEngine from "../engines/workflow.engine.js";
+import { Wallet } from "../models/wallet/Wallet.model.js";
+import { FraudAlert } from "../models/governance/FraudAlert.model.js";
+import {
+  WALLET_STATUS,
+  AUDIT_EVENT_TYPES,
+} from "../modules/wallet/wallet.constants.js";
+import { sendNotification } from "../modules/notification/notification.service.js";
+import { Beneficiary } from "../models/beneficiary/Beneficiary.model.js";
 
 new Worker(
   "fraud-detection",
-
   async (job) => {
     const { entityType, entityId, signals } = job.data;
 
-    const result = await aiService.evaluateFraudProbability({
-      type: entityType,
-
-      signals,
-    });
-
-    if (result.riskScore > 85) {
-      await workflowEngine.handleFraudDetected({
-        entityType,
-
-        entityId,
-
-        riskScore: result.riskScore,
+    try {
+      // Call AI fraud detection service
+      const result = await aiService.evaluateFraudProbability({
+        type: entityType,
+        signals,
       });
 
-      await createAuditLog({
-        eventType: "FRAUD_DETECTED",
+      // Handle wallet-specific fraud detection
+      if (entityType === "wallet") {
+        const wallet = await Wallet.findById(entityId);
 
-        eventCategory: "SECURITY",
+        if (!wallet) {
+          console.error(`Wallet not found: ${entityId}`);
+          return result;
+        }
 
-        entityType: entityType || "User",
+        // Determine risk increment based on fraud decision
+        let riskIncrement = 0;
+        let flagType = null;
 
-        entityId: String(entityId),
+        if (result.decision === "BLOCK") {
+          riskIncrement = 20;
+          flagType = result.reason || "SUSPICIOUS_PATTERN";
+        } else if (result.decision === "ESCALATE") {
+          riskIncrement = 10;
+          flagType = result.reason || "REQUIRES_REVIEW";
+        }
 
-        jobIdHash: job.id.toString(),
+        // Update wallet risk score and fraud flags
+        if (riskIncrement > 0) {
+          wallet.riskScore = Math.min(100, wallet.riskScore + riskIncrement);
 
-        actorRole: "AI",
+          if (flagType && !wallet.fraudFlags.includes(flagType)) {
+            wallet.fraudFlags.push(flagType);
+          }
 
-        payload: {
+          // Auto-freeze wallet if risk score exceeds 90
+          if (wallet.riskScore > 90 && wallet.status === WALLET_STATUS.ACTIVE) {
+            wallet.status = WALLET_STATUS.SUSPENDED;
+            wallet.freezeReason = "Automatic freeze due to high risk score";
+            wallet.frozenAt = new Date();
+
+            // Create fraud alert
+            await FraudAlert.create({
+              entityType: "Wallet",
+              entityId: wallet._id,
+              severity: "HIGH",
+              reason: result.reason || "High risk score detected",
+              riskScore: wallet.riskScore,
+              signals,
+              detectedAt: new Date(),
+            });
+
+            // Send notification to beneficiary
+            try {
+              const beneficiary = await Beneficiary.findById(
+                wallet.beneficiary,
+              );
+              if (beneficiary) {
+                await sendNotification({
+                  userId: beneficiary.user,
+                  type: "WALLET_FROZEN",
+                  data: {
+                    walletId: wallet._id,
+                    reason: wallet.freezeReason,
+                  },
+                });
+              }
+            } catch (error) {
+              console.error("Failed to send fraud freeze notification:", error);
+            }
+
+            // Create audit log for auto-freeze
+            await createAuditLog({
+              eventType: AUDIT_EVENT_TYPES.WALLET_FROZEN,
+              entityType: "Wallet",
+              entityId: wallet._id,
+              actorRole: "SYSTEM",
+              payload: {
+                reason: wallet.freezeReason,
+                riskScore: wallet.riskScore,
+                autoFreeze: true,
+              },
+            });
+          }
+
+          // Create fraud alert for ESCALATE decisions
+          if (result.decision === "ESCALATE") {
+            await FraudAlert.create({
+              entityType: "Wallet",
+              entityId: wallet._id,
+              severity: "MEDIUM",
+              reason: result.reason || "Suspicious activity requires review",
+              riskScore: wallet.riskScore,
+              signals,
+              detectedAt: new Date(),
+            });
+          }
+
+          await wallet.save();
+        }
+      }
+
+      // Legacy fraud detection for high risk scores
+      if (result.riskScore > 85) {
+        await workflowEngine.handleFraudDetected({
+          entityType,
+          entityId,
           riskScore: result.riskScore,
+        });
 
-          signals,
-        },
-      });
+        await createAuditLog({
+          eventType: "FRAUD_DETECTED",
+          eventCategory: "SECURITY",
+          entityType: entityType || "User",
+          entityId: String(entityId),
+          jobIdHash: job.id.toString(),
+          actorRole: "AI",
+          payload: {
+            riskScore: result.riskScore,
+            signals,
+          },
+        });
+      }
+
+      return result;
+    } catch (error) {
+      console.error("Fraud detection worker error:", error);
+      // Fail-open: don't throw error to prevent transaction rollback
+      return { decision: "ALLOW", reason: "SERVICE_ERROR", riskScore: 0 };
     }
-
-    return result;
   },
-
   {
     connection: redisConnection,
-
-    concurrency: 3,
+    concurrency: 10,
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 2000,
+    },
   },
 );
+
+console.log("Fraud detection worker started");
