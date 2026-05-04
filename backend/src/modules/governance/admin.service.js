@@ -363,3 +363,272 @@ export const rejectCampaign = async (campaignId, adminId, rejectionReason) => {
 
   return BaseService.updated(campaign);
 };
+
+/*
+AI OVERRIDE SYSTEM
+Admin can override AI decisions (fraud detection, risk scoring, etc.)
+*/
+export const overrideAIDecision = async (data, adminId) => {
+  const { entityType, entityId, decisionType, override, reason } = data;
+
+  if (!entityType || !entityId || !decisionType || !override) {
+    throw new AppError("Missing required fields", 400);
+  }
+
+  // Import AIDecisionLog model
+  const { AIDecisionLog } =
+    await import("../../models/system/AIDecisionLog.model.js");
+
+  // Find the AI decision
+  const aiDecision = await AIDecisionLog.findOne({
+    entityType,
+    entityId,
+    decisionType,
+  }).sort({ createdAt: -1 });
+
+  if (!aiDecision) {
+    throw new AppError("AI decision not found", 404);
+  }
+
+  // Create override record
+  aiDecision.override = {
+    overridden: true,
+    overriddenBy: adminId,
+    overriddenAt: new Date(),
+    reason: reason || "Admin override",
+    originalDecision: aiDecision.decision,
+    newDecision: override,
+  };
+
+  await aiDecision.save();
+
+  // Apply the override based on entity type
+  if (entityType === "DONATION") {
+    const donation = await Donation.findById(entityId);
+    if (donation) {
+      donation.aiDecision = override;
+      donation.aiOverride = true;
+      await donation.save();
+    }
+  } else if (entityType === "FRAUD_ALERT") {
+    const { FraudAlert } =
+      await import("../../models/governance/FraudAlert.model.js");
+    const alert = await FraudAlert.findById(entityId);
+    if (alert) {
+      alert.status =
+        override === "APPROVED" ? "FALSE_POSITIVE" : "CONFIRMED_FRAUD";
+      alert.investigation.decision =
+        override === "APPROVED" ? "DISMISSED" : "CONFIRMED";
+      alert.investigation.resolvedAt = new Date();
+      await alert.save();
+    }
+  }
+
+  // Create audit log
+  await AuditLog.create({
+    eventType: "AI_DECISION_OVERRIDDEN",
+    eventCategory: "SYSTEM",
+    entityType,
+    entityId,
+    actor: {
+      userId: adminId,
+      role: "ADMIN",
+    },
+    payload: {
+      decisionType,
+      originalDecision: aiDecision.decision,
+      newDecision: override,
+      reason,
+    },
+  });
+
+  return BaseService.success({
+    message: "AI decision overridden successfully",
+    aiDecision,
+  });
+};
+
+/*
+BULK APPROVE USERS
+Approve multiple users at once
+*/
+export const bulkApproveUsers = async (userIds, adminId) => {
+  if (!Array.isArray(userIds) || userIds.length === 0) {
+    throw new AppError("User IDs array is required", 400);
+  }
+
+  const results = {
+    success: [],
+    failed: [],
+  };
+
+  for (const userId of userIds) {
+    try {
+      const user = await User.findById(userId);
+      if (!user) {
+        results.failed.push({ userId, reason: "User not found" });
+        continue;
+      }
+
+      if (user.verificationStatus === "APPROVED") {
+        results.failed.push({ userId, reason: "Already approved" });
+        continue;
+      }
+
+      user.verificationStatus = "APPROVED";
+      user.approvedBy = adminId;
+      await user.save();
+
+      // Auto-create Merchant profile if needed
+      if (user.role === "MERCHANT") {
+        const existing = await Merchant.findOne({ user: user._id });
+        if (!existing) {
+          await Merchant.create({
+            user: user._id,
+            shopName: `${user.name}'s Shop`,
+            category: "OTHER",
+            status: "ACTIVE",
+            approvedBy: adminId,
+            approvedAt: new Date(),
+          });
+        }
+      }
+
+      results.success.push(userId);
+    } catch (error) {
+      results.failed.push({ userId, reason: error.message });
+    }
+  }
+
+  // Create audit log
+  await AuditLog.create({
+    eventType: "BULK_USER_APPROVAL",
+    eventCategory: "AUTH",
+    entityType: "User",
+    actor: {
+      userId: adminId,
+      role: "ADMIN",
+    },
+    payload: {
+      totalUsers: userIds.length,
+      successCount: results.success.length,
+      failedCount: results.failed.length,
+    },
+  });
+
+  return BaseService.success(results);
+};
+
+/*
+BULK REJECT USERS
+Reject multiple users at once
+*/
+export const bulkRejectUsers = async (userIds, adminId, reason) => {
+  if (!Array.isArray(userIds) || userIds.length === 0) {
+    throw new AppError("User IDs array is required", 400);
+  }
+
+  const results = {
+    success: [],
+    failed: [],
+  };
+
+  for (const userId of userIds) {
+    try {
+      const user = await User.findById(userId);
+      if (!user) {
+        results.failed.push({ userId, reason: "User not found" });
+        continue;
+      }
+
+      user.verificationStatus = "REJECTED";
+      user.rejectionReason = reason || "Did not meet KYC requirements";
+      await user.save();
+
+      results.success.push(userId);
+    } catch (error) {
+      results.failed.push({ userId, reason: error.message });
+    }
+  }
+
+  // Create audit log
+  await AuditLog.create({
+    eventType: "BULK_USER_REJECTION",
+    eventCategory: "AUTH",
+    entityType: "User",
+    actor: {
+      userId: adminId,
+      role: "ADMIN",
+    },
+    payload: {
+      totalUsers: userIds.length,
+      successCount: results.success.length,
+      failedCount: results.failed.length,
+      reason,
+    },
+  });
+
+  return BaseService.success(results);
+};
+
+/*
+GET SYSTEM HEALTH
+Returns system health metrics
+*/
+export const getSystemHealth = async () => {
+  const [
+    dbStatus,
+    totalUsers,
+    activeUsers,
+    totalDonations,
+    totalCampaigns,
+    activeCampaigns,
+    openFraudCases,
+  ] = await Promise.all([
+    mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    User.countDocuments(),
+    User.countDocuments({ isActive: true }),
+    Donation.countDocuments(),
+    Campaign.countDocuments(),
+    Campaign.countDocuments({ status: "ACTIVE" }),
+    FraudAlert.countDocuments({ status: "OPEN" }),
+  ]);
+
+  return BaseService.success({
+    database: dbStatus,
+    users: {
+      total: totalUsers,
+      active: activeUsers,
+    },
+    donations: {
+      total: totalDonations,
+    },
+    campaigns: {
+      total: totalCampaigns,
+      active: activeCampaigns,
+    },
+    fraud: {
+      openCases: openFraudCases,
+    },
+    timestamp: new Date(),
+  });
+};
+
+/*
+GET BLOCKCHAIN ANCHORS
+Returns blockchain anchor records for verification
+*/
+export const getBlockchainAnchors = async (query = {}) => {
+  const filter = {
+    "blockchainAnchor.txHash": { $exists: true, $ne: null },
+  };
+
+  if (query.entityType) filter.entityType = query.entityType;
+
+  const anchors = await AuditLog.find(filter)
+    .select("blockchainAnchor entityType entityId eventType createdAt")
+    .sort({ "blockchainAnchor.anchoredAt": -1 })
+    .limit(100);
+
+  return BaseService.success(anchors);
+};

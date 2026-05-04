@@ -1,27 +1,113 @@
 import mongoose from "mongoose";
 
-const schema = new mongoose.Schema({
+const schema = new mongoose.Schema(
+  {
+    entityType: {
+      type: String,
+      required: true,
+      index: true,
+    },
 
- entityType:String,
+    entityId: {
+      type: String,
+      required: true,
+      index: true,
+    },
 
- entityId:String,
+    riskScore: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0,
+    },
 
- riskScore:Number,
+    reason: {
+      type: String,
+      required: true,
+    },
 
- reason:String,
+    status: {
+      type: String,
+      enum: ["OPEN", "INVESTIGATING", "RESOLVED", "DISMISSED"],
+      default: "OPEN",
+      index: true,
+    },
 
- status:{
-  type:String,
-  enum:["OPEN","UNDER_REVIEW","RESOLVED"],
-  default:"OPEN"
- },
+    // Investigation assignment
+    assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
 
- resolvedBy:{
-  type:mongoose.Schema.Types.ObjectId,
-  ref:"User"
- }
+    // Resolution details
+    resolution: {
+      decision: {
+        type: String,
+        enum: ["CONFIRMED_FRAUD", "FALSE_POSITIVE", "DISMISSED", null],
+        default: null,
+      },
+      notes: {
+        type: String,
+        default: null,
+      },
+      actionTaken: {
+        type: String,
+        default: null,
+      },
+    },
 
-},{timestamps:true});
+    resolvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
 
-export const FraudCase =
-mongoose.model("FraudCase",schema);
+    resolvedAt: {
+      type: Date,
+      default: null,
+    },
+
+    // AI detection metadata
+    aiMetadata: {
+      modelVersion: String,
+      confidence: Number,
+      signals: [String],
+    },
+
+    // Related entities
+    relatedCampaign: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Campaign",
+      default: null,
+    },
+
+    relatedUser: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    // Investigation notes
+    notes: [
+      {
+        addedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        note: String,
+        addedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+  },
+  { timestamps: true },
+);
+
+// Indexes
+schema.index({ status: 1, createdAt: -1 });
+schema.index({ entityType: 1, entityId: 1 });
+
+export const FraudCase = mongoose.model("FraudCase", schema);

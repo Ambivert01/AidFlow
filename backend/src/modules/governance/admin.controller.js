@@ -110,3 +110,35 @@ export const resumeCampaign = asyncHandler(async (req, res) => {
   const result = await resumeCampaign(req.params.id, req.user._id);
   res.status(200).json(result);
 });
+
+export const overrideAIDecision = asyncHandler(async (req, res) => {
+  const result = await adminService.overrideAIDecision(req.body, req.user._id);
+  res.json(result);
+});
+
+export const bulkApproveUsers = asyncHandler(async (req, res) => {
+  const result = await adminService.bulkApproveUsers(
+    req.body.userIds,
+    req.user._id,
+  );
+  res.json(result);
+});
+
+export const bulkRejectUsers = asyncHandler(async (req, res) => {
+  const result = await adminService.bulkRejectUsers(
+    req.body.userIds,
+    req.user._id,
+    req.body.reason,
+  );
+  res.json(result);
+});
+
+export const getSystemHealth = asyncHandler(async (req, res) => {
+  const result = await adminService.getSystemHealth();
+  res.json(result);
+});
+
+export const getBlockchainAnchors = asyncHandler(async (req, res) => {
+  const result = await adminService.getBlockchainAnchors(req.query);
+  res.json(result);
+});

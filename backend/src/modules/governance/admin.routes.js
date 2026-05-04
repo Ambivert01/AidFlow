@@ -97,11 +97,73 @@ router.get(
   authorize("ADMIN"),
   fraudController.getFraudCases,
 );
+router.get(
+  "/fraud-cases/:id",
+  authenticate,
+  authorize("ADMIN"),
+  fraudController.getFraudCase,
+);
+router.post(
+  "/fraud-cases/:id/assign",
+  authenticate,
+  authorize("ADMIN"),
+  fraudController.assignFraudCase,
+);
+router.post(
+  "/fraud-cases/:id/notes",
+  authenticate,
+  authorize("ADMIN"),
+  fraudController.addFraudCaseNote,
+);
 router.patch(
   "/fraud-cases/:id/resolve",
   authenticate,
   authorize("ADMIN"),
   fraudController.resolveFraudCase,
+);
+router.get(
+  "/fraud-stats",
+  authenticate,
+  authorize("ADMIN"),
+  fraudController.getFraudStats,
+);
+
+// ── AI Override ────────────────────────────────────────
+router.post(
+  "/ai/override",
+  authenticate,
+  authorize("ADMIN"),
+  adminController.overrideAIDecision,
+);
+
+// ── Bulk Actions ───────────────────────────────────────
+router.post(
+  "/users/bulk-approve",
+  authenticate,
+  authorize("ADMIN"),
+  adminController.bulkApproveUsers,
+);
+router.post(
+  "/users/bulk-reject",
+  authenticate,
+  authorize("ADMIN"),
+  adminController.bulkRejectUsers,
+);
+
+// ── System Health ──────────────────────────────────────
+router.get(
+  "/system/health",
+  authenticate,
+  authorize("ADMIN"),
+  adminController.getSystemHealth,
+);
+
+// ── Blockchain ─────────────────────────────────────────
+router.get(
+  "/blockchain/anchors",
+  authenticate,
+  authorize("ADMIN"),
+  adminController.getBlockchainAnchors,
 );
 
 // ── Campaign Approval ──────────────────────────────────

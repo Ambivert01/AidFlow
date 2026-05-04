@@ -47,6 +47,9 @@ import PendingCampaigns from "./modules/admin/PendingCampaigns";
 import AdminUsers from "./modules/admin/AdminUsers";
 import AdminMerchants from "./modules/admin/AdminMerchants";
 import AdminAuditLogs from "./modules/admin/AdminAuditLogs";
+import FraudManagement from "./modules/admin/FraudManagement";
+import AIOverride from "./modules/admin/AIOverride";
+import SystemHealth from "./modules/admin/SystemHealth";
 
 import BeneficiarySelfApply from "./modules/beneficiary/BeneficiarySelfApply";
 
@@ -357,6 +360,30 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={["ADMIN"]}>
                 <AdminAuditLogs />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/fraud"
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN"]}>
+                <FraudManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/ai-override"
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN"]}>
+                <AIOverride />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/system"
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN"]}>
+                <SystemHealth />
               </ProtectedRoute>
             }
           />
