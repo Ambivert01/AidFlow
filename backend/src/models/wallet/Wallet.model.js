@@ -83,7 +83,6 @@ const walletSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
     },
 
     // WORKFLOW TRACE
@@ -116,7 +115,6 @@ const walletSchema = new mongoose.Schema(
       type: String,
       enum: ["ACTIVE", "SUSPENDED", "EXPIRED", "CLOSED"],
       default: "ACTIVE",
-      index: true,
     },
 
     // POLICY SNAPSHOT

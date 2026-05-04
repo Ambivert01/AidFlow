@@ -129,6 +129,78 @@ const userSchema = new mongoose.Schema(
       default: [],
     },
 
+    // TRUST SCORE (for NGO users)
+    trustScore: {
+      type: Number,
+      default: 50,
+      min: 0,
+      max: 100,
+      index: true,
+    },
+
+    // EMAIL VERIFICATION
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    emailVerificationToken: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
+    emailVerificationExpires: {
+      type: Date,
+      default: null,
+    },
+
+    // PASSWORD RESET
+    passwordResetToken: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
+    passwordResetExpires: {
+      type: Date,
+      default: null,
+    },
+
+    // SESSION MANAGEMENT (Refresh Tokens)
+    sessions: [
+      {
+        refreshTokenHash: {
+          type: String,
+          required: true,
+        },
+        device: {
+          type: String,
+          default: "Unknown",
+        },
+        ip: {
+          type: String,
+          default: null,
+        },
+        userAgent: {
+          type: String,
+          default: null,
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+        expiresAt: {
+          type: Date,
+          required: true,
+        },
+        lastUsedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+
     // SYSTEM METADATA
     metadata: {
       type: Object,

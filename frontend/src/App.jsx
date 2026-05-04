@@ -7,8 +7,13 @@ import HomePage from "./pages/HomePage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import RequestAccess from "./pages/RequestAccess";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import VerifyEmail from "./pages/VerifyEmail";
+import Sessions from "./pages/Sessions";
 import PublicAidAuditPage from "./pages/PublicAidAuditPage";
 import PublicCampaigns from "./modules/public/PublicCampaigns";
+import TrustRankingPage from "./pages/TrustRankingPage";
 
 // Role Modules
 import DonorDashboard from "./modules/donor/DonorDashboard";
@@ -104,8 +109,29 @@ export default function App() {
               </AuthRoute>
             }
           />
+          <Route
+            path="/forgot-password"
+            element={
+              <AuthRoute>
+                <ForgotPassword />
+              </AuthRoute>
+            }
+          />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route path="/verify-email/:token" element={<VerifyEmail />} />
           <Route path="/public-audit" element={<PublicAidAuditPage />} />
           <Route path="/public/campaigns" element={<PublicCampaigns />} />
+          <Route path="/trust-rankings" element={<TrustRankingPage />} />
+
+          {/* Protected: Session Management */}
+          <Route
+            path="/settings/sessions"
+            element={
+              <ProtectedRoute>
+                <Sessions />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Donor Routes */}
           <Route

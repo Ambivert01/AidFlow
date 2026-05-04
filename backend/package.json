@@ -17,6 +17,7 @@
   "type": "module",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1041.0",
+    "@aws-sdk/s3-request-presigner": "^3.1041.0",
     "@bull-board/api": "^6.20.6",
     "@bull-board/express": "^6.20.6",
     "axios": "^1.13.2",

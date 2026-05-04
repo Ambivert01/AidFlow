@@ -14,7 +14,7 @@ import policyEngine from "../../engines/policy.engine.js";
 import { addFraudCheckJob } from "../../jobs/fraud.job.js";
 import { createAuditLog } from "../audit/audit.service.js";
 import { generateHash } from "../../utils/hash.util.js";
-import { sendNotification } from "../notification/notification.service.js";
+import { createNotification } from "../notification/notification.service.js";
 
 /*
 CREATE WALLET
@@ -126,15 +126,16 @@ export const createWallet = async (data) => {
 
     // Send notification
     try {
-      await sendNotification({
+      await createNotification({
         userId: beneficiary.user,
+        role: "BENEFICIARY",
         type: "WALLET_CREATED",
-        data: {
-          walletId: wallet[0]._id,
-          balance: wallet[0].balance,
-          expiresAt: wallet[0].policy.expiresAt,
-          allowedCategories: wallet[0].policy.allowedCategories,
-        },
+        title: "Wallet Created",
+        message: `Your wallet has been created with balance ₹${wallet[0].balance}`,
+        entityType: "Wallet",
+        entityId: wallet[0]._id.toString(),
+        channels: ["IN_APP", "SMS"],
+        priority: "HIGH",
       });
     } catch (error) {
       // Log but don't fail wallet creation
@@ -288,14 +289,16 @@ export const spendWallet = async (beneficiaryId, data) => {
     // Check for low balance and send notification
     if (wallet.balance < wallet.initialAmount * 0.2) {
       try {
-        await sendNotification({
+        await createNotification({
           userId: beneficiary.user,
+          role: "BENEFICIARY",
           type: "LOW_BALANCE",
-          data: {
-            walletId: wallet._id,
-            balance: wallet.balance,
-            percentage: (wallet.balance / wallet.initialAmount) * 100,
-          },
+          title: "Low Wallet Balance",
+          message: `Your wallet balance is low: ₹${wallet.balance} (${Math.round((wallet.balance / wallet.initialAmount) * 100)}% remaining)`,
+          entityType: "Wallet",
+          entityId: wallet._id.toString(),
+          channels: ["IN_APP", "SMS"],
+          priority: "NORMAL",
         });
       } catch (error) {
         console.error("Failed to send low balance notification:", error);
@@ -362,14 +365,16 @@ export const creditWallet = async (walletId, amount, ngoUserId) => {
     try {
       const beneficiary = await Beneficiary.findById(wallet.beneficiary);
       if (beneficiary) {
-        await sendNotification({
+        await createNotification({
           userId: beneficiary.user,
+          role: "BENEFICIARY",
           type: "WALLET_CREDITED",
-          data: {
-            walletId: wallet._id,
-            amount,
-            newBalance: wallet.balance,
-          },
+          title: "Wallet Credited",
+          message: `₹${amount} has been added to your wallet. New balance: ₹${wallet.balance}`,
+          entityType: "Wallet",
+          entityId: wallet._id.toString(),
+          channels: ["IN_APP", "SMS"],
+          priority: "NORMAL",
         });
       }
     } catch (error) {
@@ -428,15 +433,16 @@ export const adjustWallet = async (walletId, amount, reason, adminId) => {
     try {
       const beneficiary = await Beneficiary.findById(wallet.beneficiary);
       if (beneficiary) {
-        await sendNotification({
+        await createNotification({
           userId: beneficiary.user,
+          role: "BENEFICIARY",
           type: "WALLET_ADJUSTED",
-          data: {
-            walletId: wallet._id,
-            amount,
-            reason,
-            newBalance: wallet.balance,
-          },
+          title: "Wallet Balance Adjusted",
+          message: `Your wallet balance has been adjusted by ₹${amount}. Reason: ${reason}. New balance: ₹${wallet.balance}`,
+          entityType: "Wallet",
+          entityId: wallet._id.toString(),
+          channels: ["IN_APP", "SMS"],
+          priority: "HIGH",
         });
       }
     } catch (error) {
@@ -490,14 +496,16 @@ export const closeWallet = async (walletId, reason, adminId) => {
     try {
       const beneficiary = await Beneficiary.findById(wallet.beneficiary);
       if (beneficiary) {
-        await sendNotification({
+        await createNotification({
           userId: beneficiary.user,
+          role: "BENEFICIARY",
           type: "WALLET_CLOSED",
-          data: {
-            walletId: wallet._id,
-            reason,
-            remainingBalance: wallet.balance,
-          },
+          title: "Wallet Closed",
+          message: `Your wallet has been closed. Reason: ${reason}. Remaining balance: ₹${wallet.balance}`,
+          entityType: "Wallet",
+          entityId: wallet._id.toString(),
+          channels: ["IN_APP", "SMS"],
+          priority: "HIGH",
         });
       }
     } catch (error) {
@@ -542,13 +550,16 @@ export const freezeWallet = async (walletId, reason, adminId) => {
   try {
     const beneficiary = await Beneficiary.findById(wallet.beneficiary);
     if (beneficiary) {
-      await sendNotification({
+      await createNotification({
         userId: beneficiary.user,
+        role: "BENEFICIARY",
         type: "WALLET_FROZEN",
-        data: {
-          walletId: wallet._id,
-          reason,
-        },
+        title: "Wallet Frozen",
+        message: `Your wallet has been frozen. Reason: ${reason}. Please contact support for assistance.`,
+        entityType: "Wallet",
+        entityId: wallet._id.toString(),
+        channels: ["IN_APP", "SMS"],
+        priority: "HIGH",
       });
     }
   } catch (error) {

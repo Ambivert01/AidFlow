@@ -1,6 +1,7 @@
 import proofService from "./proof.service.js";
 import { asyncHandler } from "../../core/asyncHandler.js";
-import { ApiResponse, ApiError } from "../../core/apiResponse.js";
+import { ApiResponse } from "../../core/apiResponse.js";
+import { AppError } from "../../utils/AppError.js";
 import { PROOF_ERROR_MESSAGES } from "./proof.constants.js";
 
 /**
@@ -25,7 +26,7 @@ export const uploadProof = asyncHandler(async (req, res) => {
 
   // Validate files
   if (!files || files.length === 0) {
-    throw new ApiError(400, "At least one file is required");
+    throw new AppError("At least one file is required", 400);
   }
 
   // Parse location if provided as string
@@ -34,7 +35,7 @@ export const uploadProof = asyncHandler(async (req, res) => {
     try {
       parsedLocation = JSON.parse(location);
     } catch (error) {
-      throw new ApiError(400, "Invalid location format");
+      throw new AppError("Invalid location format", 400);
     }
   }
 
@@ -44,7 +45,7 @@ export const uploadProof = asyncHandler(async (req, res) => {
     try {
       parsedMetadata = JSON.parse(metadata);
     } catch (error) {
-      throw new ApiError(400, "Invalid metadata format");
+      throw new AppError("Invalid metadata format", 400);
     }
   }
 
@@ -114,9 +115,9 @@ export const getDonorProofTimeline = asyncHandler(async (req, res) => {
 
   // Verify donor can only view own timeline
   if (donorId !== authenticatedUserId) {
-    throw new ApiError(
-      403,
+    throw new AppError(
       "Forbidden: You can only view your own proof timeline",
+      403,
     );
   }
 

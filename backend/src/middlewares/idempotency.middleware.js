@@ -8,7 +8,7 @@ import { AppError } from "../utils/AppError.js";
 export const idempotencyMiddleware = async (req, res, next) => {
   // Check for idempotency key in header or body
   const idempotencyKey =
-    req.headers["idempotency-key"] || req.body.idempotencyKey;
+    req.headers["idempotency-key"] || (req.body && req.body.idempotencyKey);
 
   // If no idempotency key provided, proceed without idempotency check
   if (!idempotencyKey) {

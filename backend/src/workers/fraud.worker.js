@@ -3,6 +3,7 @@ import { redisConnection } from "../config/redis.config.js";
 import aiService from "../infrastructure/ai/ai.service.js";
 import { createAuditLog } from "../modules/audit/audit.service.js";
 import workflowEngine from "../engines/workflow.engine.js";
+import trustService from "../modules/trust/trust.service.js";
 import { Wallet } from "../models/wallet/Wallet.model.js";
 import { FraudAlert } from "../models/governance/FraudAlert.model.js";
 import {
@@ -69,6 +70,21 @@ new Worker(
               signals,
               detectedAt: new Date(),
             });
+
+            // Update trust scores for campaign and NGO
+            try {
+              await Promise.all([
+                trustService.updateTrustScore(
+                  wallet.campaign,
+                  "CAMPAIGN",
+                  "Fraud detected in wallet",
+                  "FRAUD_DETECTED",
+                  null,
+                ),
+              ]);
+            } catch (trustError) {
+              console.error("Failed to update trust score:", trustError);
+            }
 
             // Send notification to beneficiary
             try {

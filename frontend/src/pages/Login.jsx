@@ -10,25 +10,52 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     await login({ email, password });
-    
+
     // AuthStore handles state. On success, App.jsx router will unrender login
     // and route to the correct role dashboard automatically based on user.role
   };
 
   return (
     <div className="center-page" style={{ padding: "var(--space-6)" }}>
-      <div className="card shadow-lg" style={{ maxWidth: "400px", width: "100%", padding: "var(--space-8)" }}>
-        
+      <div
+        className="card shadow-lg"
+        style={{ maxWidth: "400px", width: "100%", padding: "var(--space-8)" }}
+      >
         <div style={{ textAlign: "center", marginBottom: "var(--space-8)" }}>
-          <div style={{ fontSize: "32px", fontWeight: "900", letterSpacing: "-0.05em", color: "var(--color-primary-dark)", marginBottom: "var(--space-2)" }}>
-            AidFlow<span style={{ color: "var(--color-primary)", fontSize: "40px", lineHeight: 0 }}>.</span>
+          <div
+            style={{
+              fontSize: "32px",
+              fontWeight: "900",
+              letterSpacing: "-0.05em",
+              color: "var(--color-primary-dark)",
+              marginBottom: "var(--space-2)",
+            }}
+          >
+            AidFlow
+            <span
+              style={{
+                color: "var(--color-primary)",
+                fontSize: "40px",
+                lineHeight: 0,
+              }}
+            >
+              .
+            </span>
           </div>
           <p style={{ color: "var(--color-text-muted)", fontSize: "14px" }}>
-            Sign in to your dashboard to manage, disburse, or receive transparent humanitarian aid.
+            Sign in to your dashboard to manage, disburse, or receive
+            transparent humanitarian aid.
           </p>
         </div>
 
-        {error && <div className="alert alert-danger" style={{ marginBottom: "var(--space-4)" }}>{error}</div>}
+        {error && (
+          <div
+            className="alert alert-danger"
+            style={{ marginBottom: "var(--space-4)" }}
+          >
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="stack">
           <div className="form-group">
@@ -53,30 +80,70 @@ export default function Login() {
               placeholder="••••••••"
               required
             />
+            <div style={{ marginTop: "var(--space-2)", textAlign: "right" }}>
+              <Link
+                to="/forgot-password"
+                style={{
+                  fontSize: "13px",
+                  color: "var(--color-primary)",
+                  textDecoration: "none",
+                  fontWeight: "600",
+                }}
+              >
+                Forgot Password?
+              </Link>
+            </div>
           </div>
 
-          <button 
-            type="submit" 
-            className="btn btn-primary btn-full btn-lg" 
+          <button
+            type="submit"
+            className="btn btn-primary btn-full btn-lg"
             disabled={loading}
-            style={{ marginTop: "var(--space-2)", boxShadow: "0 4px 14px 0 rgba(14,165,233, 0.39)" }}
+            style={{
+              marginTop: "var(--space-2)",
+              boxShadow: "0 4px 14px 0 rgba(14,165,233, 0.39)",
+            }}
           >
             {loading ? "Authenticating..." : "Sign In"}
           </button>
         </form>
 
-        <div style={{ marginTop: "var(--space-8)", paddingTop: "var(--space-6)", borderTop: "1px solid var(--color-border)", textAlign: "center", fontSize: "13px" }}>
-          <p style={{ color: "var(--color-text-muted)", marginBottom: "var(--space-4)" }}>
+        <div
+          style={{
+            marginTop: "var(--space-8)",
+            paddingTop: "var(--space-6)",
+            borderTop: "1px solid var(--color-border)",
+            textAlign: "center",
+            fontSize: "13px",
+          }}
+        >
+          <p
+            style={{
+              color: "var(--color-text-muted)",
+              marginBottom: "var(--space-4)",
+            }}
+          >
             Don't have an account?
           </p>
-          <div className="row" style={{ justifyContent: "center", gap: "var(--space-2)" }}>
-             <Link to="/register" className="btn btn-ghost btn-sm" style={{ fontWeight: "600", color: "var(--color-primary-dark)" }}>
-               Register as Donor
-             </Link>
-             <span style={{ color: "var(--color-border-strong)" }}>|</span>
-             <Link to="/request-access" className="btn btn-ghost btn-sm" style={{ fontWeight: "600", color: "var(--color-secondary)" }}>
-               Partners (NGO/Merchant)
-             </Link>
+          <div
+            className="row"
+            style={{ justifyContent: "center", gap: "var(--space-2)" }}
+          >
+            <Link
+              to="/register"
+              className="btn btn-ghost btn-sm"
+              style={{ fontWeight: "600", color: "var(--color-primary-dark)" }}
+            >
+              Register as Donor
+            </Link>
+            <span style={{ color: "var(--color-border-strong)" }}>|</span>
+            <Link
+              to="/request-access"
+              className="btn btn-ghost btn-sm"
+              style={{ fontWeight: "600", color: "var(--color-secondary)" }}
+            >
+              Partners (NGO/Merchant)
+            </Link>
           </div>
         </div>
       </div>

@@ -15,13 +15,16 @@ router.post(
   authLimiter,
   validate(accessRequestSchema),
   asyncHandler(async (req, res) => {
-    const user = await registerUser(req.body);
-    res.status(201).json(ApiResponse.created({
-      message: "Access request submitted. An admin will review and approve your account.",
-      email: user.email,
-      role: user.role,
-    }));
-  })
+    const result = await registerUser(req.body);
+    res.status(201).json(
+      ApiResponse.created({
+        message:
+          "Access request submitted. An admin will review and approve your account.",
+        user: result.user,
+        emailVerificationToken: result.emailVerificationToken, // For testing only
+      }),
+    );
+  }),
 );
 
 export default router;

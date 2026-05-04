@@ -12,6 +12,7 @@ const auditLogSchema = new mongoose.Schema(
     eventCategory: {
       type: String,
       enum: [
+        "AUTH",
         "DONATION",
         "CAMPAIGN",
         "BENEFICIARY",

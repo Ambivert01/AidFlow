@@ -23,10 +23,9 @@ const aiDecisionLogSchema = new mongoose.Schema(
         "PROOF_VERIFICATION",
         "TRANSACTION_ANOMALY",
         "MERCHANT_RISK",
-        "DONATION_RISK"
+        "DONATION_RISK",
       ],
       required: true,
-      index: true,
     },
 
     // TARGET ENTITY
@@ -38,7 +37,7 @@ const aiDecisionLogSchema = new mongoose.Schema(
         "Merchant",
         "Donation",
         "Proof",
-        "Transaction"
+        "Transaction",
       ],
       required: true,
       index: true,
@@ -95,13 +94,7 @@ const aiDecisionLogSchema = new mongoose.Schema(
     // ACTION TAKEN
     actionTaken: {
       type: String,
-      enum: [
-        "NONE",
-        "FLAGGED",
-        "BLOCKED",
-        "ESCALATED",
-        "APPROVED"
-      ],
+      enum: ["NONE", "FLAGGED", "BLOCKED", "ESCALATED", "APPROVED"],
       default: "NONE",
     },
 
@@ -138,9 +131,9 @@ const aiDecisionLogSchema = new mongoose.Schema(
     version: {
       type: Number,
       default: 1,
-    }
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // INDEXES
@@ -150,5 +143,5 @@ aiDecisionLogSchema.index({ modelName: 1, modelVersion: 1 });
 
 export const AIDecisionLog = mongoose.model(
   "AIDecisionLog",
-  aiDecisionLogSchema
+  aiDecisionLogSchema,
 );

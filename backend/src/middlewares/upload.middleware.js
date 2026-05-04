@@ -1,5 +1,5 @@
 import multer from "multer";
-import { ApiError } from "../core/apiResponse.js";
+import { AppError } from "../utils/AppError.js";
 
 // Allowed MIME types for proof files
 const ALLOWED_MIME_TYPES = [
@@ -52,9 +52,9 @@ const fileFilter = (req, file, cb) => {
     cb(null, true);
   } else {
     cb(
-      new ApiError(
-        400,
+      new AppError(
         "Invalid file type. Allowed types: IMAGE, VIDEO, PDF, DOCUMENT",
+        400,
       ),
       false,
     );

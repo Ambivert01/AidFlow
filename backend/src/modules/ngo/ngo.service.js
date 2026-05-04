@@ -7,6 +7,16 @@ import { BaseService } from "../../core/base.service.js";
 import { AppError } from "../../utils/AppError.js";
 import { createAuditLog } from "../audit/audit.service.js";
 import { generateHash } from "../../utils/hash.util.js";
+import { redisConnection } from "../../config/redis.config.js";
+import {
+  aggregateCampaignStats,
+  aggregateBeneficiaryStats,
+  aggregateWalletStats,
+  aggregateProofStats,
+  aggregateAIInsights,
+  aggregateBlockchainStatus,
+  aggregateNotifications,
+} from "./dashboard.aggregator.js";
 
 /*
 NGO DASHBOARD STATS
@@ -27,9 +37,18 @@ export const getNgoDashboard = async (ngoId) => {
     Campaign.countDocuments({ createdBy: ngoId }),
     Campaign.countDocuments({ createdBy: ngoId, status: "ACTIVE" }),
     Beneficiary.countDocuments({ campaign: { $in: campaignIds } }),
-    Beneficiary.countDocuments({ campaign: { $in: campaignIds }, status: "ACTIVE" }),
-    Beneficiary.countDocuments({ campaign: { $in: campaignIds }, status: { $in: ["REGISTERED", "AI_EVALUATED", "MANUAL_REVIEW"] } }),
-    Donation.countDocuments({ campaign: { $in: campaignIds }, status: "PENDING_NGO_REVIEW" }),
+    Beneficiary.countDocuments({
+      campaign: { $in: campaignIds },
+      status: "ACTIVE",
+    }),
+    Beneficiary.countDocuments({
+      campaign: { $in: campaignIds },
+      status: { $in: ["REGISTERED", "AI_EVALUATED", "MANUAL_REVIEW"] },
+    }),
+    Donation.countDocuments({
+      campaign: { $in: campaignIds },
+      status: "PENDING_NGO_REVIEW",
+    }),
     Donation.aggregate([
       { $match: { campaign: { $in: campaignIds } } },
       { $group: { _id: null, total: { $sum: "$amount" } } },
@@ -57,7 +76,9 @@ export const getPendingDonations = async (ngoId) => {
 
   const donations = await Donation.find({
     campaign: { $in: campaignIds },
-    status: { $in: ["PENDING_NGO_REVIEW", "HIGH_RISK_ESCALATED", "PAYMENT_SUCCESS"] },
+    status: {
+      $in: ["PENDING_NGO_REVIEW", "HIGH_RISK_ESCALATED", "PAYMENT_SUCCESS"],
+    },
   })
     .populate("donor", "name email")
     .populate("campaign", "title disasterType policySnapshot")
@@ -87,7 +108,11 @@ export const getNgoBeneficiaries = async (ngoId, query = {}) => {
 ASSIGN DONATION TO BENEFICIARY
 sets donation.beneficiary — prerequisite before approval
 */
-export const assignDonationToBeneficiary = async (donationId, beneficiaryId, ngoId) => {
+export const assignDonationToBeneficiary = async (
+  donationId,
+  beneficiaryId,
+  ngoId,
+) => {
   const donation = await Donation.findById(donationId).populate("campaign");
   if (!donation) throw new AppError("Donation not found", 404);
 
@@ -96,14 +121,24 @@ export const assignDonationToBeneficiary = async (donationId, beneficiaryId, ngo
     throw new AppError("Unauthorized: not your campaign", 403);
   }
 
-  if (!["PENDING_NGO_REVIEW", "HIGH_RISK_ESCALATED", "PAYMENT_SUCCESS"].includes(donation.status)) {
+  if (
+    !["PENDING_NGO_REVIEW", "HIGH_RISK_ESCALATED", "PAYMENT_SUCCESS"].includes(
+      donation.status,
+    )
+  ) {
     throw new AppError("Donation is not in a reviewable state", 400);
   }
 
   const beneficiary = await Beneficiary.findById(beneficiaryId);
   if (!beneficiary) throw new AppError("Beneficiary not found", 404);
-  if (beneficiary.status !== "ACTIVE" && beneficiary.status !== "NGO_APPROVED") {
-    throw new AppError("Beneficiary must be approved before receiving funds", 400);
+  if (
+    beneficiary.status !== "ACTIVE" &&
+    beneficiary.status !== "NGO_APPROVED"
+  ) {
+    throw new AppError(
+      "Beneficiary must be approved before receiving funds",
+      400,
+    );
   }
 
   donation.beneficiary = beneficiaryId;
@@ -127,7 +162,11 @@ export const approveDonation = async (donationId, ngoId) => {
     throw new AppError("Assign a beneficiary before approving", 400);
   }
 
-  if (!["PENDING_NGO_REVIEW", "HIGH_RISK_ESCALATED", "PAYMENT_SUCCESS"].includes(donation.status)) {
+  if (
+    !["PENDING_NGO_REVIEW", "HIGH_RISK_ESCALATED", "PAYMENT_SUCCESS"].includes(
+      donation.status,
+    )
+  ) {
     throw new AppError("Donation is not in a reviewable state", 400);
   }
 
@@ -153,18 +192,24 @@ export const approveDonation = async (donationId, ngoId) => {
   // Update campaign stats
   await Campaign.updateOne(
     { _id: donation.campaign._id },
-    { $inc: { totalAllocated: donation.amount, totalWalletsCreated: 1 } }
+    { $inc: { totalAllocated: donation.amount, totalWalletsCreated: 1 } },
   );
 
   // Update beneficiary status to ACTIVE
-  await Beneficiary.findByIdAndUpdate(donation.beneficiary, { status: "ACTIVE" });
+  await Beneficiary.findByIdAndUpdate(donation.beneficiary, {
+    status: "ACTIVE",
+  });
 
   await createAuditLog({
     eventType: "DONATION_NGO_APPROVED",
     entityType: "Donation",
     entityId: donation._id,
     actorRole: "NGO",
-    payload: { walletId: wallet._id, beneficiaryId: donation.beneficiary, amount: donation.amount },
+    payload: {
+      walletId: wallet._id,
+      beneficiaryId: donation.beneficiary,
+      amount: donation.amount,
+    },
   });
 
   return BaseService.updated({ donation, wallet });
@@ -200,7 +245,9 @@ export const rejectDonation = async (donationId, ngoId, reason) => {
 GET NGO CAMPAIGNS
 */
 export const getNgoCampaigns = async (ngoId) => {
-  const campaigns = await Campaign.find({ createdBy: ngoId }).sort({ createdAt: -1 });
+  const campaigns = await Campaign.find({ createdBy: ngoId }).sort({
+    createdAt: -1,
+  });
   return BaseService.success(campaigns);
 };
 
@@ -210,4 +257,369 @@ ALLOCATE DONATION TO BENEFICIARY (legacy — kept for workflow engine)
 export const allocateDonationToBeneficiary = async (ngoId, data) => {
   await assignDonationToBeneficiary(data.donationId, data.beneficiaryId, ngoId);
   return approveDonation(data.donationId, ngoId);
+};
+
+/*
+ENHANCED NGO DASHBOARD
+Aggregates data from all modules for unified dashboard view
+*/
+export const getEnhancedNgoDashboard = async (ngoId) => {
+  const startTime = Date.now();
+
+  try {
+    // Step 1: Check Redis cache for existing dashboard data
+    const cacheKey = `dashboard:ngo:${ngoId}`;
+
+    try {
+      const cachedData = await redisConnection.get(cacheKey);
+      if (cachedData) {
+        const parsedData = JSON.parse(cachedData);
+        // Update metadata to indicate cache hit
+        parsedData.metadata.cacheHit = true;
+        parsedData.metadata.queryTimeMs = Date.now() - startTime;
+        return BaseService.success(parsedData);
+      }
+    } catch (cacheError) {
+      // Log cache error but continue with normal operation (graceful degradation)
+      console.error("Redis cache read error:", cacheError);
+    }
+
+    // Step 2: Fetch all campaigns created by the NGO user
+    const campaigns = await Campaign.find({ createdBy: ngoId }).select("_id");
+    const campaignIds = campaigns.map((c) => c._id);
+
+    // If no campaigns, return empty dashboard
+    if (campaignIds.length === 0) {
+      const emptyDashboard = {
+        overview: {
+          ngoId: ngoId, // Include ngoId for trust score fetching
+          totalCampaigns: 0,
+          activeCampaigns: 0,
+          completedCampaigns: 0,
+          pendingApprovalCampaigns: 0,
+          totalFundsReceived: 0,
+          totalFundsAllocated: 0,
+          totalFundsSpent: 0,
+          remainingFunds: 0,
+          pendingProofsCount: 0,
+          totalBeneficiaries: 0,
+        },
+        campaigns: [],
+        beneficiaries: {
+          total: 0,
+          approved: 0,
+          pending: 0,
+          rejected: 0,
+          manualReview: 0,
+          fraudFlagged: 0,
+          highRisk: 0,
+          byStatus: {},
+          byAIDecision: {},
+        },
+        wallets: {
+          totalCreated: 0,
+          totalAllocated: 0,
+          totalSpent: 0,
+          remainingBalance: 0,
+          active: 0,
+          suspended: 0,
+          expired: 0,
+          highRisk: 0,
+          byCampaign: [],
+          byCategory: {},
+        },
+        proofs: {
+          total: 0,
+          pending: 0,
+          aiVerified: 0,
+          approved: 0,
+          rejected: 0,
+          manualReview: 0,
+          highRisk: 0,
+          byType: {},
+          recent: [],
+        },
+        aiInsights: {
+          activeFraudAlerts: 0,
+          alertsBySeverity: {},
+          recentDecisions: [],
+          criticalAlerts: [],
+          decisionsByType: {},
+        },
+        workflow: {
+          stages: [],
+          pendingActions: 0,
+        },
+        blockchain: {
+          totalAnchored: 0,
+          pendingAnchor: 0,
+          lastAnchorTimestamp: null,
+          networkName: "N/A",
+          byCampaign: [],
+          recentTransactions: [],
+          delayWarning: false,
+        },
+        notifications: [],
+        metadata: {
+          dataFreshness: new Date(),
+          cacheHit: false,
+          queryTimeMs: Date.now() - startTime,
+        },
+      };
+      return BaseService.success(emptyDashboard);
+    }
+
+    // Step 3: Execute all aggregator functions in parallel
+    const [
+      campaignStats,
+      beneficiaryStats,
+      walletStats,
+      proofStats,
+      aiInsights,
+      blockchainStatus,
+      notifications,
+    ] = await Promise.allSettled([
+      aggregateCampaignStats(campaignIds),
+      aggregateBeneficiaryStats(campaignIds),
+      aggregateWalletStats(campaignIds),
+      aggregateProofStats(campaignIds),
+      aggregateAIInsights(campaignIds),
+      aggregateBlockchainStatus(campaignIds),
+      aggregateNotifications(ngoId),
+    ]);
+
+    // Step 4: Extract results and handle partial failures
+    const getCampaignData = () => {
+      if (campaignStats.status === "fulfilled") {
+        return campaignStats.value;
+      }
+      console.error("Campaign stats aggregation failed:", campaignStats.reason);
+      return {
+        total: 0,
+        active: 0,
+        completed: 0,
+        pendingApproval: 0,
+        totalDonated: 0,
+        totalAllocated: 0,
+        totalSpent: 0,
+        remainingFunds: 0,
+        campaigns: [],
+        error: true,
+      };
+    };
+
+    const getBeneficiaryData = () => {
+      if (beneficiaryStats.status === "fulfilled") {
+        return beneficiaryStats.value;
+      }
+      console.error(
+        "Beneficiary stats aggregation failed:",
+        beneficiaryStats.reason,
+      );
+      return {
+        total: 0,
+        approved: 0,
+        pending: 0,
+        rejected: 0,
+        manualReview: 0,
+        fraudFlagged: 0,
+        highRisk: 0,
+        byStatus: {},
+        byAIDecision: {},
+        error: true,
+      };
+    };
+
+    const getWalletData = () => {
+      if (walletStats.status === "fulfilled") {
+        return walletStats.value;
+      }
+      console.error("Wallet stats aggregation failed:", walletStats.reason);
+      return {
+        totalCreated: 0,
+        totalAllocated: 0,
+        totalSpent: 0,
+        remainingBalance: 0,
+        active: 0,
+        suspended: 0,
+        expired: 0,
+        highRisk: 0,
+        byCampaign: [],
+        byCategory: {},
+        error: true,
+      };
+    };
+
+    const getProofData = () => {
+      if (proofStats.status === "fulfilled") {
+        return proofStats.value;
+      }
+      console.error("Proof stats aggregation failed:", proofStats.reason);
+      return {
+        total: 0,
+        pending: 0,
+        aiVerified: 0,
+        approved: 0,
+        rejected: 0,
+        manualReview: 0,
+        highRisk: 0,
+        byType: {},
+        recent: [],
+        error: true,
+      };
+    };
+
+    const getAIInsightsData = () => {
+      if (aiInsights.status === "fulfilled") {
+        return aiInsights.value;
+      }
+      console.error("AI insights aggregation failed:", aiInsights.reason);
+      return {
+        activeFraudAlerts: 0,
+        alertsBySeverity: {},
+        recentDecisions: [],
+        criticalAlerts: [],
+        decisionsByType: {},
+        error: true,
+      };
+    };
+
+    const getBlockchainData = () => {
+      if (blockchainStatus.status === "fulfilled") {
+        return blockchainStatus.value;
+      }
+      console.error(
+        "Blockchain status aggregation failed:",
+        blockchainStatus.reason,
+      );
+      return {
+        totalAnchored: 0,
+        pendingAnchor: 0,
+        lastAnchorTimestamp: null,
+        networkName: "N/A",
+        byCampaign: [],
+        recentTransactions: [],
+        delayWarning: false,
+        error: true,
+      };
+    };
+
+    const getNotificationsData = () => {
+      if (notifications.status === "fulfilled") {
+        return notifications.value;
+      }
+      console.error("Notifications aggregation failed:", notifications.reason);
+      return [];
+    };
+
+    // Extract data from settled promises
+    const campaignData = getCampaignData();
+    const beneficiaryData = getBeneficiaryData();
+    const walletData = getWalletData();
+    const proofData = getProofData();
+    const aiInsightsData = getAIInsightsData();
+    const blockchainData = getBlockchainData();
+    const notificationsData = getNotificationsData();
+
+    // Step 5: Calculate overview statistics
+    const overview = {
+      ngoId: ngoId, // Include ngoId for trust score fetching
+      totalCampaigns: campaignData.total,
+      activeCampaigns: campaignData.active,
+      completedCampaigns: campaignData.completed,
+      pendingApprovalCampaigns: campaignData.pendingApproval,
+      totalFundsReceived: campaignData.totalDonated,
+      totalFundsAllocated: walletData.totalAllocated,
+      totalFundsSpent: walletData.totalSpent,
+      remainingFunds: campaignData.remainingFunds,
+      pendingProofsCount: proofData.pending,
+      totalBeneficiaries: beneficiaryData.total,
+    };
+
+    // Step 6: Workflow status (placeholder for now as per design)
+    const workflow = {
+      stages: [
+        {
+          name: "Campaign",
+          count: campaignData.total,
+          errors: 0,
+          delays: 0,
+          avgProcessingTime: 0,
+        },
+        {
+          name: "Beneficiaries",
+          count: beneficiaryData.total,
+          errors: 0,
+          delays: 0,
+          avgProcessingTime: 0,
+        },
+        {
+          name: "Wallet Allocation",
+          count: walletData.totalCreated,
+          errors: 0,
+          delays: 0,
+          avgProcessingTime: 0,
+        },
+        {
+          name: "Spending",
+          count: walletData.totalCreated,
+          errors: 0,
+          delays: 0,
+          avgProcessingTime: 0,
+        },
+        {
+          name: "Proof Upload",
+          count: proofData.total,
+          errors: 0,
+          delays: 0,
+          avgProcessingTime: 0,
+        },
+        {
+          name: "AI Validation",
+          count: proofData.aiVerified + proofData.approved,
+          errors: 0,
+          delays: 0,
+          avgProcessingTime: 0,
+        },
+      ],
+      pendingActions: beneficiaryData.pending + proofData.pending,
+    };
+
+    // Step 7: Combine all data into unified response
+    const queryTimeMs = Date.now() - startTime;
+
+    const dashboardData = {
+      overview,
+      campaigns: campaignData.campaigns,
+      beneficiaries: beneficiaryData,
+      wallets: walletData,
+      proofs: proofData,
+      aiInsights: aiInsightsData,
+      workflow,
+      blockchain: blockchainData,
+      notifications: notificationsData,
+      metadata: {
+        dataFreshness: new Date(),
+        cacheHit: false,
+        queryTimeMs,
+      },
+    };
+
+    // Step 8: Store aggregated data in Redis cache
+    try {
+      await redisConnection.setex(
+        cacheKey,
+        300, // TTL: 5 minutes (300 seconds)
+        JSON.stringify(dashboardData),
+      );
+    } catch (cacheError) {
+      // Log cache error but continue with normal operation (graceful degradation)
+      console.error("Redis cache write error:", cacheError);
+    }
+
+    return BaseService.success(dashboardData);
+  } catch (error) {
+    console.error("Error in getEnhancedNgoDashboard:", error);
+    throw error;
+  }
 };

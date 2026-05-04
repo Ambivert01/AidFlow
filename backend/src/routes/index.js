@@ -17,6 +17,7 @@ import notificationRoutes from "../modules/notification/notification.routes.js";
 import proofRoutes from "../modules/proof/proof.routes.js";
 import settlementRoutes from "../modules/settlement/settlement.routes.js";
 import publicRoutes from "../modules/public/public.routes.js";
+import trustRoutes from "../modules/trust/trust.routes.js";
 
 const router = express.Router();
 
@@ -74,5 +75,8 @@ router.use("/proof", proofRoutes);
 
 // Settlements
 router.use("/settlements", settlementRoutes);
+
+// Trust scores
+router.use("/trust", trustRoutes);
 
 export default router;

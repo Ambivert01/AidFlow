@@ -7,7 +7,6 @@ const beneficiarySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
-      index: true,
       sparse: true,
     },
 
@@ -16,20 +15,17 @@ const beneficiarySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Campaign",
       required: true,
-      index: true,
     },
 
     // PII-SAFE IDENTITY
     aadhaarHash: {
       type: String,
-      index: true,
       sparse: true,
       default: null,
     },
 
     phoneHash: {
       type: String,
-      index: true,
       sparse: true,
       default: null,
     },
@@ -112,7 +108,6 @@ const beneficiarySchema = new mongoose.Schema(
         "ACTIVE",
       ],
       default: "PENDING",
-      index: true,
     },
 
     // AI DECISION SYSTEM

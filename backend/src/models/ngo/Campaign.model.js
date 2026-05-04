@@ -189,6 +189,15 @@ const campaignSchema = new mongoose.Schema(
       default: 0,
     },
 
+    // TRUST SCORE
+    trustScore: {
+      type: Number,
+      default: 50,
+      min: 0,
+      max: 100,
+      index: true,
+    },
+
     // AI RISK ANALYSIS
     aiRiskScore: {
       type: Number,

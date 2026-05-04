@@ -3,13 +3,15 @@ import { Campaign } from "../../models/ngo/Campaign.model.js";
 import { Donation } from "../../models/donor/Donation.model.js";
 import { IdempotencyKey } from "../../models/IdempotencyKey.model.js";
 import fileStorageService from "../../services/fileStorage.service.js";
-import auditService from "../audit/audit.service.js";
-import notificationService from "../notification/notification.service.js";
+import { createAuditLog } from "../audit/audit.service.js";
+import { createNotification } from "../notification/notification.service.js";
+import trustService from "../trust/trust.service.js";
 import {
   proofValidationQueue,
   blockchainQueue,
 } from "../../queues/proof.queue.js";
-import { ApiError } from "../../core/apiResponse.js";
+import { AppError } from "../../utils/AppError.js";
+import { logger } from "../../utils/logger.js";
 import {
   PROOF_STATUS,
   PROOF_TYPE,
@@ -20,7 +22,6 @@ import {
   PROOF_ERROR_MESSAGES,
   PAGINATION,
 } from "./proof.constants.js";
-import logger from "../../utils/logger.js";
 
 class ProofService {
   /**
@@ -59,10 +60,10 @@ class ProofService {
     // 2. Validate campaign ownership
     const campaign = await Campaign.findById(campaignId);
     if (!campaign) {
-      throw new ApiError(404, PROOF_ERROR_MESSAGES.CAMPAIGN_NOT_FOUND);
+      throw new AppError(PROOF_ERROR_MESSAGES.CAMPAIGN_NOT_FOUND, 404);
     }
     if (campaign.ngo.toString() !== ngoId) {
-      throw new ApiError(403, PROOF_ERROR_MESSAGES.CAMPAIGN_UNAUTHORIZED);
+      throw new AppError(PROOF_ERROR_MESSAGES.CAMPAIGN_UNAUTHORIZED, 403);
     }
 
     // 3. Store files and compute hashes
@@ -90,7 +91,7 @@ class ProofService {
           filename: file.originalname,
           error: error.message,
         });
-        throw new ApiError(500, PROOF_ERROR_MESSAGES.FILE_UPLOAD_FAILED);
+        throw new AppError(PROOF_ERROR_MESSAGES.FILE_UPLOAD_FAILED, 500);
       }
     }
 
@@ -110,11 +111,13 @@ class ProofService {
     });
 
     // 5. Create audit log
-    await auditService.log({
+    await createAuditLog({
       eventType: PROOF_AUDIT_EVENTS.PROOF_UPLOADED,
-      actor: ngoId,
-      resource: "Proof",
-      resourceId: proof._id,
+      actorId: ngoId,
+      actorRole: "NGO",
+      entityType: "Proof",
+      entityId: proof._id,
+      campaignId,
       payload: {
         campaignId,
         proofType,
@@ -174,7 +177,7 @@ class ProofService {
   async updateProofFromAI(proofId, aiResult) {
     const proof = await Proof.findById(proofId).populate("campaign");
     if (!proof) {
-      throw new ApiError(404, PROOF_ERROR_MESSAGES.PROOF_NOT_FOUND);
+      throw new AppError(PROOF_ERROR_MESSAGES.PROOF_NOT_FOUND, 404);
     }
 
     const oldStatus = proof.status;
@@ -208,17 +211,74 @@ class ProofService {
 
       // Notify donors
       await this.notifyDonorsOfVerifiedProof(proof);
+
+      // Update trust scores for campaign and NGO
+      try {
+        await Promise.all([
+          trustService.updateTrustScore(
+            proof.campaign._id,
+            "CAMPAIGN",
+            "Proof verified by AI",
+            "PROOF_VERIFIED",
+            null,
+          ),
+          trustService.updateTrustScore(
+            proof.campaign.createdBy,
+            "NGO",
+            "Proof verified by AI",
+            "PROOF_VERIFIED",
+            null,
+          ),
+        ]);
+      } catch (trustError) {
+        logger.error({
+          type: "TRUST_UPDATE_ERROR",
+          proofId: proof._id,
+          error: trustError.message,
+        });
+        // Don't throw - trust update failure shouldn't block proof verification
+      }
     } else if (aiResult.decision === AI_DECISION.REJECTED) {
       proof.status = PROOF_STATUS.REJECTED;
 
       // Notify NGO
-      await notificationService.create({
-        user: proof.campaign.ngo,
+      await createNotification({
+        userId: proof.campaign.ngo,
+        role: "NGO",
         type: PROOF_NOTIFICATION_TYPES.PROOF_REJECTED,
-        priority: "HIGH",
+        title: "Proof Rejected",
         message: `Proof rejected for campaign ${proof.campaign.title}. Reason: ${aiResult.flags.join(", ")}`,
-        metadata: { proofId: proof._id, flags: aiResult.flags },
+        entityType: "Proof",
+        entityId: proof._id.toString(),
+        channels: ["IN_APP", "EMAIL"],
+        priority: "HIGH",
       });
+
+      // Update trust scores for campaign and NGO (negative impact)
+      try {
+        await Promise.all([
+          trustService.updateTrustScore(
+            proof.campaign._id,
+            "CAMPAIGN",
+            "Proof rejected by AI",
+            "PROOF_REJECTED",
+            null,
+          ),
+          trustService.updateTrustScore(
+            proof.campaign.createdBy,
+            "NGO",
+            "Proof rejected by AI",
+            "PROOF_REJECTED",
+            null,
+          ),
+        ]);
+      } catch (trustError) {
+        logger.error({
+          type: "TRUST_UPDATE_ERROR",
+          proofId: proof._id,
+          error: trustError.message,
+        });
+      }
     } else {
       proof.status = PROOF_STATUS.FLAGGED;
     }
@@ -226,11 +286,12 @@ class ProofService {
     await proof.save();
 
     // Create audit log
-    await auditService.log({
+    await createAuditLog({
       eventType: PROOF_AUDIT_EVENTS.PROOF_STATUS_CHANGED,
-      actor: "SYSTEM",
-      resource: "Proof",
-      resourceId: proof._id,
+      actorRole: "SYSTEM",
+      entityType: "Proof",
+      entityId: proof._id,
+      campaignId: proof.campaign._id,
       payload: {
         oldStatus,
         newStatus: proof.status,
@@ -372,7 +433,7 @@ class ProofService {
   async verifyProofHash(proofId) {
     const proof = await Proof.findById(proofId).lean();
     if (!proof) {
-      throw new ApiError(404, PROOF_ERROR_MESSAGES.PROOF_NOT_FOUND);
+      throw new AppError(PROOF_ERROR_MESSAGES.PROOF_NOT_FOUND, 404);
     }
 
     const storedHash = proof.hash;
@@ -402,7 +463,7 @@ class ProofService {
         proofId,
         error: error.message,
       });
-      throw new ApiError(500, "Failed to verify proof hash");
+      throw new AppError("Failed to verify proof hash", 500);
     }
   }
 
@@ -417,11 +478,11 @@ class ProofService {
   async submitManualReview(proofId, decision, reason, reviewerId) {
     const proof = await Proof.findById(proofId).populate("campaign");
     if (!proof) {
-      throw new ApiError(404, PROOF_ERROR_MESSAGES.PROOF_NOT_FOUND);
+      throw new AppError(PROOF_ERROR_MESSAGES.PROOF_NOT_FOUND, 404);
     }
 
     if (proof.status !== PROOF_STATUS.FLAGGED) {
-      throw new ApiError(400, PROOF_ERROR_MESSAGES.MANUAL_REVIEW_REQUIRED);
+      throw new AppError(PROOF_ERROR_MESSAGES.MANUAL_REVIEW_REQUIRED, 400);
     }
 
     if (
@@ -430,7 +491,7 @@ class ProofService {
         MANUAL_REVIEW_DECISION.REJECTED,
       ].includes(decision)
     ) {
-      throw new ApiError(400, PROOF_ERROR_MESSAGES.INVALID_DECISION);
+      throw new AppError(PROOF_ERROR_MESSAGES.INVALID_DECISION, 400);
     }
 
     const oldStatus = proof.status;
@@ -452,11 +513,13 @@ class ProofService {
     await proof.save();
 
     // Create audit log
-    await auditService.log({
+    await createAuditLog({
       eventType: PROOF_AUDIT_EVENTS.PROOF_MANUALLY_REVIEWED,
-      actor: reviewerId,
-      resource: "Proof",
-      resourceId: proof._id,
+      actorId: reviewerId,
+      actorRole: "GOVERNMENT",
+      entityType: "Proof",
+      entityId: proof._id,
+      campaignId: proof.campaign._id,
       payload: {
         oldStatus,
         newStatus: proof.status,
@@ -482,14 +545,70 @@ class ProofService {
       );
 
       await this.notifyDonorsOfVerifiedProof(proof);
+
+      // Update trust scores for campaign and NGO
+      try {
+        await Promise.all([
+          trustService.updateTrustScore(
+            proof.campaign._id,
+            "CAMPAIGN",
+            "Proof approved by manual review",
+            "PROOF_VERIFIED",
+            reviewerId,
+          ),
+          trustService.updateTrustScore(
+            proof.campaign.createdBy,
+            "NGO",
+            "Proof approved by manual review",
+            "PROOF_VERIFIED",
+            reviewerId,
+          ),
+        ]);
+      } catch (trustError) {
+        logger.error({
+          type: "TRUST_UPDATE_ERROR",
+          proofId: proof._id,
+          error: trustError.message,
+        });
+      }
     } else {
-      await notificationService.create({
-        user: proof.campaign.ngo,
+      await createNotification({
+        userId: proof.campaign.ngo,
+        role: "NGO",
         type: PROOF_NOTIFICATION_TYPES.PROOF_REJECTED,
-        priority: "HIGH",
+        title: "Proof Rejected",
         message: `Proof rejected for campaign ${proof.campaign.title}. Reason: ${reason || "Manual review"}`,
-        metadata: { proofId: proof._id, reason },
+        entityType: "Proof",
+        entityId: proof._id.toString(),
+        channels: ["IN_APP", "EMAIL"],
+        priority: "HIGH",
       });
+
+      // Update trust scores for campaign and NGO (negative impact)
+      try {
+        await Promise.all([
+          trustService.updateTrustScore(
+            proof.campaign._id,
+            "CAMPAIGN",
+            "Proof rejected by manual review",
+            "PROOF_REJECTED",
+            reviewerId,
+          ),
+          trustService.updateTrustScore(
+            proof.campaign.createdBy,
+            "NGO",
+            "Proof rejected by manual review",
+            "PROOF_REJECTED",
+            reviewerId,
+          ),
+        ]);
+      } catch (trustError) {
+        logger.error({
+          type: "TRUST_UPDATE_ERROR",
+          proofId: proof._id,
+          error: trustError.message,
+        });
+      }
     }
 
     logger.info({
@@ -518,20 +637,18 @@ class ProofService {
 
       // Create notifications for each donor
       const notifications = donorIds.map((donorId) => ({
-        user: donorId,
+        userId: donorId,
+        role: "DONOR",
         type: PROOF_NOTIFICATION_TYPES.PROOF_VERIFIED,
-        priority: "NORMAL",
+        title: "Proof Verified",
         message: `New proof verified for campaign ${proof.campaign.title}`,
-        metadata: {
-          proofId: proof._id,
-          campaignId: proof.campaign._id,
-          proofType: proof.proofType,
-        },
+        entityType: "Proof",
+        entityId: proof._id.toString(),
+        channels: ["IN_APP"],
+        priority: "NORMAL",
       }));
 
-      await Promise.all(
-        notifications.map((n) => notificationService.create(n)),
-      );
+      await Promise.all(notifications.map((n) => createNotification(n)));
 
       logger.info({
         type: "DONORS_NOTIFIED_OF_VERIFIED_PROOF",
