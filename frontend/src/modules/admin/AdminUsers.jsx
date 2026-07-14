@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import * as adminSvc from "../../services/admin.service";
+import { confirmDialog } from "../../components/ConfirmDialog";
 
 const ROLE_BADGE = {
   ADMIN: "badge-purple",
@@ -36,7 +37,12 @@ export default function AdminUsers() {
   useEffect(() => { load(); }, [page, roleFilter, statusFilter]);
 
   const handleToggle = async (id, name, isActive) => {
-    if (!window.confirm(`${isActive ? "Suspend" : "Restore"} ${name}?`)) return;
+    const confirmed = await confirmDialog(`${isActive ? "Suspend" : "Restore"} ${name}?`, {
+      title: isActive ? "Suspend user" : "Restore user",
+      danger: isActive,
+      confirmLabel: isActive ? "Suspend" : "Restore",
+    });
+    if (!confirmed) return;
     try {
       const res = await adminSvc.toggleUserActive(id);
       setActionMsg(res.data.message || "Updated");
@@ -48,7 +54,7 @@ export default function AdminUsers() {
   };
 
   return (
-    <div className="stack-lg">
+    <div className="stack-lg animate-fade-up">
       <div className="page-header">
         <h1 className="page-title">User Directory</h1>
         <p className="page-subtitle">Manage all platform accounts. Suspend or restore access at any time.</p>
@@ -94,8 +100,8 @@ export default function AdminUsers() {
               <tbody>
                 {users.length === 0 ? (
                   <tr><td colSpan={6} style={{ textAlign: "center", padding: "40px", color: "var(--color-text-faint)" }}>No users found</td></tr>
-                ) : users.map(u => (
-                  <tr key={u._id}>
+                ) : users.map((u, idx) => (
+                  <tr key={u._id} className="hover-lift animate-fade-up" style={{ animationDelay: `${idx * 0.03}s`, transition: "all 0.3s ease" }}>
                     <td>
                       <div style={{ fontWeight: "600" }}>{u.name}</div>
                       <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{u.email}</div>

@@ -26,14 +26,15 @@ export default function CampaignPreview() {
   if (loading) {
     return (
       <section
+        className="animate-fade-in"
         style={{
           padding: "var(--space-12) var(--space-4)",
           maxWidth: "1200px",
           margin: "0 auto",
         }}
       >
-        <div style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
-          Loading campaigns...
+        <div className="loader-center" style={{ minHeight: "200px" }}>
+          <div className="spinner"></div>
         </div>
       </section>
     );
@@ -42,25 +43,17 @@ export default function CampaignPreview() {
   if (campaigns.length === 0) {
     return (
       <section
+        className="animate-fade-up"
         style={{
           padding: "var(--space-12) var(--space-4)",
           maxWidth: "1200px",
           margin: "0 auto",
         }}
       >
-        <div style={{ textAlign: "center" }}>
-          <h2
-            style={{
-              fontSize: "36px",
-              fontWeight: "800",
-              marginBottom: "var(--space-2)",
-            }}
-          >
-            Active Campaigns
-          </h2>
-          <p style={{ color: "var(--color-text-muted)" }}>
-            No active campaigns at the moment. Check back soon!
-          </p>
+        <div className="empty-state">
+          <div className="empty-state-icon">📋</div>
+          <div className="empty-state-title">Active Campaigns</div>
+          <div className="empty-state-desc">No active campaigns at the moment. Check back soon!</div>
         </div>
       </section>
     );
@@ -68,30 +61,32 @@ export default function CampaignPreview() {
 
   return (
     <section
+      className="animate-fade-up"
       style={{
         padding: "var(--space-12) var(--space-4)",
         maxWidth: "1200px",
         margin: "0 auto",
       }}
     >
-      <div style={{ textAlign: "center", marginBottom: "var(--space-12)" }}>
+      <div className="animate-fade-down" style={{ textAlign: "center", marginBottom: "var(--space-12)" }}>
         <h2
           style={{
-            fontSize: "36px",
-            fontWeight: "800",
+            fontFamily: "var(--font-display)",
+            fontSize: "32px",
+            fontWeight: "700",
             marginBottom: "var(--space-2)",
           }}
         >
-          Active Campaigns
+          Open campaigns
         </h2>
         <p
           style={{
             color: "var(--color-text-muted)",
-            maxWidth: "600px",
+            maxWidth: "560px",
             margin: "0 auto",
           }}
         >
-          Support verified disaster relief campaigns with complete transparency
+          Each one is policy-locked the moment it's approved — funds can only move where the campaign rules allow.
         </p>
       </div>
 
@@ -102,142 +97,96 @@ export default function CampaignPreview() {
           gap: "var(--space-6)",
         }}
       >
-        {campaigns.map((campaign) => {
+        {campaigns.map((campaign, idx) => {
           const progress =
             campaign.targetAmount > 0
               ? (campaign.totalDonated / campaign.targetAmount) * 100
               : 0;
 
           return (
-            <div key={campaign._id} className="card stack">
-              {/* Disaster Type Badge */}
-              <div
-                style={{
-                  display: "inline-block",
-                  background: "var(--color-surface-alt)",
-                  padding: "4px 12px",
-                  borderRadius: "100px",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                  textTransform: "uppercase",
-                  color: "var(--color-primary)",
-                  marginBottom: "var(--space-2)",
-                }}
-              >
-                {campaign.disasterType}
-              </div>
-
-              <h3
-                style={{
-                  fontSize: "20px",
-                  fontWeight: "700",
-                  marginBottom: "var(--space-2)",
-                }}
-              >
-                {campaign.title}
-              </h3>
-
-              <p
-                style={{
-                  color: "var(--color-text-muted)",
-                  fontSize: "14px",
-                  lineHeight: "1.5",
-                  marginBottom: "var(--space-4)",
-                }}
-              >
-                {campaign.description?.substring(0, 120)}
-                {campaign.description?.length > 120 ? "..." : ""}
-              </p>
-
-              {/* Location */}
-              {campaign.location && (
+            <Link key={campaign._id} to={`/public/campaigns/${campaign._id}`} style={{ textDecoration: "none" }}>
+              <div className="card stack hover-lift animate-fade-up" style={{ animationDelay: `${idx * 0.1}s`, cursor: "pointer", height: "100%" }}>
                 <div
+                  className="badge badge-blue"
                   style={{
-                    fontSize: "13px",
-                    color: "var(--color-text-muted)",
-                    marginBottom: "var(--space-3)",
+                    display: "inline-block",
+                    marginBottom: "var(--space-4)",
                   }}
                 >
-                  📍 {campaign.location.district}, {campaign.location.state}
+                  {campaign.disasterType || "Relief"}
                 </div>
-              )}
 
-              {/* Progress Bar */}
-              <div style={{ marginBottom: "var(--space-3)" }}>
+                <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "var(--space-2)" }}>
+                  {campaign.title}
+                </h3>
+
+                <p
+                  style={{
+                    color: "var(--color-text-muted)",
+                    fontSize: "13px",
+                    marginBottom: "var(--space-4)",
+                    flex: 1,
+                  }}
+                >
+                  {campaign.description?.slice(0, 80)}...
+                </p>
+
+                <div style={{ marginBottom: "var(--space-4)" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontSize: "12px",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    <span style={{ color: "var(--color-text-muted)" }}>Progress</span>
+                    <span style={{ fontWeight: "600", color: "var(--color-primary)" }}>{progress.toFixed(0)}%</span>
+                  </div>
+                  <div
+                    style={{
+                      width: "100%",
+                      height: "6px",
+                      background: "var(--color-border)",
+                      borderRadius: "3px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${progress}%`,
+                        background: "linear-gradient(90deg, var(--color-primary), var(--color-secondary))",
+                        transition: "width 0.3s ease",
+                      }}
+                    ></div>
+                  </div>
+                </div>
+
                 <div
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
-                    marginBottom: "var(--space-1)",
                     fontSize: "13px",
                   }}
                 >
-                  <span style={{ fontWeight: "600" }}>
-                    ₹{campaign.totalDonated.toLocaleString()}
-                  </span>
-                  <span style={{ color: "var(--color-text-muted)" }}>
-                    of ₹{campaign.targetAmount.toLocaleString()}
-                  </span>
-                </div>
-                <div
-                  style={{
-                    height: "8px",
-                    background: "var(--color-surface-alt)",
-                    borderRadius: "100px",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      height: "100%",
-                      background: "var(--color-primary)",
-                      width: `${Math.min(progress, 100)}%`,
-                      transition: "width 0.3s ease",
-                    }}
-                  />
+                  <div>
+                    <div style={{ color: "var(--color-text-muted)" }}>Raised</div>
+                    <div style={{ fontWeight: "700", color: "var(--color-signal)", fontFamily: "var(--font-mono)" }}>
+                      ₹{(campaign.totalDonated / 100000).toFixed(1)}L
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ color: "var(--color-text-muted)" }}>Target</div>
+                    <div style={{ fontWeight: "700", fontFamily: "var(--font-mono)" }}>
+                      ₹{(campaign.targetAmount / 100000).toFixed(1)}L
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              {/* Trust Score (if available) */}
-              {campaign.transparencyScore > 0 && (
-                <div
-                  style={{
-                    fontSize: "13px",
-                    color: "var(--color-success)",
-                    marginBottom: "var(--space-3)",
-                  }}
-                >
-                  ✓ Trust Score: {campaign.transparencyScore}/100
-                </div>
-              )}
-
-              {/* NGO Name */}
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "var(--color-text-muted)",
-                  marginBottom: "var(--space-4)",
-                }}
-              >
-                By {campaign.createdBy?.name || "Unknown NGO"}
-              </div>
-
-              <Link
-                to={`/register`}
-                className="btn btn-primary"
-                style={{ width: "100%" }}
-              >
-                Donate Now
-              </Link>
-            </div>
+            </Link>
           );
         })}
-      </div>
-
-      <div style={{ textAlign: "center", marginTop: "var(--space-8)" }}>
-        <Link to="/public/campaigns" className="btn btn-ghost">
-          View All Campaigns →
-        </Link>
       </div>
     </section>
   );

@@ -1,152 +1,97 @@
 import { Link } from "react-router-dom";
 import useAuthStore from "../../store/authStore";
 
+const LEDGER_LINES = [
+  { label: "Donation #DN-2291", state: "AI risk-checked", tone: "verified" },
+  { label: "Beneficiary B-4410", state: "Eligibility confirmed", tone: "signal" },
+  { label: "Proof PX-1187", state: "Anchored on-chain", tone: "verified" },
+];
+
 export default function Hero() {
   const { user } = useAuthStore();
 
   return (
-    <section
-      className="hero"
-      style={{
-        padding: "var(--space-12) var(--space-4)",
-        textAlign: "center",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      {/* Background Gradients */}
-      <div
-        style={{
-          position: "absolute",
-          top: "-20%",
-          left: "-10%",
-          width: "50%",
-          height: "80%",
-          background:
-            "radial-gradient(circle, rgba(14,165,233,0.1) 0%, rgba(255,255,255,0) 70%)",
-          zIndex: 0,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: "-20%",
-          right: "-10%",
-          width: "50%",
-          height: "80%",
-          background:
-            "radial-gradient(circle, rgba(16,185,129,0.08) 0%, rgba(255,255,255,0) 70%)",
-          zIndex: 0,
-        }}
-      />
-
-      <div
-        className="stack-lg"
-        style={{
-          position: "relative",
-          zIndex: 1,
-          maxWidth: "800px",
-          margin: "0 auto",
-        }}
-      >
-        <div
-          style={{
-            display: "inline-flex",
-            margin: "0 auto",
-            background: "var(--color-surface-alt)",
-            padding: "4px 16px",
-            borderRadius: "100px",
-            border: "1px solid var(--color-border)",
-            fontSize: "12px",
-            fontWeight: "700",
-            textTransform: "uppercase",
-            letterSpacing: "0.1em",
-            color: "var(--color-text-muted)",
-          }}
-        >
-          AI-Powered • Blockchain-Verified • Real-Time
+    <section className="hero">
+      <div className="hero-content">
+        <div className="hero-eyebrow">
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--color-signal)", display: "inline-block" }} />
+          Field Ledger · Live
         </div>
 
-        <h1
-          style={{
-            fontSize: "64px",
-            fontWeight: "900",
-            letterSpacing: "-0.03em",
-            lineHeight: "1.1",
-            color: "var(--color-text)",
-            margin: "var(--space-2) 0",
-          }}
-        >
-          Track Every Rupee
+        <h1 className="hero-title animate-fade-up">
+          Aid that proves
           <br />
-          <span
-            style={{
-              color: "var(--color-primary)",
-              textShadow: "0 0 40px rgba(14,165,233, 0.4)",
-            }}
-          >
-            You Donate
-          </span>
+          <span>where it went.</span>
         </h1>
 
-        <p
-          style={{
-            fontSize: "20px",
-            color: "var(--color-text-muted)",
-            maxWidth: "600px",
-            margin: "0 auto",
-            lineHeight: "1.6",
-          }}
-        >
-          Proof-based donation system powered by AI & Blockchain. Every donation
-          is tracked, verified, and auditable in real-time.
+        <p className="hero-subtitle animate-fade-up" style={{ animationDelay: "0.1s" }}>
+          Every donation moves through policy-enforced wallets, AI eligibility
+          and fraud checks, and a blockchain-anchored audit trail. Nothing
+          here asks you to take our word for it — you can trace it yourself.
         </p>
 
-        <div
-          className="row"
-          style={{
-            justifyContent: "center",
-            gap: "var(--space-4)",
-            marginTop: "var(--space-4)",
-          }}
-        >
+        <div className="hero-cta animate-fade-up" style={{ animationDelay: "0.2s" }}>
           {user ? (
-            <Link
-              to={`/${user.role.toLowerCase()}`}
-              className="btn btn-primary btn-lg"
-              style={{ padding: "16px 40px", fontSize: "18px" }}
-            >
-              Go to Dashboard
+            <Link to={`/${user.role.toLowerCase()}`} className="btn btn-primary btn-lg">
+              Go to your dashboard
             </Link>
           ) : (
             <>
-              <Link
-                to="/register"
-                className="btn btn-primary btn-lg"
-                style={{
-                  padding: "16px 40px",
-                  fontSize: "18px",
-                  boxShadow: "0 8px 24px rgba(14,165,233, 0.3)",
-                }}
-              >
-                Donate Now
+              <Link to="/register" className="btn btn-primary btn-lg">
+                Donate to a campaign
               </Link>
-              <Link
-                to="/request-access"
-                className="btn btn-ghost btn-lg"
-                style={{ padding: "16px 40px", fontSize: "18px" }}
-              >
-                Register NGO
+              <Link to="/request-access" className="btn btn-ghost btn-lg" style={{ borderColor: "rgba(255,255,255,0.3)", color: "rgba(255,255,255,0.85)" }}>
+                Register your NGO
               </Link>
-              <Link
-                to="/public-audit"
-                className="btn btn-ghost btn-lg"
-                style={{ padding: "16px 40px", fontSize: "18px" }}
-              >
-                View Transparency
+              <Link to="/public-audit" className="btn btn-ghost btn-lg" style={{ borderColor: "rgba(255,255,255,0.3)", color: "rgba(255,255,255,0.85)" }}>
+                Trace a donation →
               </Link>
             </>
           )}
+        </div>
+
+        {/* Live ledger strip — the mechanism, not a metric */}
+        <div
+          className="animate-fade-up"
+          style={{
+            animationDelay: "0.3s",
+            marginTop: "var(--space-10)",
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "center",
+            gap: "var(--space-3)",
+          }}
+        >
+          {LEDGER_LINES.map((line, i) => (
+            <div
+              key={line.label}
+              className="row"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: "var(--radius-full)",
+                padding: "6px 14px",
+                fontFamily: "var(--font-mono)",
+                fontSize: "12px",
+                color: "rgba(255,255,255,0.6)",
+                gap: "8px",
+                animationDelay: `${0.3 + i * 0.1}s`,
+              }}
+            >
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: line.tone === "verified" ? "var(--color-verified)" : "var(--color-signal)",
+                  flexShrink: 0,
+                }}
+              />
+              <span style={{ color: "rgba(255,255,255,0.85)" }}>{line.label}</span>
+              <span>·</span>
+              <span>{line.state}</span>
+            </div>
+          ))}
         </div>
       </div>
     </section>

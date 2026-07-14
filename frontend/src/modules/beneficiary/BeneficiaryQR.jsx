@@ -17,7 +17,8 @@ export default function BeneficiaryQR() {
     setLoading(true); setError("");
     try {
       const res = await api.post("/wallet/qr", { walletId });
-      setQrToken(res.data.qrToken);
+      const tokenData = res.data?.data || res.data;
+      setQrToken(tokenData.qrToken);
       setTimeLeft(600); // Reset timer to 10 minutes
     } catch (err) {
       if (err.response?.status === 404) {
@@ -78,7 +79,7 @@ export default function BeneficiaryQR() {
                 value={qrToken} 
                 size={220}
                 level="H" 
-                fgColor="#0f172a" 
+                fgColor="#15181D" 
               />
             ) : (
               <div style={{ width: 220, height: 220, background: "var(--color-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", color: "var(--color-text-muted)", borderRadius: "var(--radius)" }}>
@@ -92,7 +93,7 @@ export default function BeneficiaryQR() {
             <div style={{ fontSize: "13px", color: "var(--color-text-muted)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em" }}>
               Secure Token Expires In
             </div>
-            <div className={`qr-expiry ${timeLeft < 60 ? 'text-red-600 animate-pulse' : 'text-slate-800'}`} style={{ fontSize: "32px", fontWeight: "900", fontFamily: "monospace", margin: "4px 0" }}>
+            <div className={`qr-expiry ${timeLeft < 60 ? 'text-[var(--color-alert)] animate-pulse' : 'text-[var(--color-ink)]'}`} style={{ fontSize: "32px", fontWeight: "900", fontFamily: "monospace", margin: "4px 0" }}>
               {formatTime(timeLeft)}
             </div>
           </div>
@@ -112,7 +113,7 @@ export default function BeneficiaryQR() {
           </div>
 
           {/* Security badge overlay */}
-          <div style={{ position: "absolute", top: "16px", right: "16px", fontSize: "11px", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px", background: "#dcfce7", color: "#15803d", padding: "4px 10px", borderRadius: "12px" }}>
+          <div style={{ position: "absolute", top: "16px", right: "16px", fontSize: "11px", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px", background: "var(--color-verified-light)", color: "var(--color-verified-dark)", padding: "4px 10px", borderRadius: "12px" }}>
             <span>🔒</span> JWT Signed
           </div>
         </div>

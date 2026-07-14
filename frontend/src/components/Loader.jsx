@@ -1,8 +1,8 @@
 export default function Loader({ text = "Processing..." }) {
   return (
-    <div className="flex items-center gap-2 text-gray-500 animate-pulse">
-      <span className="h-2 w-2 bg-blue-500 rounded-full"></span>
-      <span>{text}</span>
+    <div className="animate-fade-in flex items-center gap-3 text-[var(--color-steel)]">
+      <div className="spinner" style={{ width: "20px", height: "20px" }}></div>
+      <span style={{ fontSize: "14px", fontWeight: "500" }}>{text}</span>
     </div>
   );
 }

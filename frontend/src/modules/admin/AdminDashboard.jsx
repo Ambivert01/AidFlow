@@ -45,7 +45,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="stack-lg">
+    <div className="stack-lg animate-fade-up">
       <div className="page-header">
         <h1 className="page-title">System Administration</h1>
         <p className="page-subtitle">
@@ -55,41 +55,18 @@ export default function AdminDashboard() {
 
       {stats && (
         <div className="grid-4">
-          <div className="stat-card">
-            <div className="stat-card-label">Total Users</div>
-            <div className="stat-card-value">{stats.totalUsers || 0}</div>
-            <div className="stat-card-sub">Active platform accounts</div>
-          </div>
-          <div
-            className="stat-card"
-            style={{ borderTopColor: "var(--color-primary)" }}
-          >
-            <div className="stat-card-label">Organizations</div>
-            <div className="stat-card-value">{stats.totalNGOs || 0} NGOs</div>
-            <div className="stat-card-sub">
-              {stats.totalMerchants || 0} Merchants
+          {[
+            { label: "Total Users", value: stats.totalUsers || 0, sub: "Active platform accounts", color: "var(--color-primary)" },
+            { label: "Organizations", value: `${stats.totalNGOs || 0} NGOs`, sub: `${stats.totalMerchants || 0} Merchants`, color: "var(--color-primary)" },
+            { label: "Total Volume", value: `₹${(stats.totalDonationVolume || 0).toLocaleString("en-IN")}`, sub: "Through system lifetime", color: "var(--color-success)" },
+            { label: "Immutable Logs", value: stats.totalAuditLogs || 0, sub: "Cryptographically hashed actions", color: "var(--color-purple)" },
+          ].map((stat, idx) => (
+            <div key={stat.label} className="stat-card hover-lift animate-fade-up" style={{ borderTopColor: stat.color, animationDelay: `${idx * 0.1}s`, transition: "all 0.3s ease" }}>
+              <div className="stat-card-label">{stat.label}</div>
+              <div className="stat-card-value">{stat.value}</div>
+              <div className="stat-card-sub">{stat.sub}</div>
             </div>
-          </div>
-          <div
-            className="stat-card"
-            style={{ borderTopColor: "var(--color-success)" }}
-          >
-            <div className="stat-card-label">Total Volume</div>
-            <div className="stat-card-value">
-              ₹{(stats.totalDonationVolume || 0).toLocaleString("en-IN")}
-            </div>
-            <div className="stat-card-sub">Through system lifetime</div>
-          </div>
-          <div
-            className="stat-card"
-            style={{ borderTopColor: "var(--color-purple)" }}
-          >
-            <div className="stat-card-label">Immutable Logs</div>
-            <div className="stat-card-value">{stats.totalAuditLogs || 0}</div>
-            <div className="stat-card-sub">
-              Cryptographically hashed actions
-            </div>
-          </div>
+          ))}
         </div>
       )}
 

@@ -38,15 +38,16 @@ export default function VerifyEmail() {
   if (loading) {
     return (
       <div
-        className="center-page"
+        className="center-page animate-fade-up"
         style={{ padding: "var(--space-6)", textAlign: "center" }}
       >
         <div
-          className="card shadow-lg stack-lg"
+          className="card shadow-lg stack-lg hover-lift"
           style={{
             maxWidth: "460px",
             width: "100%",
             padding: "var(--space-8)",
+            transition: "all 0.3s ease",
           }}
         >
           <div
@@ -72,15 +73,16 @@ export default function VerifyEmail() {
   if (success) {
     return (
       <div
-        className="center-page"
+        className="center-page animate-fade-up"
         style={{ padding: "var(--space-6)", textAlign: "center" }}
       >
         <div
-          className="card shadow-lg stack-lg"
+          className="card shadow-lg stack-lg hover-lift"
           style={{
             maxWidth: "460px",
             width: "100%",
             padding: "var(--space-8)",
+            transition: "all 0.3s ease",
           }}
         >
           <div style={{ fontSize: "64px", margin: "0 auto" }}>✅</div>
@@ -117,15 +119,16 @@ export default function VerifyEmail() {
 
   return (
     <div
-      className="center-page"
+      className="center-page animate-fade-up"
       style={{ padding: "var(--space-6)", textAlign: "center" }}
     >
       <div
-        className="card shadow-lg stack-lg"
+        className="card shadow-lg stack-lg hover-lift"
         style={{
           maxWidth: "460px",
           width: "100%",
           padding: "var(--space-8)",
+          transition: "all 0.3s ease",
         }}
       >
         <div style={{ fontSize: "64px", margin: "0 auto" }}>❌</div>

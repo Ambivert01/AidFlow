@@ -5,8 +5,13 @@ import { AuditLog } from "../models/audit/AuditLog.model.js";
 import { Campaign } from "../models/ngo/Campaign.model.js";
 import { User } from "../models/auth/User.model.js";
 import { Merchant } from "../models/merchant/Merchant.model.js";
+import { redisConnection } from "../config/redis.config.js";
 
 class TrustEngine {
+  constructor() {
+    this.redis = redisConnection;
+    this.TRUST_CACHE_TTL = 60 * 60; // 1 hour cache for trust scores
+  }
   /**
    * Calculate trust score for an entity
    * @param {String} entityId - MongoDB ObjectId as string
@@ -30,6 +35,191 @@ class TrustEngine {
         error,
       );
       throw error;
+    }
+  }
+
+  /**
+   * Calculate trust scores for multiple entities efficiently (batch processing)
+   * @param {Array} entityIds - Array of entity IDs
+   * @param {String} entityType - "NGO", "CAMPAIGN", or "MERCHANT"
+   * @returns {Object} - Map of entityId -> { score, factors }
+   */
+  async calculateBatchTrustScores(entityIds, entityType = "CAMPAIGN") {
+    if (!entityIds || entityIds.length === 0) {
+      return {};
+    }
+
+    try {
+      console.log(
+        `[TrustEngine] Calculating batch trust scores for ${entityIds.length} ${entityType}s`,
+      );
+
+      const results = {};
+      const batchSize = 10; // Process in batches to avoid overwhelming the system
+
+      // Process entities in batches
+      for (let i = 0; i < entityIds.length; i += batchSize) {
+        const batch = entityIds.slice(i, i + batchSize);
+
+        const batchPromises = batch.map(async (entityId) => {
+          try {
+            const result = await this.calculateTrustScore(entityId, entityType);
+            return { entityId, result };
+          } catch (error) {
+            console.warn(
+              `[TrustEngine] Failed to calculate trust for ${entityType}:${entityId}`,
+              error,
+            );
+            return { entityId, result: { score: 50, factors: {} } }; // Default neutral score
+          }
+        });
+
+        const batchResults = await Promise.allSettled(batchPromises);
+
+        batchResults.forEach((promiseResult) => {
+          if (promiseResult.status === "fulfilled") {
+            const { entityId, result } = promiseResult.value;
+            results[entityId] = result;
+          }
+        });
+      }
+
+      console.log(
+        `[TrustEngine] Completed batch calculation for ${Object.keys(results).length} entities`,
+      );
+      return results;
+    } catch (error) {
+      console.error(
+        `[TrustEngine] Error in batch trust score calculation:`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Get cached trust score or calculate if expired
+   * @param {String} entityId - Entity ID
+   * @param {String} entityType - Entity type
+   * @returns {Object|null} - Trust score result or null if not cached
+   */
+  async getCachedTrustScore(entityId, entityType) {
+    try {
+      const cacheKey = `trust:${entityType.toLowerCase()}:${entityId}`;
+      const cached = await this.redis.get(cacheKey);
+
+      if (cached) {
+        const result = JSON.parse(cached);
+        console.log(`[TrustEngine] Cache hit for ${entityType}:${entityId}`);
+        return result;
+      }
+
+      console.log(`[TrustEngine] Cache miss for ${entityType}:${entityId}`);
+      return null;
+    } catch (error) {
+      console.warn(
+        `[TrustEngine] Cache error for ${entityType}:${entityId}:`,
+        error,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Cache trust score result
+   * @param {String} entityId - Entity ID
+   * @param {String} entityType - Entity type
+   * @param {Object} result - Trust score result to cache
+   */
+  async cacheTrustScore(entityId, entityType, result) {
+    try {
+      const cacheKey = `trust:${entityType.toLowerCase()}:${entityId}`;
+      await this.redis.setex(
+        cacheKey,
+        this.TRUST_CACHE_TTL,
+        JSON.stringify(result),
+      );
+      console.log(
+        `[TrustEngine] Cached trust score for ${entityType}:${entityId}`,
+      );
+    } catch (error) {
+      console.warn(
+        `[TrustEngine] Failed to cache trust score for ${entityType}:${entityId}:`,
+        error,
+      );
+    }
+  }
+
+  /**
+   * Invalidate trust score cache when underlying data changes
+   * @param {String} entityId - Entity ID
+   * @param {String} entityType - Entity type
+   */
+  async invalidateTrustCache(entityId, entityType) {
+    try {
+      const cacheKey = `trust:${entityType.toLowerCase()}:${entityId}`;
+      await this.redis.del(cacheKey);
+      console.log(
+        `[TrustEngine] Invalidated trust cache for ${entityType}:${entityId}`,
+      );
+    } catch (error) {
+      console.warn(
+        `[TrustEngine] Failed to invalidate trust cache for ${entityType}:${entityId}:`,
+        error,
+      );
+    }
+  }
+
+  /**
+   * Get trust scores for multiple entities with caching
+   * @param {Array} entityIds - Array of entity IDs
+   * @param {String} entityType - Entity type
+   * @returns {Object} - Map of entityId -> score (number only)
+   */
+  async getBatchTrustScoresWithCache(entityIds, entityType = "CAMPAIGN") {
+    if (!entityIds || entityIds.length === 0) {
+      return {};
+    }
+
+    try {
+      const results = {};
+      const uncachedIds = [];
+
+      // Check cache for all entities first
+      for (const entityId of entityIds) {
+        const cached = await this.getCachedTrustScore(entityId, entityType);
+        if (cached && cached.score !== undefined) {
+          results[entityId] = cached.score;
+        } else {
+          uncachedIds.push(entityId);
+        }
+      }
+
+      // Calculate trust scores for uncached entities
+      if (uncachedIds.length > 0) {
+        console.log(
+          `[TrustEngine] Calculating ${uncachedIds.length} uncached trust scores`,
+        );
+        const calculated = await this.calculateBatchTrustScores(
+          uncachedIds,
+          entityType,
+        );
+
+        // Cache the calculated results and add to results
+        for (const [entityId, trustResult] of Object.entries(calculated)) {
+          await this.cacheTrustScore(entityId, entityType, trustResult);
+          results[entityId] = trustResult.score;
+        }
+      }
+
+      return results;
+    } catch (error) {
+      console.error(
+        `[TrustEngine] Error in getBatchTrustScoresWithCache:`,
+        error,
+      );
+      // Return empty object on error - calling code should handle gracefully
+      return {};
     }
   }
 

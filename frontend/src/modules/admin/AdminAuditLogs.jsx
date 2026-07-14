@@ -3,22 +3,48 @@ import * as adminSvc from "../../services/admin.service";
 
 const EVENT_LABELS = {
   DONATION_CREATED: "Donation Created",
-  DONATION_APPROVED_BY_NGO: "NGO Approved Donation",
-  DONATION_REJECTED_BY_NGO: "NGO Rejected Donation",
-  BENEFICIARY_REGISTERED: "Beneficiary Registered",
-  BENEFICIARY_APPROVED_BY_NGO: "NGO Approved Beneficiary",
-  BENEFICIARY_REJECTED_BY_NGO: "NGO Rejected Beneficiary",
+  DONATION_NGO_APPROVED: "NGO Approved Donation",
+  DONATION_NGO_REJECTED: "NGO Rejected Donation",
+  DONATION_GOVT_APPROVED: "Government Approved Donation",
+  DONATION_GOVT_REJECTED: "Government Rejected Donation",
+  DONATION_PROCESSING_FAILED: "Donation Processing Failed",
+  BENEFICIARY_ASSIGNED: "Beneficiary Assigned to Donation",
   WALLET_CREATED: "Wallet Created",
-  WALLET_SPENT: "Aid Spent at Merchant",
+  WALLET_DEBIT: "Aid Spent at Merchant",
   WALLET_FROZEN: "Wallet Frozen",
   WALLET_UNFROZEN: "Wallet Unfrozen",
-  MERCHANT_CATEGORY_VIOLATION: "⚠️ Category Violation",
-  WORKFLOW_AUDIT_FINALIZED: "Audit Finalized & Anchored",
-  CAMPAIGN_CREATED: "Campaign Created",
-  CAMPAIGN_ACTIVATED: "Campaign Activated",
-  USER_ACCESS_APPROVED: "Access Approved",
-  USER_ACCESS_REJECTED: "Access Rejected",
-  USER_SUSPENDED: "User Suspended",
+  PAYMENT_CONFIRMED: "Merchant Payment Confirmed",
+  PROOF_UPLOADED: "Proof Uploaded",
+  BLOCKCHAIN_ANCHORED: "Anchored On-Chain",
+  AI_DECISION: "AI Decision Recorded",
+  AI_DECISION_COMPLETED: "AI Evaluation Completed",
+  AI_DECISION_OVERRIDDEN: "AI Decision Overridden by Admin",
+  FRAUD_DETECTED: "Fraud Detected",
+  FRAUD_CASE_ASSIGNED: "Fraud Case Assigned",
+  FRAUD_CASE_RESOLVED: "Fraud Case Resolved",
+  CAMPAIGN_SUBMITTED: "Campaign Submitted for Approval",
+  CAMPAIGN_APPROVED: "Campaign Approved",
+  CAMPAIGN_REJECTED: "Campaign Rejected",
+  CAMPAIGN_UPDATED: "Campaign Updated",
+  CAMPAIGN_PAUSED: "Campaign Paused",
+  CAMPAIGN_RESUMED: "Campaign Resumed",
+  CAMPAIGN_COMPLETED: "Campaign Completed",
+  CAMPAIGN_DELETED: "Campaign Deleted",
+  CAMPAIGN_WORKFLOW_INITIALIZED: "Campaign Workflow Started",
+  SETTLEMENT_CREATED: "Settlement Created",
+  SETTLEMENT_COMPLETED: "Settlement Completed",
+  SETTLEMENT_FAILED: "Settlement Failed",
+  TRUST_SCORE_UPDATED: "Trust Score Updated",
+  TRANSACTION_COMPLETED: "Transaction Completed",
+  USER_REGISTERED: "User Registered",
+  USER_LOGIN: "User Login",
+  USER_LOGOUT: "User Logout",
+  USER_LOGOUT_ALL: "User Logged Out (All Sessions)",
+  EMAIL_VERIFIED: "Email Verified",
+  PASSWORD_RESET_REQUESTED: "Password Reset Requested",
+  PASSWORD_RESET: "Password Reset Completed",
+  BULK_USER_APPROVAL: "Bulk User Approval",
+  BULK_USER_REJECTION: "Bulk User Rejection",
 };
 
 const ACTOR_BADGE = {
@@ -28,6 +54,7 @@ const ACTOR_BADGE = {
   BENEFICIARY: "badge-yellow",
   GOVERNMENT: "badge-orange",
   ADMIN: "badge-red",
+  AI: "badge-green",
   SYSTEM: "badge-gray",
 };
 
@@ -56,7 +83,7 @@ export default function AdminAuditLogs() {
   useEffect(() => { load(); }, [eventFilter, actorFilter]);
 
   return (
-    <div className="stack-lg">
+    <div className="stack-lg animate-fade-up">
       <div className="page-header">
         <h1 className="page-title">Immutable Audit Log</h1>
         <p className="page-subtitle">Cryptographically hashed event history. Every action on the platform — tamper-evident.</p>
@@ -66,7 +93,7 @@ export default function AdminAuditLogs() {
         <div className="row gap-4" style={{ flexWrap: "wrap" }}>
           <select className="form-input" value={actorFilter} onChange={e => { setActorFilter(e.target.value); }} style={{ maxWidth: "200px" }}>
             <option value="">All Actors</option>
-            {["DONOR","NGO","MERCHANT","BENEFICIARY","GOVERNMENT","ADMIN","SYSTEM"].map(a => (
+            {["DONOR","NGO","MERCHANT","BENEFICIARY","GOVERNMENT","ADMIN","AI","SYSTEM"].map(a => (
               <option key={a} value={a}>{a}</option>
             ))}
           </select>

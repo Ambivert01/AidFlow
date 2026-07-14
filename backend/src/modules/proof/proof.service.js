@@ -62,7 +62,7 @@ class ProofService {
     if (!campaign) {
       throw new AppError(PROOF_ERROR_MESSAGES.CAMPAIGN_NOT_FOUND, 404);
     }
-    if (campaign.ngo.toString() !== ngoId) {
+    if (campaign.createdBy.toString() !== ngoId) {
       throw new AppError(PROOF_ERROR_MESSAGES.CAMPAIGN_UNAUTHORIZED, 403);
     }
 
@@ -134,6 +134,8 @@ class ProofService {
         fileUrls: storedFiles.map((f) => f.fileUrl),
         proofType,
         campaignId: campaignId.toString(),
+        merchantId: merchantId ? merchantId.toString() : null,
+        expectedAmount: metadata?.expectedAmount ?? null,
         location,
         capturedAt: capturedAt || new Date(),
         campaignLocation: campaign.location,
@@ -243,7 +245,7 @@ class ProofService {
 
       // Notify NGO
       await createNotification({
-        userId: proof.campaign.ngo,
+        userId: proof.campaign.createdBy,
         role: "NGO",
         type: PROOF_NOTIFICATION_TYPES.PROOF_REJECTED,
         title: "Proof Rejected",
@@ -573,7 +575,7 @@ class ProofService {
       }
     } else {
       await createNotification({
-        userId: proof.campaign.ngo,
+        userId: proof.campaign.createdBy,
         role: "NGO",
         type: PROOF_NOTIFICATION_TYPES.PROOF_REJECTED,
         title: "Proof Rejected",

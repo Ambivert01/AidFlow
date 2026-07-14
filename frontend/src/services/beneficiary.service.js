@@ -15,6 +15,6 @@ export const generateQR = (walletId) => api.post("/wallet/qr", { walletId });
 // Get list of active campaigns beneficiary can apply to
 export const getActiveCampaigns = () => api.get("/public/campaigns");
 
-// Self-apply to a campaign
-export const applyToCampaign = (campaignId) =>
-  api.post("/beneficiaries", { campaignId });
+// Self-apply to a campaign (full application payload - see BeneficiarySelfApply.jsx)
+export const applyToCampaign = (applicationData) =>
+  api.post("/beneficiaries/apply", applicationData);

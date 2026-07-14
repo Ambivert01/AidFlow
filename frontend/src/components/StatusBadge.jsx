@@ -1,15 +1,27 @@
 export default function StatusBadge({ status }) {
-  const styles = {
-    APPROVED: "bg-green-100 text-green-700",
-    PENDING: "bg-yellow-100 text-yellow-700",
-    BLOCKED: "bg-red-100 text-red-700",
-    ACTIVE: "bg-blue-100 text-blue-700",
-    EXPIRED: "bg-gray-200 text-gray-600"
+  const styleMap = {
+    APPROVED: "badge-green",
+    PENDING: "badge-yellow",
+    BLOCKED: "badge-red",
+    ACTIVE: "badge-blue",
+    EXPIRED: "badge-gray",
+    REGISTERED: "badge-blue",
+    MANUAL_REVIEW: "badge-yellow",
+    REJECTED: "badge-red",
+    READY_FOR_USE: "badge-green",
+    SUSPENDED: "badge-yellow",
+    AUDIT_FINALIZED: "badge-teal",
+    DRAFT: "badge-gray",
+    HIGH_RISK_ESCALATED: "badge-red",
   };
 
   return (
     <span
-      className={`px-3 py-1 rounded-full text-xs font-semibold ${styles[status]}`}
+      className={`badge ${styleMap[status] || "badge-gray"} hover-scale`}
+      style={{
+        textTransform: "uppercase",
+        letterSpacing: "0.05em",
+      }}
     >
       {status}
     </span>

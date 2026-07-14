@@ -9,10 +9,25 @@ const idempotencyKeySchema = new mongoose.Schema(
       index: true,
     },
 
+    // Used by wallet operations (legacy pattern)
     operation: {
       type: String,
-      enum: ["WALLET_CREATE", "WALLET_SPEND", "WALLET_CREDIT", "WALLET_ADJUST"],
-      required: true,
+      enum: [
+        "WALLET_CREATE",
+        "WALLET_SPEND",
+        "WALLET_CREDIT",
+        "WALLET_ADJUST",
+      ],
+    },
+
+    // Used by generic resource creation (proofs, donations, etc.)
+    resourceType: {
+      type: String,
+      enum: ["Proof", "Donation", "Wallet", "Settlement"],
+      index: true,
+    },
+    resourceId: {
+      type: mongoose.Schema.Types.ObjectId,
     },
 
     status: {
@@ -42,6 +57,8 @@ const idempotencyKeySchema = new mongoose.Schema(
 
 // TTL INDEX FOR AUTO-DELETION
 idempotencyKeySchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+// Composite lookup index for resource-based idempotency checks
+idempotencyKeySchema.index({ key: 1, resourceType: 1 });
 
 export const IdempotencyKey = mongoose.model(
   "IdempotencyKey",

@@ -22,7 +22,7 @@ export default function GovtDashboard() {
 
   if (loading) {
     return (
-      <div className="stack-lg">
+      <div className="stack-lg animate-fade-up">
         <div className="page-header">
           <div className="skeleton skeleton-title" />
           <div className="skeleton skeleton-text" style={{ width: '40%' }} />
@@ -48,7 +48,7 @@ export default function GovtDashboard() {
       </div>
 
       {stats && (
-        <div className="grid-4">
+        <div className="grid-4 animate-fade-up" style={{ animationFillMode: "both" }}>
           <div className="stat-card" style={{ borderTopColor: "var(--color-primary)" }}>
              <div className="stat-card-label">Total Active Aid</div>
              <div className="stat-card-value">₹{(stats.totalDisbursed || 0).toLocaleString("en-IN")}</div>
@@ -73,7 +73,7 @@ export default function GovtDashboard() {
       )}
 
       {/* Action Grid */}
-      <div className="grid-2">
+      <div className="grid-2 animate-fade-up" style={{ animationDelay: "80ms", animationFillMode: "both" }}>
         <div className="card stack">
            <h2 style={{ fontSize: "16px", fontWeight: "700" }}>Compliance & Risk</h2>
            <div className="grid-2">

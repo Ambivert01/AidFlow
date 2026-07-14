@@ -82,12 +82,22 @@ export const createWallet = async (data) => {
             ],
             maxPerTransaction:
               campaign.policySnapshot?.maxPerTransaction || 1000,
-            dailyLimit: campaign.policySnapshot?.dailyLimit || 2000,
-            weeklyLimit: campaign.policySnapshot?.weeklyLimit || 5000,
+
+            // dailyLimit and weeklyLimit don't exist on Campaign.policySnapshot
+            // (Campaign only has maxPerTransaction and maxPerBeneficiary).
+            // Derive sensible per-wallet limits from real campaign policy fields:
+            // daily limit = 5x maxPerTransaction, capped at maxPerBeneficiary
+            // weekly limit = the beneficiary's full per-campaign allocation
+            dailyLimit: Math.min(
+              (campaign.policySnapshot?.maxPerTransaction || 1000) * 5,
+              campaign.policySnapshot?.maxPerBeneficiary || 5000,
+            ),
+            weeklyLimit: campaign.policySnapshot?.maxPerBeneficiary || 5000,
+
             expiresAt,
-            allowedMerchants: data.policy?.allowedMerchants || [],
-            maxDistanceKm: data.policy?.maxDistanceKm || 50,
-            allowedDistricts: data.policy?.allowedDistricts || [],
+            allowedMerchants: [],
+            maxDistanceKm: 50,
+            allowedDistricts: [],
           },
           status: WALLET_STATUS.ACTIVE,
         },

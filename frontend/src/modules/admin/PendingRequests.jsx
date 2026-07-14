@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import { confirmDialog } from "../../components/ConfirmDialog";
 
 const CATEGORY_CHOICES = ["FOOD", "MEDICINE", "SHELTER", "WATER", "OTHER"];
 
@@ -52,7 +53,17 @@ export default function PendingRequests() {
   };
 
   const handleReject = async (userId) => {
-    const reason = window.prompt("Enter rejection reason:");
+    const reason = await confirmDialog(
+      "This will reject the applicant's access request. They'll need to re-apply if this was a mistake.",
+      {
+        title: "Reject access request",
+        danger: true,
+        confirmLabel: "Reject",
+        input: true,
+        inputLabel: "Rejection reason",
+        inputPlaceholder: "e.g. Did not meet KYC requirements",
+      },
+    );
     if (reason === null) return; // cancelled
     await processAction(userId, "reject", { reason: reason || "Did not meet KYC requirements" });
   };
@@ -77,7 +88,7 @@ export default function PendingRequests() {
   if (loading && !requests.length) return <div className="loader-center"><div className="spinner" /></div>;
 
   return (
-    <div className="stack-lg">
+    <div className="stack-lg animate-fade-up">
       <div className="page-header">
          <h1 className="page-title">Pending KYC & Organization Requests</h1>
          <p className="page-subtitle">Review incoming registrations for NGOs, Merchants, and Government agencies. Users without approval cannot access the platform.</p>

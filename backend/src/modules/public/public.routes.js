@@ -4,6 +4,7 @@ import { AuditLog } from "../../models/audit/AuditLog.model.js";
 import { Donation } from "../../models/donor/Donation.model.js";
 import { ApiResponse } from "../../core/apiResponse.js";
 import * as publicController from "./public.controller.js";
+import * as publicAuditController from "../donation/donation.public.controller.js";
 
 const router = express.Router();
 
@@ -68,5 +69,20 @@ router.get(
     );
   }),
 );
+
+// New public audit verification endpoints
+router.get(
+  "/audit/timeline/:donationId",
+  publicAuditController.getPublicAuditTrail,
+);
+router.get(
+  "/audit/blockchain/:donationId",
+  publicAuditController.verifyBlockchainAnchor,
+);
+router.get(
+  "/audit/verify-chain/:donationId",
+  publicAuditController.verifyHashChain,
+);
+router.get("/audit/merkle/:donationId", publicAuditController.getMerkleRoot);
 
 export default router;

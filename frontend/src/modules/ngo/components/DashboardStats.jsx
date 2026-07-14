@@ -6,56 +6,58 @@ export default function DashboardStats({ overview }) {
           <div
             key={i}
             className="stat-card skeleton"
-            style={{ height: "100px" }}
+            style={{ height: "120px" }}
           />
         ))}
       </div>
     );
   }
 
+  const stats = [
+    {
+      label: "Total Campaigns",
+      value: overview.totalCampaigns || 0,
+      sub: `${overview.activeCampaigns || 0} active • ${overview.completedCampaigns || 0} completed`,
+      color: "var(--color-signal)",
+    },
+    {
+      label: "Total Beneficiaries",
+      value: overview.totalBeneficiaries || 0,
+      sub: `${overview.pendingApprovalCampaigns || 0} campaigns pending`,
+      color: "var(--color-verified)",
+    },
+    {
+      label: "Funds Received",
+      value: `₹${(overview.totalFundsReceived || 0).toLocaleString("en-IN")}`,
+      sub: `₹${(overview.totalFundsAllocated || 0).toLocaleString("en-IN")} allocated`,
+      color: "var(--color-caution)",
+    },
+    {
+      label: "Funds Spent",
+      value: `₹${(overview.totalFundsSpent || 0).toLocaleString("en-IN")}`,
+      sub: `of ₹${(overview.totalFundsAllocated || 0).toLocaleString("en-IN")} allocated`,
+      color: "var(--color-alert)",
+    },
+  ];
+
   return (
     <div className="grid-4">
-      <div className="stat-card">
-        <div className="stat-card-label">Total Campaigns</div>
-        <div className="stat-card-value text-primary">
-          {overview.totalCampaigns || 0}
+      {stats.map((stat, idx) => (
+        <div
+          key={stat.label}
+          className="stat-card hover-lift animate-fade-up"
+          style={{
+            borderTopColor: stat.color,
+            animationDelay: `${idx * 0.1}s`,
+          }}
+        >
+          <div className="stat-card-label">{stat.label}</div>
+          <div className="stat-card-value" style={{ color: stat.color }}>
+            {stat.value}
+          </div>
+          <div className="stat-card-sub">{stat.sub}</div>
         </div>
-        <div className="stat-card-sub">
-          {overview.activeCampaigns || 0} active •{" "}
-          {overview.completedCampaigns || 0} completed
-        </div>
-      </div>
-
-      <div className="stat-card">
-        <div className="stat-card-label">Total Beneficiaries</div>
-        <div className="stat-card-value text-green-600">
-          {overview.totalBeneficiaries || 0}
-        </div>
-        <div className="stat-card-sub">
-          {overview.pendingApprovalCampaigns || 0} campaigns pending approval
-        </div>
-      </div>
-
-      <div className="stat-card">
-        <div className="stat-card-label">Funds Received</div>
-        <div className="stat-card-value tracking-tight">
-          ₹{(overview.totalFundsReceived || 0).toLocaleString("en-IN")}
-        </div>
-        <div className="stat-card-sub">
-          ₹{(overview.totalFundsAllocated || 0).toLocaleString("en-IN")}{" "}
-          allocated
-        </div>
-      </div>
-
-      <div className="stat-card highlight-orange">
-        <div className="stat-card-label">Pending Proofs</div>
-        <div className="stat-card-value">
-          {overview.pendingProofsCount || 0}
-        </div>
-        <div className="stat-card-sub">
-          ₹{(overview.totalFundsSpent || 0).toLocaleString("en-IN")} spent
-        </div>
-      </div>
+      ))}
     </div>
   );
 }

@@ -46,7 +46,7 @@ export default function AdminMerchants() {
   };
 
   return (
-    <div className="stack-lg">
+    <div className="stack-lg animate-fade-up">
       <div className="page-header">
         <h1 className="page-title">Merchant Management</h1>
         <p className="page-subtitle">Review, categorize, and manage all registered aid merchants on the platform.</p>
@@ -73,8 +73,8 @@ export default function AdminMerchants() {
               <tbody>
                 {merchants.length === 0 ? (
                   <tr><td colSpan={6} style={{ textAlign: "center", padding: "32px", color: "var(--color-text-faint)" }}>No merchants found</td></tr>
-                ) : merchants.map(m => (
-                  <tr key={m._id}>
+                ) : merchants.map((m, idx) => (
+                  <tr key={m._id} className="hover-lift animate-fade-up" style={{ animationDelay: `${idx * 0.03}s`, transition: "all 0.3s ease" }}>
                     <td>
                       <div style={{ fontWeight: "600" }}>{m.shopName}</div>
                       <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{m.user?.email}</div>

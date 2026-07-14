@@ -41,7 +41,7 @@ export default function PublicAudit() {
   };
 
   return (
-    <div className="stack-lg">
+    <div className="stack-lg animate-fade-up">
       <div className="page-header" style={{ textAlign: "center", marginBottom: "var(--space-8)" }}>
          <h1 className="page-title">Immutable Public Ledger</h1>
          <p className="page-subtitle" style={{ maxWidth: "600px", margin: "0 auto" }}>
@@ -65,7 +65,7 @@ export default function PublicAudit() {
            </button>
          </form>
          <div style={{ marginTop: "var(--space-4)", textAlign: "center", fontSize: "12px", color: "var(--color-text-faint)" }}>
-           Powered by AidFlow Zero-Trust Architecture
+           Every entry below is chained to the one before it — tamper with any link and the chain breaks visibly.
          </div>
       </div>
 
@@ -87,22 +87,22 @@ export default function PublicAudit() {
             <div className="row-between" style={{ borderBottom: "1px solid var(--color-border)", paddingBottom: "var(--space-4)" }}>
                <div>
                   <h2 style={{ fontSize: "18px", fontWeight: "800" }}>Audit Trace: {auditData.jobIdHash}</h2>
-                  <p style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Blockchain Status: 
-                    <span style={{ marginLeft: "8px", padding: "2px 8px", borderRadius: "12px", fontSize: "10px", background: auditData.auditFinalized ? "var(--color-success-light)" : "var(--color-warning-light)", color: auditData.auditFinalized ? "var(--color-success-dark)" : "var(--color-warning-dark)" }}>
-                      {auditData.auditFinalized ? "✓ ANCHORED" : "○ PENDING FINALIZATION"}
-                    </span>
-                  </p>
                </div>
-               {auditData.auditFinalized && (
-                 <a 
-                   href={`https://etherscan.io/tx/${auditData.blockchainTxHash}`} 
-                   target="_blank" 
-                   rel="noopener noreferrer" 
-                   className="btn btn-ghost btn-sm"
-                 >
-                   View on Etherscan
-                 </a>
-               )}
+               <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+                 <span className={auditData.auditFinalized ? "stamp" : "stamp stamp-ink"} style={{ opacity: auditData.auditFinalized ? 1 : 0.55 }}>
+                   {auditData.auditFinalized ? "✓ Anchored on-chain" : "○ Pending finalization"}
+                 </span>
+                 {auditData.auditFinalized && auditData.blockchainTxHash && (
+                   <a
+                     href={`https://etherscan.io/tx/${auditData.blockchainTxHash}`}
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     className="btn btn-ghost btn-sm"
+                   >
+                     View transaction ↗
+                   </a>
+                 )}
+               </div>
             </div>
 
             <div className="timeline" style={{ paddingLeft: "16px", borderLeft: "2px solid var(--color-border)", margin: "var(--space-6) 0" }}>
@@ -134,8 +134,11 @@ export default function PublicAudit() {
                        
                        {/* Merkle Root if Finalized */}
                        {i === auditData.timeline.length - 1 && auditData.merkleRoot && (
-                         <div style={{ marginTop: "12px", padding: "8px", background: "var(--color-success-light)", color: "var(--color-success-dark)", borderRadius: "4px", fontSize: "11px", fontWeight: "700", border: "1px dashed var(--color-success)" }}>
-                            🔒 Global Merkle Root: {auditData.merkleRoot}
+                         <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                            <span className="stamp" style={{ fontSize: "10px" }}>Sealed</span>
+                            <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--color-text-muted)", wordBreak: "break-all" }}>
+                              Global Merkle Root: {auditData.merkleRoot}
+                            </span>
                          </div>
                        )}
                     </div>

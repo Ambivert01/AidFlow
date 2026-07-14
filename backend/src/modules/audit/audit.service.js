@@ -1,5 +1,11 @@
 import crypto from "crypto";
 import { AuditLog } from "../../models/audit/AuditLog.model.js";
+import {
+  emitTimelineUpdate,
+  emitDonationEvent,
+} from "../donation/donation.websocket.service.js";
+import { WEBSOCKET_EVENT_TYPE } from "../donation/donation.timeline.constants.js";
+import { logger } from "../../utils/logger.js";
 
 let sequenceCache = {};
 
@@ -41,6 +47,22 @@ export const createAuditLog = async (data = {}, session = null) => {
 
     payload: data.payload || {},
 
+    // Dedicated blockchain-anchor fields (separate from the generic
+    // payload above) - these are what modules/public/public.service.js
+    // getBlockchainStatus() queries via "blockchainAnchor.txHash" to show
+    // the public "is anchoring operational" status. Previously nothing
+    // ever populated these even when payload.txHash was set, so that
+    // public status check could never succeed.
+    merkleRoot: data.merkleRoot || null,
+    blockchainAnchor: data.blockchainAnchor
+      ? {
+          chain: data.blockchainAnchor.chain || "ETHEREUM",
+          txHash: data.blockchainAnchor.txHash || null,
+          blockNumber: data.blockchainAnchor.blockNumber || null,
+          anchoredAt: data.blockchainAnchor.anchoredAt || new Date(),
+        }
+      : undefined,
+
     aiMetadata: {
       decision: data.aiDecision || null,
 
@@ -56,17 +78,112 @@ export const createAuditLog = async (data = {}, session = null) => {
 
   logPayload.hash = generateHash(logPayload);
 
+  let auditLog;
   if (session) {
     const result = await AuditLog.create([logPayload], { session });
-    return result[0];
+    auditLog = result[0];
+  } else {
+    auditLog = await AuditLog.create(logPayload);
   }
 
-  return AuditLog.create(logPayload);
+  // Emit WebSocket event for relevant event types
+  await emitWebSocketEventIfNeeded(auditLog, data);
+
+  return auditLog;
 };
 
 /*
  HELPERS
 */
+
+/**
+ * Emit WebSocket event if the audit log event type is relevant for real-time updates
+ * @param {object} auditLog - Created audit log
+ * @param {object} data - Original data passed to createAuditLog
+ */
+async function emitWebSocketEventIfNeeded(auditLog, data) {
+  try {
+    // Define event types that should trigger WebSocket updates
+    const WEBSOCKET_RELEVANT_EVENTS = [
+      "PROOF_UPLOADED",
+      "PROOF_VERIFIED",
+      "PROOF_REJECTED",
+      "BLOCKCHAIN_ANCHORED",
+      "BLOCKCHAIN_ANCHORING",
+      "TRUST_UPDATED",
+      "TRUST_SCORE_CHANGED",
+      "WALLET_SPENT",
+      "WALLET_ALLOCATED",
+      "DONATION_APPROVED_BY_NGO",
+      "DONATION_REJECTED_BY_NGO",
+      "DONATION_APPROVED_BY_GOVT",
+      "DONATION_REJECTED_BY_GOVT",
+      "BENEFICIARY_ASSIGNED",
+      "DONATION_NGO_APPROVED",
+      "DONATION_NGO_REJECTED",
+      "DONATION_GOVT_APPROVED",
+      "DONATION_GOVT_REJECTED",
+    ];
+
+    if (!WEBSOCKET_RELEVANT_EVENTS.includes(auditLog.eventType)) {
+      return; // Skip non-relevant events
+    }
+
+    // Get donation ID from various possible sources
+    const donationId =
+      data.donationId ||
+      data.payload?.donationId ||
+      (auditLog.entityType === "Donation" ? auditLog.entityId : null);
+
+    if (!donationId) {
+      logger.warn(
+        `Cannot emit WebSocket event: missing donationId for event ${auditLog.eventType}`,
+      );
+      return;
+    }
+
+    // Fetch donation to get donor ID
+    const { Donation } = await import("../../models/donor/Donation.model.js");
+    const donation = await Donation.findById(donationId).select("donor").lean();
+
+    if (!donation || !donation.donor) {
+      logger.warn(
+        `Cannot emit WebSocket event: donation ${donationId} not found or has no donor`,
+      );
+      return;
+    }
+
+    const donorId = donation.donor.toString();
+
+    // Prepare event data
+    const eventData = {
+      _id: auditLog._id,
+      eventType: auditLog.eventType,
+      eventCategory: auditLog.eventCategory,
+      timestamp: auditLog.createdAt,
+      actor: auditLog.actor,
+      payload: auditLog.payload,
+      metadata: auditLog.metadata,
+      hash: auditLog.hash,
+    };
+
+    // Emit timeline update
+    emitTimelineUpdate(donorId, donationId, eventData);
+
+    // Emit specific event type if it matches WebSocket event types
+    const websocketEventType = WEBSOCKET_EVENT_TYPE[auditLog.eventType];
+    if (websocketEventType) {
+      emitDonationEvent(donorId, donationId, websocketEventType, eventData);
+    }
+
+    logger.info(
+      `WebSocket event emitted for ${auditLog.eventType} on donation ${donationId}`,
+    );
+  } catch (error) {
+    // Log error but don't fail the audit log creation
+    logger.error("Error emitting WebSocket event:", error);
+  }
+}
 
 function generateHash(obj) {
   return crypto.createHash("sha256").update(JSON.stringify(obj)).digest("hex");

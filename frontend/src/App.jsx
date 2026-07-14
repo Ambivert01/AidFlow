@@ -52,6 +52,8 @@ import AIOverride from "./modules/admin/AIOverride";
 import SystemHealth from "./modules/admin/SystemHealth";
 
 import BeneficiarySelfApply from "./modules/beneficiary/BeneficiarySelfApply";
+import NotFound from "./pages/NotFound";
+import Unauthorized from "./pages/Unauthorized";
 
 // Role-based route guard
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -388,8 +390,10 @@ export default function App() {
             }
           />
 
+          <Route path="/unauthorized" element={<Unauthorized />} />
+
           {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Layout>
     </BrowserRouter>

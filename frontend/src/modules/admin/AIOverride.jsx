@@ -21,7 +21,7 @@ export default function AIOverride() {
 
     try {
       const res = await api.post("/admin/ai/override", form);
-      setResult(res.data);
+      setResult(res.data?.data || res.data);
       setForm({
         entityType: "DONATION",
         entityId: "",
@@ -38,19 +38,20 @@ export default function AIOverride() {
 
   return (
     <div
-      className="container"
+      className="container animate-fade-up"
       style={{ padding: "var(--space-6)", maxWidth: "800px" }}
     >
       {/* Header */}
       <div style={{ marginBottom: "var(--space-6)" }}>
         <h1
           style={{
+            fontFamily: "var(--font-display)",
             fontSize: "28px",
             fontWeight: "800",
             marginBottom: "var(--space-2)",
           }}
         >
-          🧠 AI Decision Override
+          AI Decision Override
         </h1>
         <p style={{ color: "var(--color-text-muted)", fontSize: "14px" }}>
           Override AI decisions for fraud detection, risk scoring, and other
@@ -80,9 +81,7 @@ export default function AIOverride() {
             >
               <option value="DONATION">Donation</option>
               <option value="FRAUD_ALERT">Fraud Alert</option>
-              <option value="CAMPAIGN">Campaign</option>
               <option value="BENEFICIARY">Beneficiary</option>
-              <option value="MERCHANT">Merchant</option>
             </select>
           </div>
 

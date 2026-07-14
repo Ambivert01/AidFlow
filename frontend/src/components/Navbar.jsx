@@ -1,13 +1,14 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import useAuthStore from "../store/authStore";
+import NotificationBell from "./NotificationBell";
 
 const ROLE_COLORS = {
-  ADMIN:       "#8b5cf6",
-  NGO:         "#0ea5e9",
-  DONOR:       "#22c55e",
-  BENEFICIARY: "#f59e0b",
-  MERCHANT:    "#ec4899",
-  GOVERNMENT:  "#ef4444",
+  ADMIN:       "#5B3D8A",
+  NGO:         "#E8530B",
+  DONOR:       "#0E6E66",
+  BENEFICIARY: "#A8710A",
+  MERCHANT:    "#B23A6E",
+  GOVERNMENT:  "#B23A2E",
 };
 
 const ROLE_NAV = {
@@ -24,10 +25,9 @@ const ROLE_NAV = {
   ],
   NGO: [
     { label: "Dashboard", to: "/ngo" },
-    { label: "Campaigns", to: "/ngo/campaigns" },
+    { label: "New Campaign", to: "/ngo/campaigns/create" },
     { label: "Beneficiaries", to: "/ngo/beneficiaries/register" },
     { label: "Reviews", to: "/ngo/reviews" },
-    { label: "Workflow", to: "/ngo/workflow" },
   ],
   BENEFICIARY: [
     { label: "My Wallet", to: "/beneficiary" },
@@ -59,14 +59,13 @@ export default function Navbar() {
   };
 
   const navItems = ROLE_NAV[role] || [];
-  const roleColor = ROLE_COLORS[role] || "#64748b";
+  const roleColor = ROLE_COLORS[role] || "var(--color-steel)";
 
   return (
     <nav className="navbar">
       {/* Brand */}
       <Link to={isAuthenticated && role ? `/${role.toLowerCase()}` : "/"} className="navbar-brand" style={{ flexShrink: 0 }}>
         Aid<span>Flow</span>
-        <span style={{ fontSize: "10px", marginLeft: "6px", opacity: 0.5, fontWeight: 400 }}>AI</span>
       </Link>
 
       {/* Role nav links */}
@@ -89,7 +88,7 @@ export default function Navbar() {
         <div className="navbar-nav">
           <Link to="/public/campaigns" className="navbar-link">Browse Campaigns</Link>
           <Link to="/public-audit" className="navbar-link">Public Audit</Link>
-          <Link to="/public/how-it-works" className="navbar-link">How It Works</Link>
+          <Link to="/#how-it-works" className="navbar-link">How It Works</Link>
         </div>
       )}
 
@@ -97,6 +96,7 @@ export default function Navbar() {
       <div className="navbar-right">
         {isAuthenticated ? (
           <>
+            <NotificationBell />
             <span
               className="navbar-role-badge"
               style={{ background: `${roleColor}20`, color: roleColor, borderColor: `${roleColor}40` }}

@@ -23,9 +23,10 @@ export default function MerchantScan() {
     try {
       // Hit backend scan endpoint to verify JWT and get wallet info
       const res = await api.post("/payments/scan", { qrToken: qrTokenData });
-      
+      const walletData = res.data?.data || res.data;
+
       // Navigate to confirm payment screen with wallet payload
-      navigate("/merchant/confirm", { state: { wallet: res.data, qrToken: qrTokenData } });
+      navigate("/merchant/confirm", { state: { wallet: walletData, qrToken: qrTokenData } });
       
     } catch (err) {
       setError(err.response?.data?.message || "Invalid or expired QR tag.");
@@ -117,7 +118,7 @@ export default function MerchantScan() {
           <>
             <video ref={videoRef} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             {/* Scan overlay frame */}
-            <div style={{ position: "absolute", border: "2px solid rgba(14,165,233,0.5)", width: "250px", height: "250px", top: "50%", left: "50%", transform: "translate(-50%, -50%)", borderRadius: "24px", boxShadow: "0 0 0 9999px rgba(0,0,0,0.5)" }} />
+            <div style={{ position: "absolute", border: "2px solid rgba(232,83,11,0.6)", width: "250px", height: "250px", top: "50%", left: "50%", transform: "translate(-50%, -50%)", borderRadius: "24px", boxShadow: "0 0 0 9999px rgba(0,0,0,0.5)" }} />
             
             <div style={{ position: "absolute", bottom: "16px", left: "0", right: "0", color: "white", fontSize: "12px", background: "rgba(0,0,0,0.6)", padding: "10px", margin: "0 24px", borderRadius: "8px", backdropFilter: "blur(4px)" }}>
               Scanning via jsQR... Hold device steady. Token signatures are verified live.

@@ -1,12 +1,15 @@
 import Navbar from "./Navbar";
+import PageTransition from "./PageTransition";
+import ConfirmDialogHost from "./ConfirmDialog";
 
 export default function Layout({ children }) {
   return (
     <div className="page-wrapper">
       <Navbar />
       <main className="page-content">
-        {children}
+        <PageTransition>{children}</PageTransition>
       </main>
+      <ConfirmDialogHost />
       <footer style={{
         borderTop: "1px solid var(--color-border)",
         padding: "16px 24px",

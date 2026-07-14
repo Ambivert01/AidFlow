@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import * as govtSvc from "../../services/government.service";
+import { confirmDialog } from "../../components/ConfirmDialog";
 
 export default function GovtWallets() {
   const [wallets, setWallets] = useState([]);
@@ -38,7 +39,11 @@ export default function GovtWallets() {
   };
 
   const handleUnfreeze = async (walletId) => {
-    if (!window.confirm("Restore this wallet?")) return;
+    const confirmed = await confirmDialog("Restore this wallet?", {
+      title: "Restore wallet",
+      confirmLabel: "Restore",
+    });
+    if (!confirmed) return;
     try {
       await govtSvc.unfreezeWallet(walletId);
       setActionMsg({ type: "success", text: "Wallet restored." });
@@ -63,7 +68,7 @@ export default function GovtWallets() {
           <select className="form-input" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ maxWidth: "200px" }}>
             <option value="">All Statuses</option>
             <option value="ACTIVE">Active</option>
-            <option value="FROZEN">Frozen</option>
+            <option value="SUSPENDED">Suspended</option>
             <option value="EXPIRED">Expired</option>
             <option value="CLOSED">Closed</option>
           </select>
@@ -98,7 +103,7 @@ export default function GovtWallets() {
                     <td style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>{w.campaign?.title || "—"}</td>
                     <td style={{ fontWeight: "700" }}>₹{(w.balance || 0).toLocaleString("en-IN")}</td>
                     <td>
-                      <span className={`badge ${w.status === "ACTIVE" ? "badge-green" : w.status === "FROZEN" ? "badge-red" : "badge-gray"}`}>
+                      <span className={`badge ${w.status === "ACTIVE" ? "badge-green" : w.status === "SUSPENDED" ? "badge-red" : "badge-gray"}`}>
                         {w.status}
                       </span>
                       {w.freezeReason && (
@@ -112,7 +117,7 @@ export default function GovtWallets() {
                           Freeze
                         </button>
                       )}
-                      {w.status === "FROZEN" && (
+                      {w.status === "SUSPENDED" && (
                         <button className="btn btn-ghost btn-sm" style={{ fontSize: "11px" }} onClick={() => handleUnfreeze(w._id)}>
                           Unfreeze
                         </button>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
+import { useToast } from "../../components/toastContext";
 
 export default function FraudManagement() {
   const [fraudCases, setFraudCases] = useState([]);
@@ -8,6 +9,7 @@ export default function FraudManagement() {
   const [filter, setFilter] = useState("OPEN");
   const [selectedCase, setSelectedCase] = useState(null);
   const [showResolveModal, setShowResolveModal] = useState(false);
+  const showToast = useToast();
   const [resolveForm, setResolveForm] = useState({
     decision: "CONFIRMED_FRAUD",
     notes: "",
@@ -50,7 +52,7 @@ export default function FraudManagement() {
       });
       fetchData();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to resolve case");
+      showToast(err.response?.data?.message || "Failed to resolve case", "error");
     }
   };
 
@@ -59,23 +61,23 @@ export default function FraudManagement() {
       await api.post(`/admin/fraud-cases/${caseId}/assign`, { investigatorId });
       fetchData();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to assign case");
+      showToast(err.response?.data?.message || "Failed to assign case", "error");
     }
   };
 
   const getStatusBadge = (status) => {
     const colors = {
-      OPEN: "bg-red-100 text-red-800",
-      INVESTIGATING: "bg-yellow-100 text-yellow-800",
-      RESOLVED: "bg-green-100 text-green-800",
-      DISMISSED: "bg-gray-100 text-gray-800",
+      OPEN: "bg-[var(--color-alert-light)] text-[var(--color-alert-dark)]",
+      INVESTIGATING: "bg-[var(--color-caution-light)] text-[var(--color-caution)]",
+      RESOLVED: "bg-[var(--color-verified-light)] text-[var(--color-verified-dark)]",
+      DISMISSED: "bg-[var(--color-paper-alt)] text-[var(--color-ink)]",
     };
-    return colors[status] || "bg-gray-100 text-gray-800";
+    return colors[status] || "bg-[var(--color-paper-alt)] text-[var(--color-ink)]";
   };
 
   if (loading) {
     return (
-      <div className="container" style={{ padding: "var(--space-6)" }}>
+      <div className="container animate-fade-up" style={{ padding: "var(--space-6)" }}>
         <div style={{ textAlign: "center", padding: "var(--space-8)" }}>
           <div style={{ fontSize: "48px", marginBottom: "var(--space-4)" }}>
             ⏳
@@ -94,12 +96,13 @@ export default function FraudManagement() {
       <div style={{ marginBottom: "var(--space-6)" }}>
         <h1
           style={{
+            fontFamily: "var(--font-display)",
             fontSize: "28px",
             fontWeight: "800",
             marginBottom: "var(--space-2)",
           }}
         >
-          🚨 Fraud Management
+          Fraud Management
         </h1>
         <p style={{ color: "var(--color-text-muted)", fontSize: "14px" }}>
           Monitor and investigate fraud cases across the platform

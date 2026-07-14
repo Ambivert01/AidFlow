@@ -15,14 +15,20 @@ const passwordValidation = z
     "Password must contain at least one uppercase letter, one lowercase letter, and one number",
   );
 
-// Only DONOR can self-register via /auth/register
+// DONOR and BENEFICIARY can self-register via /auth/register.
+// (NGO / MERCHANT / GOVERNMENT go through /access/request below instead,
+// since those roles require admin approval before they can log in.)
 export const registerSchema = z.object({
   body: z
     .object({
       name: z.string().min(2, "Name too short").max(50),
       email: z.string().email("Invalid email format"),
       password: passwordValidation,
-      role: z.enum([ROLES.DONOR]),
+      phone: z
+        .string()
+        .regex(/^[0-9]{10}$/, "Phone must be exactly 10 digits")
+        .optional(),
+      role: z.enum([ROLES.DONOR, ROLES.BENEFICIARY]),
     })
     .strict(),
 });

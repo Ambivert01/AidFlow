@@ -20,6 +20,18 @@ router.get(
   settlementController.getMySettlements,
 );
 
+// admin creates a settlement for a merchant's pending balance
+
+router.post(
+  "/merchant/:merchantId/create",
+
+  authenticate,
+
+  authorize("ADMIN"),
+
+  settlementController.createSettlementForMerchant,
+);
+
 // admin processes settlement
 
 router.patch(

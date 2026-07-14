@@ -3,7 +3,7 @@ import { redisConnection } from "../config/redis.config.js";
 import { Wallet } from "../models/wallet/Wallet.model.js";
 import { Beneficiary } from "../models/beneficiary/Beneficiary.model.js";
 import { createAuditLog } from "../modules/audit/audit.service.js";
-import { sendNotification } from "../modules/notification/notification.service.js";
+import { createNotification } from "../modules/notification/notification.service.js";
 import {
   WALLET_STATUS,
   AUDIT_EVENT_TYPES,
@@ -52,14 +52,15 @@ new Worker(
           try {
             const beneficiary = await Beneficiary.findById(wallet.beneficiary);
             if (beneficiary) {
-              await sendNotification({
+              await createNotification({
                 userId: beneficiary.user,
+                role: "BENEFICIARY",
                 type: "WALLET_EXPIRED",
-                data: {
-                  walletId: wallet._id,
-                  remainingBalance: wallet.balance,
-                  expiredAt: now,
-                },
+                title: "Wallet Expired",
+                message: `Your wallet has expired. Remaining balance: ₹${wallet.balance}`,
+                entityType: "Wallet",
+                entityId: wallet._id.toString(),
+                priority: "HIGH",
               });
             }
           } catch (error) {

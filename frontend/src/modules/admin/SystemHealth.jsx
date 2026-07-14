@@ -36,7 +36,7 @@ export default function SystemHealth() {
 
   if (loading) {
     return (
-      <div className="container" style={{ padding: "var(--space-6)" }}>
+      <div className="container animate-fade-up" style={{ padding: "var(--space-6)" }}>
         <div style={{ textAlign: "center", padding: "var(--space-8)" }}>
           <div style={{ fontSize: "48px", marginBottom: "var(--space-4)" }}>
             ⏳
@@ -50,7 +50,7 @@ export default function SystemHealth() {
   }
 
   return (
-    <div className="container" style={{ padding: "var(--space-6)" }}>
+    <div className="container animate-fade-up" style={{ padding: "var(--space-6)" }}>
       {/* Header */}
       <div
         style={{
@@ -63,12 +63,13 @@ export default function SystemHealth() {
         <div>
           <h1
             style={{
+              fontFamily: "var(--font-display)",
               fontSize: "28px",
               fontWeight: "800",
               marginBottom: "var(--space-2)",
             }}
           >
-            🏥 System Health
+            System Health
           </h1>
           <p style={{ color: "var(--color-text-muted)", fontSize: "14px" }}>
             Monitor system status, database health, and blockchain integrity

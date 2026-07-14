@@ -91,7 +91,45 @@ const donationSchema = new mongoose.Schema(
 
     idempotencyKey: {
       type: String,
-      index: true,
+      default: null,
+    },
+
+    // WORKFLOW STATE TRACKING
+    workflowState: {
+      type: String,
+      enum: [
+        "PENDING",
+        "AI_EVALUATION",
+        "NGO_REVIEW",
+        "GOVT_REVIEW",
+        "WALLET_CREATION",
+        "BLOCKCHAIN_ANCHORING",
+        "COMPLETED",
+        "FAILED",
+      ],
+      default: "PENDING",
+    },
+
+    // BLOCKCHAIN INTEGRATION
+    blockchainHash: {
+      type: String,
+      default: null,
+    },
+
+    blockchainAnchored: {
+      type: Boolean,
+      default: false,
+    },
+
+    blockchainAnchoredAt: {
+      type: Date,
+      default: null,
+    },
+
+    // AUDIT TRAIL REFERENCE
+    auditId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AuditLog",
       default: null,
     },
 
@@ -99,9 +137,12 @@ const donationSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
+        "INITIATED",
         "CREATED",
         "PAYMENT_PENDING",
         "PAYMENT_SUCCESS",
+        "PROCESSING",
+        "AI_CHECK_PENDING",
         "PENDING_NGO_REVIEW",
         "NGO_APPROVED",
         "HIGH_RISK_ESCALATED",
@@ -113,9 +154,9 @@ const donationSchema = new mongoose.Schema(
         "REJECTED",
         "REFUNDED",
         "AUDIT_FINALIZED",
+        "FAILED",
       ],
-      default: "CREATED",
-      index: true,
+      default: "INITIATED",
     },
 
     reviewReason: {
@@ -127,7 +168,7 @@ const donationSchema = new mongoose.Schema(
     aiDecision: {
       decision: {
         type: String,
-        enum: ["ALLOW", "MANUAL_REVIEW", "BLOCK"],
+        enum: ["ALLOW", "MANUAL_REVIEW", "BLOCK", "ESCALATE", "REVIEW"],
         default: null,
       },
 
@@ -143,8 +184,43 @@ const donationSchema = new mongoose.Schema(
         default: [],
       },
 
+      fraudFlags: {
+        type: [String],
+        default: [],
+      },
+
       evaluatedAt: {
         type: Date,
+        default: null,
+      },
+
+      evaluatedBy: {
+        type: String,
+        default: "AI",
+      },
+    },
+
+    // NGO REVIEW (mirrors governmentReview structure)
+    ngoReview: {
+      decision: {
+        type: String,
+        enum: ["APPROVED", "REJECTED", null],
+        default: null,
+      },
+
+      reviewedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+
+      reviewedAt: {
+        type: Date,
+        default: null,
+      },
+
+      reason: {
+        type: String,
         default: null,
       },
     },
@@ -208,6 +284,22 @@ const donationSchema = new mongoose.Schema(
       default: false,
     },
 
+    // PRIVACY SETTINGS FOR PUBLIC AUDIT
+    privacySettings: {
+      anonymousDonation: {
+        type: Boolean,
+        default: false,
+      },
+      hideAmount: {
+        type: Boolean,
+        default: false,
+      },
+      disablePublicAudit: {
+        type: Boolean,
+        default: false,
+      },
+    },
+
     // FUTURE EXTENSIONS
     governance: {
       allowDAOAudit: { type: Boolean, default: false },
@@ -232,5 +324,8 @@ donationSchema.index({ campaign: 1, status: 1 });
 donationSchema.index({ paymentReference: 1 });
 donationSchema.index({ jobIdHash: 1 });
 donationSchema.index({ status: 1, createdAt: -1 });
+donationSchema.index({ workflowState: 1 });
+donationSchema.index({ blockchainHash: 1 });
+donationSchema.index({ idempotencyKey: 1 }, { unique: true, sparse: true });
 
 export const Donation = mongoose.model("Donation", donationSchema);

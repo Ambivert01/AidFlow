@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import { confirmDialog } from "../../components/ConfirmDialog";
 
 export default function NGOReviewDashboard() {
   const [donations, setDonations] = useState([]);
@@ -56,7 +57,11 @@ export default function NGOReviewDashboard() {
   };
 
   const handleReject = async (donationId) => {
-    if (!window.confirm("Are you sure you want to reject this donation?")) return;
+    const confirmed = await confirmDialog(
+      "Are you sure you want to reject this donation?",
+      { title: "Reject donation", danger: true, confirmLabel: "Reject" },
+    );
+    if (!confirmed) return;
     
     setActionLoading(true); setError(""); setSuccess("");
     try {
@@ -124,7 +129,7 @@ export default function NGOReviewDashboard() {
                           {d.aiDecision}
                         </span>
                         {d.aiRiskScore !== undefined && (
-                          <div className="text-[10px] font-bold text-slate-400">Risk: {d.aiRiskScore}/100</div>
+                          <div className="text-[10px] font-bold text-[var(--color-steel)]">Risk: {d.aiRiskScore}/100</div>
                         )}
                       </div>
                     ) : (

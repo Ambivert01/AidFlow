@@ -119,6 +119,15 @@ router.get(
   beneficiaryController.getMyProfile,
 );
 
+// Self-apply to a campaign (beneficiary applies under their own account)
+router.post(
+  "/apply",
+  authenticate,
+  authorize("BENEFICIARY"),
+  validate(registerBeneficiarySchema),
+  beneficiaryController.applyAsBeneficiary,
+);
+
 // Submit appeal
 router.post(
   "/:id/appeal",

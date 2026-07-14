@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { ethers } from "ethers";
 import { logger } from "../../utils/logger.js";
 import { blockchainConfig } from "../../config/blockchain.config.js";
+import { redisConnection } from "../../config/redis.config.js";
 
 // ABI — only the functions we need
 const ABI = [
@@ -10,9 +11,15 @@ const ABI = [
   "event AuditLogged(bytes32 indexed jobIdHash, bytes32 auditHash, string campaignId, uint256 timestamp)",
 ];
 
+const PENDING_HASHES_REDIS_KEY = "blockchain:pending-merkle-hashes";
+
 class BlockchainAuditService {
   constructor() {
-    this.pendingHashes = [];
+    // NOTE: pendingHashes used to be a plain in-memory array here, which
+    // meant any worker/server restart before anchorRoot() ran would lose
+    // every unanchored audit event permanently. It's now persisted in Redis
+    // (a list under PENDING_HASHES_REDIS_KEY) so pending events survive
+    // restarts and anchoring can resume cleanly.
     this.provider = null;
     this.contract = null;
     this._init();
@@ -44,13 +51,22 @@ class BlockchainAuditService {
     return crypto.createHash("sha256").update(JSON.stringify(data)).digest("hex");
   }
 
-  appendMerkleNode(hash) {
-    this.pendingHashes.push(hash);
+  async appendMerkleNode(hash) {
+    await redisConnection.rpush(PENDING_HASHES_REDIS_KEY, hash);
   }
 
-  generateMerkleRoot() {
-    if (!this.pendingHashes.length) return null;
-    let nodes = [...this.pendingHashes];
+  async getPendingHashes() {
+    return redisConnection.lrange(PENDING_HASHES_REDIS_KEY, 0, -1);
+  }
+
+  async clearPendingHashes() {
+    await redisConnection.del(PENDING_HASHES_REDIS_KEY);
+  }
+
+  async generateMerkleRoot() {
+    const pendingHashes = await this.getPendingHashes();
+    if (!pendingHashes.length) return null;
+    let nodes = [...pendingHashes];
     while (nodes.length > 1) {
       const temp = [];
       for (let i = 0; i < nodes.length; i += 2) {
@@ -64,7 +80,7 @@ class BlockchainAuditService {
   }
 
   async anchorRoot(jobIdHash = "BATCH", campaignId = "") {
-    const root = this.generateMerkleRoot();
+    const root = await this.generateMerkleRoot();
     if (!root) return null;
 
     try {
@@ -84,11 +100,16 @@ class BlockchainAuditService {
         logger.info({ type: "BLOCKCHAIN_MOCK_ANCHOR", root, txHash });
       }
 
-      this.pendingHashes = [];
+      // Only clear the pending hashes after a successful anchor (real or
+      // mock) - if the chain call above throws, we fall through to the
+      // catch block and pending hashes remain queued for the next attempt.
+      await this.clearPendingHashes();
       return { root, txHash };
     } catch (error) {
       logger.error({ type: "BLOCKCHAIN_ERROR", message: error.message });
-      // Don't throw — system continues without blockchain
+      // Don't throw, and don't clear pendingHashes — system continues
+      // without blockchain, and these events will be included in the next
+      // successful anchor attempt instead of being lost.
       return null;
     }
   }
@@ -114,7 +135,7 @@ class BlockchainAuditService {
 
   async recordAuditEvent(event) {
     const hash = this.hashEvent(event);
-    this.appendMerkleNode(hash);
+    await this.appendMerkleNode(hash);
     return hash;
   }
 }

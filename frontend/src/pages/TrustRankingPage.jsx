@@ -42,7 +42,7 @@ const TrustRankingPage = () => {
     if (ngos.length === 0) {
       return (
         <div className="text-center py-12">
-          <p className="text-gray-500">No NGOs found</p>
+          <p className="text-[var(--color-steel)]">No NGOs found</p>
         </div>
       );
     }
@@ -52,7 +52,8 @@ const TrustRankingPage = () => {
         {ngos.map((ngo, index) => (
           <div
             key={ngo._id}
-            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+            className="bg-white rounded-lg shadow-sm border border-[var(--color-paper-alt)] p-6 hover:shadow-md transition-shadow hover-lift animate-fade-up"
+            style={{ animationDelay: `${index * 0.05}s` }}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 flex-1">
@@ -61,10 +62,10 @@ const TrustRankingPage = () => {
                   <div
                     className={`
                       w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg
-                      ${index === 0 ? "bg-yellow-100 text-yellow-700" : ""}
-                      ${index === 1 ? "bg-gray-100 text-gray-700" : ""}
-                      ${index === 2 ? "bg-orange-100 text-orange-700" : ""}
-                      ${index > 2 ? "bg-blue-50 text-blue-600" : ""}
+                      ${index === 0 ? "bg-[var(--color-caution-light)] text-[var(--color-caution)]" : ""}
+                      ${index === 1 ? "bg-[var(--color-paper-alt)] text-[var(--color-ink)]" : ""}
+                      ${index === 2 ? "bg-[var(--color-signal-light)] text-[var(--color-signal-dark)]" : ""}
+                      ${index > 2 ? "bg-[var(--color-signal-light)] text-[var(--color-signal)]" : ""}
                     `}
                   >
                     #{index + 1}
@@ -73,10 +74,10 @@ const TrustRankingPage = () => {
 
                 {/* NGO Info */}
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-800">
+                  <h3 className="text-lg font-semibold text-[var(--color-ink)]">
                     {ngo.name}
                   </h3>
-                  <p className="text-sm text-gray-500">{ngo.email}</p>
+                  <p className="text-sm text-[var(--color-steel)]">{ngo.email}</p>
                 </div>
 
                 {/* Trust Score */}
@@ -95,7 +96,7 @@ const TrustRankingPage = () => {
     if (campaigns.length === 0) {
       return (
         <div className="text-center py-12">
-          <p className="text-gray-500">No campaigns found</p>
+          <p className="text-[var(--color-steel)]">No campaigns found</p>
         </div>
       );
     }
@@ -105,7 +106,8 @@ const TrustRankingPage = () => {
         {campaigns.map((campaign, index) => (
           <div
             key={campaign._id}
-            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+            className="bg-white rounded-lg shadow-sm border border-[var(--color-paper-alt)] p-6 hover:shadow-md transition-shadow hover-lift animate-fade-up"
+            style={{ animationDelay: `${index * 0.05}s` }}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 flex-1">
@@ -114,10 +116,10 @@ const TrustRankingPage = () => {
                   <div
                     className={`
                       w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg
-                      ${index === 0 ? "bg-yellow-100 text-yellow-700" : ""}
-                      ${index === 1 ? "bg-gray-100 text-gray-700" : ""}
-                      ${index === 2 ? "bg-orange-100 text-orange-700" : ""}
-                      ${index > 2 ? "bg-blue-50 text-blue-600" : ""}
+                      ${index === 0 ? "bg-[var(--color-caution-light)] text-[var(--color-caution)]" : ""}
+                      ${index === 1 ? "bg-[var(--color-paper-alt)] text-[var(--color-ink)]" : ""}
+                      ${index === 2 ? "bg-[var(--color-signal-light)] text-[var(--color-signal-dark)]" : ""}
+                      ${index > 2 ? "bg-[var(--color-signal-light)] text-[var(--color-signal)]" : ""}
                     `}
                   >
                     #{index + 1}
@@ -126,10 +128,10 @@ const TrustRankingPage = () => {
 
                 {/* Campaign Info */}
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-800">
+                  <h3 className="text-lg font-semibold text-[var(--color-ink)]">
                     {campaign.title}
                   </h3>
-                  <p className="text-sm text-gray-500 line-clamp-2">
+                  <p className="text-sm text-[var(--color-steel)] line-clamp-2">
                     {campaign.description}
                   </p>
                 </div>
@@ -148,7 +150,7 @@ const TrustRankingPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--color-paper-alt)] flex items-center justify-center">
         <Loader />
       </div>
     );
@@ -156,12 +158,12 @@ const TrustRankingPage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--color-paper-alt)] flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
+          <p className="text-[var(--color-alert)] mb-4">{error}</p>
           <button
             onClick={fetchTopTrusted}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-[var(--color-signal)] text-white rounded-lg hover:bg-[var(--color-signal-dark)]"
           >
             Retry
           </button>
@@ -171,12 +173,12 @@ const TrustRankingPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[var(--color-paper-alt)] animate-fade-up">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-[var(--color-paper-alt)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-3xl font-bold text-gray-900">Trust Rankings</h1>
-          <p className="mt-2 text-gray-600">
+          <h1 className="text-3xl font-bold text-[var(--color-ink)]">Trust Rankings</h1>
+          <p className="mt-2 text-[var(--color-steel)]">
             Discover the most trusted NGOs and campaigns based on transparency,
             proof validation, and fraud-free operations.
           </p>
@@ -185,7 +187,7 @@ const TrustRankingPage = () => {
 
       {/* Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        <div className="border-b border-gray-200">
+        <div className="border-b border-[var(--color-paper-alt)]">
           <nav className="-mb-px flex space-x-8">
             <button
               onClick={() => setActiveTab("ngo")}
@@ -193,8 +195,8 @@ const TrustRankingPage = () => {
                 py-4 px-1 border-b-2 font-medium text-sm
                 ${
                   activeTab === "ngo"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ? "border-[var(--color-signal)] text-[var(--color-signal)]"
+                    : "border-transparent text-[var(--color-steel)] hover:text-[var(--color-ink)] hover:border-[var(--color-steel)]"
                 }
               `}
             >
@@ -206,8 +208,8 @@ const TrustRankingPage = () => {
                 py-4 px-1 border-b-2 font-medium text-sm
                 ${
                   activeTab === "campaign"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ? "border-[var(--color-signal)] text-[var(--color-signal)]"
+                    : "border-transparent text-[var(--color-steel)] hover:text-[var(--color-ink)] hover:border-[var(--color-steel)]"
                 }
               `}
             >
@@ -224,15 +226,15 @@ const TrustRankingPage = () => {
 
       {/* Info Box */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">
+        <div className="bg-[var(--color-signal-light)] border border-[var(--color-signal-light)] rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-[var(--color-signal-dark)] mb-2">
             How Trust Scores Work
           </h3>
-          <p className="text-blue-800 mb-4">
+          <p className="text-[var(--color-signal-dark)] mb-4">
             Trust scores are calculated based on multiple factors to ensure
             transparency and accountability:
           </p>
-          <ul className="space-y-2 text-blue-800">
+          <ul className="space-y-2 text-[var(--color-signal-dark)]">
             <li className="flex items-start gap-2">
               <span className="font-semibold min-w-[120px]">
                 Proof Validation (40%):

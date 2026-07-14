@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import useAuthStore from "../store/authStore";
+import { confirmDialog } from "../components/ConfirmDialog";
 
 export default function Sessions() {
   const navigate = useNavigate();
@@ -27,13 +28,11 @@ export default function Sessions() {
   };
 
   const handleLogoutAll = async () => {
-    if (
-      !confirm(
-        "Are you sure you want to logout from all devices? You will need to log in again.",
-      )
-    ) {
-      return;
-    }
+    const ok = await confirmDialog(
+      "You'll be logged out from all devices and will need to log in again.",
+      { title: "Log out everywhere?", danger: true, confirmLabel: "Log out all" },
+    );
+    if (!ok) return;
 
     setActionLoading(true);
     try {
@@ -62,7 +61,7 @@ export default function Sessions() {
   };
 
   const getDeviceIcon = (device) => {
-    const deviceLower = device.toLowerCase();
+    const deviceLower = (device || "").toLowerCase();
     if (
       deviceLower.includes("mobile") ||
       deviceLower.includes("android") ||
@@ -78,7 +77,7 @@ export default function Sessions() {
 
   if (loading) {
     return (
-      <div className="container" style={{ padding: "var(--space-6)" }}>
+      <div className="container animate-fade-up" style={{ padding: "var(--space-6)" }}>
         <div className="card">
           <div style={{ textAlign: "center", padding: "var(--space-8)" }}>
             <div style={{ fontSize: "48px", marginBottom: "var(--space-4)" }}>
@@ -95,12 +94,13 @@ export default function Sessions() {
 
   return (
     <div
-      className="container"
+      className="container animate-fade-up"
       style={{ padding: "var(--space-6)", maxWidth: "800px" }}
     >
       <div style={{ marginBottom: "var(--space-6)" }}>
         <h1
           style={{
+            fontFamily: "var(--font-display)",
             fontSize: "28px",
             fontWeight: "800",
             marginBottom: "var(--space-2)",
@@ -170,6 +170,7 @@ export default function Sessions() {
             {sessions.map((session, index) => (
               <div
                 key={index}
+                className="hover-lift animate-fade-up"
                 style={{
                   padding: "var(--space-4)",
                   border: "1px solid var(--color-border)",
@@ -177,6 +178,8 @@ export default function Sessions() {
                   display: "flex",
                   alignItems: "center",
                   gap: "var(--space-4)",
+                  animationDelay: `${index * 0.05}s`,
+                  transition: "all 0.3s ease",
                 }}
               >
                 <div style={{ fontSize: "32px" }}>
@@ -204,14 +207,13 @@ export default function Sessions() {
                 </div>
                 <div>
                   <span
+                    className="badge badge-green"
                     style={{
                       display: "inline-block",
                       padding: "4px 12px",
                       borderRadius: "100px",
                       fontSize: "11px",
                       fontWeight: "700",
-                      background: "var(--color-success-light)",
-                      color: "var(--color-success-dark)",
                     }}
                   >
                     Active

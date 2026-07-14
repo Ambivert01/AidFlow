@@ -21,7 +21,7 @@ export default function HomePage() {
       <Stats />
 
       {/* How It Works Flow */}
-      <HowItWorks />
+      <div id="how-it-works"><HowItWorks /></div>
 
       {/* Feature Highlights */}
       <FeatureHighlights />

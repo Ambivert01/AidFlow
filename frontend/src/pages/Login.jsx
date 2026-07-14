@@ -16,18 +16,19 @@ export default function Login() {
   };
 
   return (
-    <div className="center-page" style={{ padding: "var(--space-6)" }}>
+    <div className="center-page animate-fade-up" style={{ padding: "var(--space-6)" }}>
       <div
-        className="card shadow-lg"
-        style={{ maxWidth: "400px", width: "100%", padding: "var(--space-8)" }}
+        className="card shadow-lg hover-lift"
+        style={{ maxWidth: "400px", width: "100%", padding: "var(--space-8)", transition: "all 0.3s ease" }}
       >
         <div style={{ textAlign: "center", marginBottom: "var(--space-8)" }}>
           <div
             style={{
-              fontSize: "32px",
-              fontWeight: "900",
-              letterSpacing: "-0.05em",
-              color: "var(--color-primary-dark)",
+              fontFamily: "var(--font-display)",
+              fontSize: "30px",
+              fontWeight: "700",
+              letterSpacing: "-0.02em",
+              color: "var(--color-ink)",
               marginBottom: "var(--space-2)",
             }}
           >
@@ -101,7 +102,7 @@ export default function Login() {
             disabled={loading}
             style={{
               marginTop: "var(--space-2)",
-              boxShadow: "0 4px 14px 0 rgba(14,165,233, 0.39)",
+              boxShadow: "0 4px 14px 0 rgba(232, 83, 11, 0.3)",
             }}
           >
             {loading ? "Authenticating..." : "Sign In"}
@@ -134,7 +135,7 @@ export default function Login() {
               className="btn btn-ghost btn-sm"
               style={{ fontWeight: "600", color: "var(--color-primary-dark)" }}
             >
-              Register as Donor
+              Donor / Aid Seeker
             </Link>
             <span style={{ color: "var(--color-border-strong)" }}>|</span>
             <Link

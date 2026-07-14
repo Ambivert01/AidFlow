@@ -2,8 +2,6 @@ import { Worker } from "bullmq";
 import { redisConnection } from "../config/redis.config.js";
 import aiService from "../infrastructure/ai/ai.service.js";
 import { createAuditLog } from "../modules/audit/audit.service.js";
-import { Beneficiary } from "../models/beneficiary/Beneficiary.model.js";
-import { Donation } from "../models/donor/Donation.model.js";
 import { logger } from "../utils/logger.js";
 
 new Worker(
@@ -15,47 +13,54 @@ new Worker(
     let result;
 
     switch (type) {
-      case "donation-risk": {
-        result = await aiService.evaluateDonationRisk(payload);
-
-        const donation = await Donation.findById(payload.donationId);
-        if (donation) {
-          const riskScore = Math.round((result.riskScore || 0.1) * 100);
-          donation.aiDecision = {
-            decision:
-              riskScore > 80
-                ? "BLOCK"
-                : riskScore > 40
-                  ? "MANUAL_REVIEW"
-                  : "ALLOW",
-            riskScore,
-            fraudSignals: result.flags || [],
-            evaluatedAt: new Date(),
-          };
-          donation.status =
-            riskScore > 80 ? "HIGH_RISK_ESCALATED" : "PENDING_NGO_REVIEW";
-          await donation.save();
-        }
-        break;
-      }
-
       case "beneficiary-eligibility": {
-        result = await aiService.evaluateBeneficiaryEligibility(payload);
+        const { processAIEvaluationResult } = await import(
+          "../modules/beneficiary/beneficiary.service.js"
+        );
+        const { Campaign } = await import("../models/ngo/Campaign.model.js");
 
-        const beneficiary = await Beneficiary.findById(payload.entityId);
-        if (beneficiary) {
-          beneficiary.aiDecision = {
-            eligibilityConfidence: result.confidence ?? 0.75,
-            fraudRisk: 0.1,
-            decision: result.eligible ? "ALLOW" : "BLOCK",
-            flags: result.signals
-              ? Object.keys(result.signals).filter((k) => !result.signals[k])
-              : [],
-            reason: result.reason || "",
-            evaluatedAt: new Date(),
-          };
-          beneficiary.status = result.eligible ? "ELIGIBLE" : "BLOCKED";
-          await beneficiary.save();
+        const eligibilityResult =
+          await aiService.evaluateBeneficiaryEligibility(payload);
+
+        const fraudResult = await aiService.evaluateFraudProbability({
+          beneficiaryId: payload.beneficiaryId,
+          walletId: "PRE_APPROVAL",
+          deviceFingerprint: payload.deviceFingerprint || "UNKNOWN",
+          location: payload.location?.ward || "",
+          recentTransactions: 0,
+          totalAidReceived: 0,
+          merchantId: "",
+          timeWindowHours: 24,
+        });
+
+        const campaign = await Campaign.findById(payload.campaignId).lean();
+
+        const riskResult = await aiService.evaluateRisk(
+          eligibilityResult,
+          fraudResult,
+          campaign?.policySnapshot,
+        );
+
+        result = {
+          eligibilityConfidence: eligibilityResult.confidence ?? 0.75,
+          fraudRisk: fraudResult.riskScore ?? 0.1,
+          decision: riskResult.decision || "MANUAL_REVIEW",
+          flags: [
+            ...(eligibilityResult.signals
+              ? Object.keys(eligibilityResult.signals).filter(
+                  (k) => !eligibilityResult.signals[k],
+                )
+              : []),
+            ...(fraudResult.flags || []),
+          ],
+          reason:
+            riskResult.reason ||
+            eligibilityResult.reason ||
+            "AI evaluation completed",
+        };
+
+        if (payload.beneficiaryId) {
+          await processAIEvaluationResult(payload.beneficiaryId, result);
         }
         break;
       }
@@ -120,7 +125,12 @@ new Worker(
       eventType: "AI_DECISION_COMPLETED",
       eventCategory: mapCategory(type),
       entityType: mapEntity(type),
-      entityId: String(payload.entityId || payload.donationId || job.id),
+      entityId: String(
+        payload.beneficiaryId ||
+          payload.campaignId ||
+          payload.entityId ||
+          job.id,
+      ),
       jobIdHash: job.id.toString(),
       actorRole: "AI",
       payload: { model: type, result },
@@ -133,7 +143,6 @@ new Worker(
 
 function mapCategory(type) {
   const map = {
-    "donation-risk": "DONATION",
     "beneficiary-eligibility": "BENEFICIARY",
     "fraud-score": "SECURITY",
     "campaign-risk": "CAMPAIGN",
@@ -145,7 +154,6 @@ function mapCategory(type) {
 
 function mapEntity(type) {
   const map = {
-    "donation-risk": "Donation",
     "beneficiary-eligibility": "Beneficiary",
     "fraud-score": "User",
     "campaign-risk": "Campaign",

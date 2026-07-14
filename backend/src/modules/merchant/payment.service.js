@@ -6,8 +6,13 @@ import { AppError } from "../../utils/AppError.js";
 import { BaseService } from "../../core/base.service.js";
 import { spendWallet } from "../wallet/wallet.service.js";
 import { createAuditLog } from "../audit/audit.service.js";
+import { createNotification } from "../notification/notification.service.js";
 
-const QR_SECRET = process.env.QR_SECRET || process.env.JWT_SECRET;
+import { QR_SECRET } from "../../config/env.config.js";
+// SECURITY: QR_SECRET must be a distinct secret from JWT_SECRET. Falling
+// back to JWT_SECRET here would mean anyone who can forge an auth token
+// could also forge a wallet payment QR token. validateEnv() at startup
+// already guarantees QR_SECRET is set and differs from JWT_SECRET.
 const QR_EXPIRY = "10m"; // 10 minutes
 
 /*
@@ -115,7 +120,7 @@ export const confirmPayment = async (merchantUserId, data) => {
         transactionCount: 1,
         totalRevenue: data.amount,
         totalAidProcessed: data.amount,
-        "settlement.pendingBalance": data.amount,
+        pendingBalance: data.amount,
       },
       $set: { lastTransactionAt: new Date() },
     }
@@ -133,6 +138,25 @@ export const confirmPayment = async (merchantUserId, data) => {
       remainingBalance: wallet.balance,
     },
   });
+
+  try {
+    const beneficiary = await Beneficiary.findById(decoded.beneficiaryId);
+    if (beneficiary?.user) {
+      await createNotification({
+        userId: beneficiary.user,
+        role: "BENEFICIARY",
+        type: "TRANSACTION_SUCCESS",
+        title: "Payment Successful",
+        message: `₹${data.amount} spent at ${merchant.shopName} (${data.category}). Remaining balance: ₹${wallet.balance}.`,
+        entityType: "Wallet",
+        entityId: decoded.walletId,
+        channels: ["IN_APP", "SMS"],
+        priority: "NORMAL",
+      });
+    }
+  } catch (error) {
+    console.error("Failed to send payment-success notification:", error);
+  }
 
   return BaseService.success({
     transactionId: wallet._id.toString() + "_" + Date.now(),

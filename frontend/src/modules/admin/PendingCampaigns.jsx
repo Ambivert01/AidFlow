@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
+import { confirmDialog } from "../../components/ConfirmDialog";
+import { useToast } from "../../components/toastContext";
 
 export default function PendingCampaigns() {
   const [campaigns, setCampaigns] = useState([]);
@@ -7,6 +9,7 @@ export default function PendingCampaigns() {
   const [actionLoading, setActionLoading] = useState(null);
   const [rejectingCampaign, setRejectingCampaign] = useState(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const showToast = useToast();
 
   useEffect(() => {
     fetchPendingCampaigns();
@@ -19,8 +22,9 @@ export default function PendingCampaigns() {
       setCampaigns(response.data.data || []);
     } catch (error) {
       console.error("Failed to fetch pending campaigns:", error);
-      alert(
+      showToast(
         error.response?.data?.message || "Failed to fetch pending campaigns",
+        "error",
       );
     } finally {
       setLoading(false);
@@ -28,18 +32,22 @@ export default function PendingCampaigns() {
   };
 
   const approveCampaign = async (campaignId) => {
-    const confirm = window.confirm(
+    const confirmed = await confirmDialog(
       "Approve this campaign? It will become ACTIVE and visible to donors.",
+      { title: "Approve campaign", confirmLabel: "Approve" },
     );
-    if (!confirm) return;
+    if (!confirmed) return;
 
     try {
       setActionLoading(campaignId);
       await api.post(`/admin/campaigns/${campaignId}/approve`);
-      alert("Campaign approved successfully");
+      showToast("Campaign approved successfully", "success");
       fetchPendingCampaigns();
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to approve campaign");
+      showToast(
+        error.response?.data?.message || "Failed to approve campaign",
+        "error",
+      );
     } finally {
       setActionLoading(null);
     }
@@ -57,7 +65,7 @@ export default function PendingCampaigns() {
 
   const rejectCampaign = async () => {
     if (!rejectionReason.trim()) {
-      alert("Please provide a rejection reason");
+      showToast("Please provide a rejection reason", "warning");
       return;
     }
 
@@ -66,21 +74,24 @@ export default function PendingCampaigns() {
       await api.post(`/admin/campaigns/${rejectingCampaign}/reject`, {
         rejectionReason: rejectionReason.trim(),
       });
-      alert("Campaign rejected");
+      showToast("Campaign rejected", "success");
       closeRejectModal();
       fetchPendingCampaigns();
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to reject campaign");
+      showToast(
+        error.response?.data?.message || "Failed to reject campaign",
+        "error",
+      );
     } finally {
       setActionLoading(null);
     }
   };
 
   const getRiskColor = (riskScore) => {
-    if (riskScore >= 70) return "text-red-600 bg-red-50 border-red-200";
+    if (riskScore >= 70) return "text-[var(--color-alert)] bg-[var(--color-alert-light)] border-[var(--color-alert-light)]";
     if (riskScore >= 40)
-      return "text-yellow-600 bg-yellow-50 border-yellow-200";
-    return "text-green-600 bg-green-50 border-green-200";
+      return "text-[var(--color-caution)] bg-[var(--color-caution-light)] border-[var(--color-caution-light)]";
+    return "text-[var(--color-verified)] bg-[var(--color-verified-light)] border-[var(--color-verified-light)]";
   };
 
   const getRiskLabel = (riskScore) => {
@@ -91,8 +102,8 @@ export default function PendingCampaigns() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">Loading pending campaigns...</div>
+      <div className="flex justify-center items-center h-64 animate-fade-up">
+        <div className="text-[var(--color-steel)]">Loading pending campaigns...</div>
       </div>
     );
   }
@@ -103,15 +114,15 @@ export default function PendingCampaigns() {
         <h2 className="text-2xl font-bold">Pending Campaign Approvals</h2>
         <button
           onClick={fetchPendingCampaigns}
-          className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm transition-colors"
+          className="bg-[var(--color-paper-alt)] hover:bg-[var(--color-paper-alt)] text-[var(--color-ink)] px-4 py-2 rounded text-sm transition-colors"
         >
           🔄 Refresh
         </button>
       </div>
 
       {campaigns.length === 0 && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-          <p className="text-gray-500">No pending campaigns to review</p>
+        <div className="bg-[var(--color-paper-alt)] border border-[var(--color-paper-alt)] rounded-lg p-8 text-center">
+          <p className="text-[var(--color-steel)]">No pending campaigns to review</p>
         </div>
       )}
 
@@ -120,7 +131,7 @@ export default function PendingCampaigns() {
           <div
             key={campaign._id}
             className={`bg-white border-2 rounded-lg p-6 ${
-              campaign.aiRiskScore >= 70 ? "border-red-300" : "border-gray-200"
+              campaign.aiRiskScore >= 70 ? "border-[var(--color-alert)]" : "border-[var(--color-paper-alt)]"
             }`}
           >
             <div className="flex justify-between items-start mb-4">
@@ -129,26 +140,26 @@ export default function PendingCampaigns() {
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-gray-600">
+                    <p className="text-[var(--color-steel)]">
                       <span className="font-medium">NGO:</span>{" "}
                       {campaign.createdBy?.name || "Unknown"}
                     </p>
-                    <p className="text-gray-600">
+                    <p className="text-[var(--color-steel)]">
                       <span className="font-medium">Disaster Type:</span>{" "}
                       {campaign.disasterType}
                     </p>
-                    <p className="text-gray-600">
+                    <p className="text-[var(--color-steel)]">
                       <span className="font-medium">Target Amount:</span> ₹
                       {campaign.targetAmount?.toLocaleString()}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-gray-600">
+                    <p className="text-[var(--color-steel)]">
                       <span className="font-medium">Location:</span>{" "}
                       {campaign.location?.district}, {campaign.location?.state}
                     </p>
-                    <p className="text-gray-600">
+                    <p className="text-[var(--color-steel)]">
                       <span className="font-medium">Submitted:</span>{" "}
                       {new Date(campaign.submittedAt).toLocaleString()}
                     </p>
@@ -171,18 +182,18 @@ export default function PendingCampaigns() {
             </div>
 
             <div className="mb-4">
-              <p className="text-gray-700 text-sm">
+              <p className="text-[var(--color-ink)] text-sm">
                 <span className="font-medium">Description:</span>{" "}
                 {campaign.description}
               </p>
             </div>
 
             {campaign.aiFlags && campaign.aiFlags.length > 0 && (
-              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                <p className="font-medium text-yellow-800 text-sm mb-1">
+              <div className="mb-4 p-3 bg-[var(--color-caution-light)] border border-[var(--color-caution-light)] rounded">
+                <p className="font-medium text-[var(--color-caution)] text-sm mb-1">
                   AI Flags:
                 </p>
-                <ul className="list-disc list-inside text-sm text-yellow-700">
+                <ul className="list-disc list-inside text-sm text-[var(--color-caution)]">
                   {campaign.aiFlags.map((flag, idx) => (
                     <li key={idx}>{flag}</li>
                   ))}
@@ -190,11 +201,11 @@ export default function PendingCampaigns() {
               </div>
             )}
 
-            <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
-              <p className="font-medium text-gray-800 text-sm mb-2">
+            <div className="mb-4 p-3 bg-[var(--color-paper-alt)] border border-[var(--color-paper-alt)] rounded">
+              <p className="font-medium text-[var(--color-ink)] text-sm mb-2">
                 Policy Rules:
               </p>
-              <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+              <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-steel)]">
                 <p>
                   <span className="font-medium">Max per Beneficiary:</span> ₹
                   {campaign.policySnapshot?.maxPerBeneficiary?.toLocaleString()}
@@ -218,7 +229,7 @@ export default function PendingCampaigns() {
               <button
                 onClick={() => approveCampaign(campaign._id)}
                 disabled={actionLoading === campaign._id}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 bg-[var(--color-verified)] hover:bg-[var(--color-verified-dark)] text-white px-4 py-2 rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {actionLoading === campaign._id
                   ? "Processing..."
@@ -228,7 +239,7 @@ export default function PendingCampaigns() {
               <button
                 onClick={() => openRejectModal(campaign._id)}
                 disabled={actionLoading === campaign._id}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 bg-[var(--color-alert)] hover:bg-[var(--color-alert-dark)] text-white px-4 py-2 rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 ✗ Reject Campaign
               </button>
@@ -243,7 +254,7 @@ export default function PendingCampaigns() {
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold mb-4">Reject Campaign</h3>
 
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-[var(--color-steel)] mb-4">
               Please provide a reason for rejecting this campaign. The NGO will
               see this message.
             </p>
@@ -252,14 +263,14 @@ export default function PendingCampaigns() {
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
               placeholder="Enter rejection reason..."
-              className="w-full border border-gray-300 rounded p-3 text-sm min-h-[120px] focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full border border-[var(--color-steel)] rounded p-3 text-sm min-h-[120px] focus:outline-none focus:ring-2 focus:ring-[var(--color-alert)]"
             />
 
             <div className="flex gap-3 mt-4">
               <button
                 onClick={closeRejectModal}
                 disabled={actionLoading}
-                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded font-medium disabled:opacity-50 transition-colors"
+                className="flex-1 bg-[var(--color-paper-alt)] hover:bg-[var(--color-steel)] text-[var(--color-ink)] px-4 py-2 rounded font-medium disabled:opacity-50 transition-colors"
               >
                 Cancel
               </button>
@@ -267,7 +278,7 @@ export default function PendingCampaigns() {
               <button
                 onClick={rejectCampaign}
                 disabled={actionLoading || !rejectionReason.trim()}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 bg-[var(--color-alert)] hover:bg-[var(--color-alert-dark)] text-white px-4 py-2 rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {actionLoading ? "Rejecting..." : "Confirm Rejection"}
               </button>

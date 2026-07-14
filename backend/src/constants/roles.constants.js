@@ -60,7 +60,12 @@ export const ROLES_REQUIRING_APPROVAL = [
 ];
 
 // Roles that can self-register
-export const SELF_REGISTER_ROLES = [ROLES.DONOR];
+// BENEFICIARY is included because aid seekers can create their own account
+// and self-apply to a campaign (see modules/beneficiary "apply" flow). This
+// only creates the login account - the actual aid application still goes
+// through AI eligibility scoring + NGO/Admin manual review before a wallet
+// is issued, exactly like NGO-registered beneficiaries.
+export const SELF_REGISTER_ROLES = [ROLES.DONOR, ROLES.BENEFICIARY];
 
 // Role-based dashboard routes
 export const ROLE_ROUTES = {

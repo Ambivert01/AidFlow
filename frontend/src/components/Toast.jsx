@@ -42,7 +42,7 @@ export const ToastProvider = ({ children }) => {
               pointerEvents: "auto",
               padding: "12px 16px",
               background: toast.type === 'error' ? 'var(--color-danger)' : 
-                          toast.type === 'success' ? '#10b981' : 
+                          toast.type === 'success' ? 'var(--color-verified)' : 
                           toast.type === 'warning' ? 'var(--color-orange)' : 
                           'var(--color-surface-reverse)',
               color: 'white',

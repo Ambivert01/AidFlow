@@ -3,8 +3,13 @@ import api from "../../services/api";
 import { useNavigate } from "react-router-dom";
 import InfoNotice from "../../components/InfoNotice";
 
+const DISASTER_TYPES = ["FLOOD", "EARTHQUAKE", "CYCLONE", "FIRE", "DROUGHT", "OTHER"];
+const CATEGORY_CHOICES = ["FOOD", "MEDICINE", "SHELTER", "WATER"];
+
 export default function CreateCampaign() {
   const navigate = useNavigate();
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -17,6 +22,7 @@ export default function CreateCampaign() {
       maxPerBeneficiary: 5000,
       maxPerTransaction: 1000,
       validityDays: 30,
+      cooldownDays: 0,
       minEligibilityConfidence: 0.6,
       maxFraudRisk: 0.4,
     },
@@ -32,7 +38,26 @@ export default function CreateCampaign() {
     });
   };
 
+  const toggleCategory = (cat) => {
+    const current = form.policySnapshot.allowedCategories;
+    const next = current.includes(cat)
+      ? current.filter((c) => c !== cat)
+      : [...current, cat];
+    updatePolicy("allowedCategories", next);
+  };
+
   const submit = async () => {
+    if (!form.title || !form.disasterType) {
+      setError("Title and disaster type are required.");
+      return;
+    }
+    if (form.policySnapshot.allowedCategories.length === 0) {
+      setError("Select at least one allowed spending category.");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
     try {
       await api.post("/campaigns", {
         title: form.title,
@@ -41,138 +66,198 @@ export default function CreateCampaign() {
         targetAmount: form.targetAmount || 100000,
         location: form.location,
         policy: {
-          allowedCategories: form.policySnapshot.allowedCategories.map((c) =>
-            c.toUpperCase(),
-          ),
+          allowedCategories: form.policySnapshot.allowedCategories,
           maxPerBeneficiary: form.policySnapshot.maxPerBeneficiary,
           maxPerTransaction: form.policySnapshot.maxPerTransaction || 1000,
           validityDays: form.policySnapshot.validityDays,
+          cooldownDays: form.policySnapshot.cooldownDays,
         },
       });
-      alert("Campaign created as DRAFT. Submit for approval to activate.");
       navigate("/ngo");
     } catch (err) {
-      alert(err.response?.data?.message || "Campaign creation failed");
+      setError(err.response?.data?.message || "Campaign creation failed.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <h2 className="text-xl font-bold">Create Relief Campaign</h2>
-
-      <InfoNotice
-        title="Policy Governance"
-        message="Once a campaign is activated, all policy rules become immutable and permanently audited."
-      />
-
-      {/* BASIC INFO */}
-      <input
-        className="input"
-        placeholder="Campaign Title"
-        onChange={(e) => setForm({ ...form, title: e.target.value })}
-      />
-
-      <textarea
-        className="input"
-        placeholder="Description"
-        onChange={(e) => setForm({ ...form, description: e.target.value })}
-      />
-
-      <select
-        className="input"
-        onChange={(e) => setForm({ ...form, disasterType: e.target.value })}
-      >
-        <option value="">Select Disaster Type</option>
-        <option value="FLOOD">Flood</option>
-        <option value="EARTHQUAKE">Earthquake</option>
-        <option value="CYCLONE">Cyclone</option>
-        <option value="FIRE">Fire</option>
-      </select>
-
-      {/* LOCATION */}
-      <div className="grid grid-cols-3 gap-3">
-        <input
-          className="input"
-          placeholder="State"
-          onChange={(e) =>
-            setForm({
-              ...form,
-              location: { ...form.location, state: e.target.value },
-            })
-          }
-        />
-        <input
-          className="input"
-          placeholder="District"
-          onChange={(e) =>
-            setForm({
-              ...form,
-              location: { ...form.location, district: e.target.value },
-            })
-          }
-        />
-        <input
-          className="input"
-          placeholder="Ward"
-          onChange={(e) =>
-            setForm({
-              ...form,
-              location: { ...form.location, ward: e.target.value },
-            })
-          }
-        />
+    <div className="stack-lg animate-fade-up" style={{ maxWidth: "680px" }}>
+      <div className="page-header">
+        <h1 className="page-title">Launch a Campaign</h1>
+        <p className="page-subtitle">
+          Define the relief mission and its spending policy. Saved as a draft until you submit it for admin approval.
+        </p>
       </div>
 
-      {/* POLICY */}
-      <h3 className="font-semibold mt-4">Policy Rules (Immutable)</h3>
-
-      <input
-        type="number"
-        className="input"
-        placeholder="Max Amount Per Beneficiary"
-        onChange={(e) =>
-          updatePolicy("maxPerBeneficiary", Number(e.target.value))
-        }
+      <InfoNotice
+        title="Policy governance"
+        message="Once a campaign is activated, its policy rules become immutable and every transaction against them is permanently audited."
       />
 
-      <input
-        type="number"
-        className="input"
-        placeholder="Wallet Validity (days)"
-        onChange={(e) => updatePolicy("validityDays", Number(e.target.value))}
-      />
+      {error && <div className="alert alert-danger">{error}</div>}
 
-      <input
-        type="number"
-        className="input"
-        placeholder="Cooldown Days"
-        onChange={(e) => updatePolicy("cooldownDays", Number(e.target.value))}
-      />
+      <div className="card stack">
+        <h3 style={{ fontSize: "15px", fontWeight: 700 }}>Mission details</h3>
 
-      <input
-        type="number"
-        step="0.1"
-        className="input"
-        placeholder="Min Eligibility Confidence (0–1)"
-        onChange={(e) =>
-          updatePolicy("minEligibilityConfidence", Number(e.target.value))
-        }
-      />
+        <div className="form-group">
+          <label className="form-label">Campaign title</label>
+          <input
+            className="form-input"
+            placeholder="e.g. Assam Flood Relief — Phase 2"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+          />
+        </div>
 
-      <input
-        type="number"
-        step="0.1"
-        className="input"
-        placeholder="Max Fraud Risk (0–1)"
-        onChange={(e) => updatePolicy("maxFraudRisk", Number(e.target.value))}
-      />
+        <div className="form-group">
+          <label className="form-label">Description</label>
+          <textarea
+            className="form-input"
+            placeholder="What happened, who is affected, and how this aid will help."
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+          />
+        </div>
 
-      <button
-        onClick={submit}
-        className="bg-blue-700 text-white px-4 py-2 rounded"
-      >
-        Create Campaign (DRAFT)
-      </button>
+        <div className="grid-2">
+          <div className="form-group">
+            <label className="form-label">Disaster type</label>
+            <select
+              className="form-input"
+              value={form.disasterType}
+              onChange={(e) => setForm({ ...form, disasterType: e.target.value })}
+            >
+              <option value="">Select type</option>
+              {DISASTER_TYPES.map((t) => (
+                <option key={t} value={t}>{t.charAt(0) + t.slice(1).toLowerCase()}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Target amount (₹)</label>
+            <input
+              type="number"
+              className="form-input"
+              value={form.targetAmount}
+              onChange={(e) => setForm({ ...form, targetAmount: Number(e.target.value) })}
+            />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Location</label>
+          <div className="grid-3">
+            <input
+              className="form-input"
+              placeholder="State"
+              value={form.location.state}
+              onChange={(e) => setForm({ ...form, location: { ...form.location, state: e.target.value } })}
+            />
+            <input
+              className="form-input"
+              placeholder="District"
+              value={form.location.district}
+              onChange={(e) => setForm({ ...form, location: { ...form.location, district: e.target.value } })}
+            />
+            <input
+              className="form-input"
+              placeholder="Ward"
+              value={form.location.ward}
+              onChange={(e) => setForm({ ...form, location: { ...form.location, ward: e.target.value } })}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="card stack" style={{ borderTop: "3px solid var(--color-signal)" }}>
+        <h3 style={{ fontSize: "15px", fontWeight: 700 }}>Spending policy — immutable once activated</h3>
+
+        <div className="form-group">
+          <label className="form-label">Allowed categories</label>
+          <div className="row" style={{ gap: "8px", flexWrap: "wrap" }}>
+            {CATEGORY_CHOICES.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => toggleCategory(cat)}
+                className={`btn btn-sm ${form.policySnapshot.allowedCategories.includes(cat) ? "btn-primary" : "btn-ghost"}`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid-2">
+          <div className="form-group">
+            <label className="form-label">Max per beneficiary (₹)</label>
+            <input
+              type="number"
+              className="form-input"
+              value={form.policySnapshot.maxPerBeneficiary}
+              onChange={(e) => updatePolicy("maxPerBeneficiary", Number(e.target.value))}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Max per transaction (₹)</label>
+            <input
+              type="number"
+              className="form-input"
+              value={form.policySnapshot.maxPerTransaction}
+              onChange={(e) => updatePolicy("maxPerTransaction", Number(e.target.value))}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Wallet validity (days)</label>
+            <input
+              type="number"
+              className="form-input"
+              value={form.policySnapshot.validityDays}
+              onChange={(e) => updatePolicy("validityDays", Number(e.target.value))}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Cooldown between spends (days)</label>
+            <input
+              type="number"
+              className="form-input"
+              value={form.policySnapshot.cooldownDays}
+              onChange={(e) => updatePolicy("cooldownDays", Number(e.target.value))}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Min AI eligibility confidence (0–1)</label>
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              max="1"
+              className="form-input"
+              value={form.policySnapshot.minEligibilityConfidence}
+              onChange={(e) => updatePolicy("minEligibilityConfidence", Number(e.target.value))}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Max AI fraud risk (0–1)</label>
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              max="1"
+              className="form-input"
+              value={form.policySnapshot.maxFraudRisk}
+              onChange={(e) => updatePolicy("maxFraudRisk", Number(e.target.value))}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="row" style={{ justifyContent: "flex-end" }}>
+        <button onClick={submit} disabled={submitting} className="btn btn-primary btn-lg">
+          {submitting ? "Creating…" : "Create campaign (draft)"}
+        </button>
+      </div>
     </div>
   );
 }

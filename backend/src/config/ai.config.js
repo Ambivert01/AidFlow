@@ -8,4 +8,6 @@ export const aiConfig = {
 
   riskURL: env.AI_RISK_URL,
 
+  proofURL: env.AI_PROOF_URL,
+
 };

@@ -5,6 +5,14 @@ const CATEGORY_ICONS = {
   FOOD: "🥫", MEDICINE: "💊", SHELTER: "🏠", WATER: "💧", OTHER: "📦"
 };
 
+const CATEGORY_BADGE = {
+  FOOD: "badge-orange",
+  MEDICINE: "badge-teal",
+  SHELTER: "badge-purple",
+  WATER: "badge-blue",
+  OTHER: "badge-gray",
+};
+
 export default function MerchantTransactions() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,7 +23,7 @@ export default function MerchantTransactions() {
       setLoading(true);
       try {
         const res = await api.get("/merchant/transactions");
-        setTransactions(res.data);
+        setTransactions(res.data?.data || res.data || []);
       } catch {
         console.error("Failed to fetch merchant transactions");
       } finally {
@@ -42,7 +50,7 @@ export default function MerchantTransactions() {
   if (loading) return <div className="loader-center"><div className="spinner" /></div>;
 
   return (
-    <div className="stack-lg">
+    <div className="stack-lg animate-fade-up">
       <div className="page-header">
         <h1 className="page-title">Transaction History</h1>
         <p className="page-subtitle">View all settled aid payments and their verifiable audit trails.</p>
@@ -102,7 +110,7 @@ export default function MerchantTransactions() {
                       <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>{new Date(tx.timestamp).toLocaleTimeString("en-IN")}</div>
                     </td>
                     <td>
-                      <span className="badge badge-purple">
+                      <span className={`badge ${CATEGORY_BADGE[tx.category] || "badge-gray"}`}>
                         {CATEGORY_ICONS[tx.category]} {tx.category}
                       </span>
                     </td>

@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
+import { createServer } from "http";
 import app from "./src/app.js";
 import { logger } from "./src/utils/logger.js";
+import { initializeWebSocket } from "./src/modules/donation/donation.websocket.service.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -58,8 +60,15 @@ const startServer = async () => {
     await import("./src/jobs/campaign.job.js");
   startCampaignCompletionJob();
 
-  app.listen(PORT, () => {
+  // Create HTTP server
+  const httpServer = createServer(app);
+
+  // Initialize WebSocket server
+  initializeWebSocket(httpServer);
+
+  httpServer.listen(PORT, () => {
     logger.info(`AidFlow server running on port ${PORT}`);
+    logger.info(`WebSocket server ready at ws://localhost:${PORT}`);
   });
 };
 

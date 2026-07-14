@@ -1,25 +1,34 @@
 import { createAuditLog } from "../modules/audit/audit.service.js";
 import { addFraudCheckJob } from "../jobs/fraud.job.js";
-import { addAIDecisionJob } from "../jobs/ai.job.js";
+// Removed: import { addAIDecisionJob } from "../jobs/ai.job.js";
+// AI decision is now handled by donation.worker.js only
 
 class WorkflowEngine {
+  /**
+   * Handle donation created event
+   * Creates audit log only - AI evaluation is handled by donation.worker.js
+   * @param {Object} donation - Donation document
+   */
   async handleDonationCreated(donation) {
+    // Only create audit log - don't call AI here
+    // AI evaluation is handled by donation.worker.js to avoid duplicates
     await createAuditLog({
       eventType: "DONATION_CREATED",
-
-      entityId: donation._id,
-
+      eventCategory: "DONATION",
+      entityId: donation._id.toString(),
+      entityType: "Donation",
+      campaignId: donation.campaign,
+      jobIdHash: donation.jobIdHash,
       actorRole: "SYSTEM",
-    });
-
-    await addAIDecisionJob({
-      type: "donation-risk",
-
       payload: {
-        donationId: donation._id,
+        donationId: donation._id.toString(),
         amount: donation.amount,
+        status: donation.status,
       },
     });
+
+    // Note: AI decision job is NOT added here
+    // It's handled by the donation.worker.js after the donation is queued
   }
 
   async handleTransactionCompleted(data) {

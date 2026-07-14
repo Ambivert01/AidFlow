@@ -3,6 +3,7 @@ import { Wallet } from "../../models/wallet/Wallet.model.js";
 import { Merchant } from "../../models/merchant/Merchant.model.js";
 import { Campaign } from "../../models/ngo/Campaign.model.js";
 import { Donation } from "../../models/donor/Donation.model.js";
+import { Beneficiary } from "../../models/beneficiary/Beneficiary.model.js";
 import { AuditLog } from "../../models/audit/AuditLog.model.js";
 import { FraudAlert } from "../../models/governance/FraudAlert.model.js";
 import { BaseService } from "../../core/base.service.js";
@@ -192,7 +193,7 @@ export const freezeWallet = async (walletId, reason, adminId) => {
   const wallet = await Wallet.findById(walletId);
   if (!wallet) throw new AppError("Wallet not found", 404);
 
-  wallet.status = "FROZEN";
+  wallet.status = "SUSPENDED";
   wallet.freezeReason = reason;
   wallet.frozenBy = adminId;
   wallet.frozenAt = new Date();
@@ -379,49 +380,71 @@ export const overrideAIDecision = async (data, adminId) => {
   const { AIDecisionLog } =
     await import("../../models/system/AIDecisionLog.model.js");
 
-  // Find the AI decision
+  // Best-effort: log the override against a matching AI decision record if
+  // one exists. This lookup used to be a hard requirement - but the only
+  // code that ever writes AIDecisionLog (ai.worker.js) only logs
+  // entityType "CAMPAIGN" with decisionType "CAMPAIGN_RISK_EVALUATION",
+  // which isn't even one of the 4 decision types this form offers. Treating
+  // a missing log as fatal meant this feature 404'd for every possible
+  // input. The actual override (below) is what matters functionally; the
+  // log is a nice-to-have audit trail on top of it, not a prerequisite.
   const aiDecision = await AIDecisionLog.findOne({
     entityType,
     entityId,
     decisionType,
   }).sort({ createdAt: -1 });
 
-  if (!aiDecision) {
-    throw new AppError("AI decision not found", 404);
+  if (aiDecision) {
+    aiDecision.override = {
+      overridden: true,
+      overriddenBy: adminId,
+      overriddenAt: new Date(),
+      reason: reason || "Admin override",
+      originalDecision: aiDecision.decision,
+      newDecision: override,
+    };
+    await aiDecision.save();
   }
-
-  // Create override record
-  aiDecision.override = {
-    overridden: true,
-    overriddenBy: adminId,
-    overriddenAt: new Date(),
-    reason: reason || "Admin override",
-    originalDecision: aiDecision.decision,
-    newDecision: override,
-  };
-
-  await aiDecision.save();
 
   // Apply the override based on entity type
   if (entityType === "DONATION") {
     const donation = await Donation.findById(entityId);
-    if (donation) {
-      donation.aiDecision = override;
-      donation.aiOverride = true;
-      await donation.save();
-    }
+    if (!donation) throw new AppError("Donation not found", 404);
+    donation.aiDecision = override;
+    donation.aiOverride = true;
+    await donation.save();
   } else if (entityType === "FRAUD_ALERT") {
     const { FraudAlert } =
       await import("../../models/governance/FraudAlert.model.js");
     const alert = await FraudAlert.findById(entityId);
-    if (alert) {
-      alert.status =
-        override === "APPROVED" ? "FALSE_POSITIVE" : "CONFIRMED_FRAUD";
-      alert.investigation.decision =
-        override === "APPROVED" ? "DISMISSED" : "CONFIRMED";
-      alert.investigation.resolvedAt = new Date();
-      await alert.save();
-    }
+    if (!alert) throw new AppError("Fraud alert not found", 404);
+    alert.status =
+      override === "APPROVED" ? "FALSE_POSITIVE" : "CONFIRMED_FRAUD";
+    alert.investigation.decision =
+      override === "APPROVED" ? "DISMISSED" : "CONFIRMED";
+    alert.investigation.resolvedAt = new Date();
+    await alert.save();
+  } else if (entityType === "BENEFICIARY") {
+    const beneficiary = await Beneficiary.findById(entityId);
+    if (!beneficiary) throw new AppError("Beneficiary not found", 404);
+    beneficiary.status = override === "APPROVED" ? "APPROVED" : "BLOCKED";
+    beneficiary.verificationHistory.push({
+      action: override === "APPROVED" ? "ADMIN_OVERRIDE_APPROVED" : "ADMIN_OVERRIDE_BLOCKED",
+      performedBy: adminId,
+      reason: reason || "Admin override of AI decision",
+      timestamp: new Date(),
+    });
+    await beneficiary.save();
+  } else {
+    // CAMPAIGN / MERCHANT: no defined override semantics yet (what
+    // "override" concretely changes on these entities isn't specified
+    // anywhere in the docs this audit worked from), so this intentionally
+    // stops short of guessing at behavior for money- or account-affecting
+    // fields. The audit log below still records the attempt for visibility.
+    throw new AppError(
+      `AI override for entity type ${entityType} is not yet implemented`,
+      501,
+    );
   }
 
   // Create audit log

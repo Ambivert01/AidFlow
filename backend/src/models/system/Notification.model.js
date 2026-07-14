@@ -29,16 +29,47 @@ const notificationSchema = new mongoose.Schema(
     type: {
       type: String,
       enum: [
+        // Donation
         "DONATION_SUCCESS",
+        "DONATION_REJECTED",
+        "DONATION_ESCALATED",
+
+        // Campaign
         "CAMPAIGN_CREATED",
         "CAMPAIGN_APPROVED",
+        "CAMPAIGN_REJECTED",
+        "CAMPAIGN_PAUSED",
+        "CAMPAIGN_RESUMED",
+        "CAMPAIGN_COMPLETED",
+
+        // Beneficiary
         "BENEFICIARY_APPROVED",
+        "BENEFICIARY_REJECTED",
+        "BENEFICIARY_APPEAL_DECIDED",
+        "BENEFICIARY_BLOCKED",
+
+        // Wallet
+        "WALLET_CREATED",
         "WALLET_CREDITED",
+        "WALLET_ADJUSTED",
+        "WALLET_CLOSED",
+        "WALLET_FROZEN",
+        "WALLET_EXPIRED",
+        "LOW_BALANCE",
+
+        // Proof
+        "PROOF_VERIFIED",
+        "PROOF_REJECTED",
+
+        // Merchant / Transactions
         "TRANSACTION_SUCCESS",
         "MERCHANT_SETTLEMENT",
+
+        // Security / Governance
         "FRAUD_ALERT",
-        "SYSTEM_ALERT",
         "GOVERNMENT_ESCALATION",
+        "SYSTEM_ALERT",
+
         "OTHER"
       ],
       required: true,

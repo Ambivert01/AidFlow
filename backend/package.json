@@ -9,7 +9,10 @@
     "workers": "nodemon src/workers/index.js",
     "seed": "node src/scripts/seed.js",
     "test": "mocha 'src/**/*.test.js' --timeout 10000 --exit",
-    "test:watch": "mocha 'src/**/*.test.js' --timeout 10000 --watch"
+    "test:watch": "mocha 'src/**/*.test.js' --timeout 10000 --watch",
+    "test:property": "node src/test-runner.js",
+    "test:discovery": "mocha 'src/modules/campaign/tests/*.test.js' --timeout 30000 --exit",
+    "test:all": "npm run test && npm run test:property"
   },
   "keywords": [],
   "author": "",
@@ -40,6 +43,7 @@
     "multer": "^2.1.1",
     "node-cron": "^4.2.1",
     "pino": "^10.3.1",
+    "socket.io": "^4.8.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^13.0.0",

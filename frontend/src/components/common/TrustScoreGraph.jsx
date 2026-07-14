@@ -35,9 +35,9 @@ const TrustScoreGraph = ({ entityId, entityType, timeRange = 50 }) => {
   };
 
   const getScoreColor = (score) => {
-    if (score >= 70) return "#10B981"; // Green
-    if (score >= 40) return "#F59E0B"; // Yellow
-    return "#EF4444"; // Red
+    if (score >= 70) return "var(--color-verified)";
+    if (score >= 40) return "var(--color-caution)";
+    return "var(--color-alert)";
   };
 
   const formatDate = (dateString) => {
@@ -48,7 +48,7 @@ const TrustScoreGraph = ({ entityId, entityType, timeRange = 50 }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-signal)]"></div>
       </div>
     );
   }
@@ -56,7 +56,7 @@ const TrustScoreGraph = ({ entityId, entityType, timeRange = 50 }) => {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-red-600">{error}</p>
+        <p className="text-[var(--color-alert)]">{error}</p>
       </div>
     );
   }
@@ -64,7 +64,7 @@ const TrustScoreGraph = ({ entityId, entityType, timeRange = 50 }) => {
   if (history.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">No trust history available</p>
+        <p className="text-[var(--color-steel)]">No trust history available</p>
       </div>
     );
   }
@@ -119,7 +119,7 @@ const TrustScoreGraph = ({ entityId, entityType, timeRange = 50 }) => {
                 y1={y}
                 x2={width - padding.right}
                 y2={y}
-                stroke="#E5E7EB"
+                stroke="var(--color-border)"
                 strokeWidth="1"
               />
               <text
@@ -127,7 +127,7 @@ const TrustScoreGraph = ({ entityId, entityType, timeRange = 50 }) => {
                 y={y + 4}
                 textAnchor="end"
                 fontSize="12"
-                fill="#6B7280"
+                fill="var(--color-steel)"
               >
                 {score}
               </text>
@@ -138,8 +138,8 @@ const TrustScoreGraph = ({ entityId, entityType, timeRange = 50 }) => {
         {/* Area gradient */}
         <defs>
           <linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.05" />
+            <stop offset="0%" stopColor="var(--color-signal)" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="var(--color-signal)" stopOpacity="0.05" />
           </linearGradient>
         </defs>
 
@@ -150,7 +150,7 @@ const TrustScoreGraph = ({ entityId, entityType, timeRange = 50 }) => {
         <path
           d={generatePath()}
           fill="none"
-          stroke="#3B82F6"
+          stroke="var(--color-signal)"
           strokeWidth="3"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -202,7 +202,7 @@ const TrustScoreGraph = ({ entityId, entityType, timeRange = 50 }) => {
               y={y}
               textAnchor="middle"
               fontSize="12"
-              fill="#6B7280"
+              fill="var(--color-steel)"
             >
               {formatDate(point.createdAt)}
             </text>
@@ -213,16 +213,16 @@ const TrustScoreGraph = ({ entityId, entityType, timeRange = 50 }) => {
       {/* Legend */}
       <div className="mt-4 flex items-center justify-center gap-6 text-sm">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-green-500"></div>
-          <span className="text-gray-600">High Trust (70-100)</span>
+          <div className="w-3 h-3 rounded-full bg-[var(--color-verified)]"></div>
+          <span className="text-[var(--color-steel)]">High Trust (70-100)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-          <span className="text-gray-600">Medium Trust (40-70)</span>
+          <div className="w-3 h-3 rounded-full bg-[var(--color-caution)]"></div>
+          <span className="text-[var(--color-steel)]">Medium Trust (40-70)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-500"></div>
-          <span className="text-gray-600">Low Trust (0-40)</span>
+          <div className="w-3 h-3 rounded-full bg-[var(--color-alert)]"></div>
+          <span className="text-[var(--color-steel)]">Low Trust (0-40)</span>
         </div>
       </div>
     </div>

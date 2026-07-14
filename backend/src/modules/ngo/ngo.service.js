@@ -2,10 +2,11 @@ import { Donation } from "../../models/donor/Donation.model.js";
 import { Beneficiary } from "../../models/beneficiary/Beneficiary.model.js";
 import { Campaign } from "../../models/ngo/Campaign.model.js";
 import { Wallet } from "../../models/wallet/Wallet.model.js";
-import { createWallet } from "../wallet/wallet.service.js";
+import { createWallet, creditWallet } from "../wallet/wallet.service.js";
 import { BaseService } from "../../core/base.service.js";
 import { AppError } from "../../utils/AppError.js";
 import { createAuditLog } from "../audit/audit.service.js";
+import { createNotification } from "../notification/notification.service.js";
 import { generateHash } from "../../utils/hash.util.js";
 import { redisConnection } from "../../config/redis.config.js";
 import {
@@ -43,7 +44,7 @@ export const getNgoDashboard = async (ngoId) => {
     }),
     Beneficiary.countDocuments({
       campaign: { $in: campaignIds },
-      status: { $in: ["REGISTERED", "AI_EVALUATED", "MANUAL_REVIEW"] },
+      status: { $in: ["PENDING", "UNDER_REVIEW", "MANUAL_REVIEW"] },
     }),
     Donation.countDocuments({
       campaign: { $in: campaignIds },
@@ -68,7 +69,15 @@ export const getNgoDashboard = async (ngoId) => {
 
 /*
 GET PENDING DONATIONS FOR NGO
-donations in PENDING_NGO_REVIEW or HIGH_RISK_ESCALATED for NGO's campaigns
+donations in PENDING_NGO_REVIEW, HIGH_RISK_ESCALATED, PAYMENT_SUCCESS, or
+APPROVED_BY_GOVT for NGO's campaigns.
+APPROVED_BY_GOVT is included because it's a "cleared, continue the normal
+flow" state, not a terminal one - a donation that was escalated to a
+government reviewer and approved must come back to the NGO for beneficiary
+assignment exactly like a normal PENDING_NGO_REVIEW donation would.
+Previously this list didn't include it, so government-approved escalated
+donations vanished from every NGO queue and could never be allocated to a
+beneficiary - the donor's money was stuck with no way forward.
 */
 export const getPendingDonations = async (ngoId) => {
   const campaigns = await Campaign.find({ createdBy: ngoId }).select("_id");
@@ -77,7 +86,7 @@ export const getPendingDonations = async (ngoId) => {
   const donations = await Donation.find({
     campaign: { $in: campaignIds },
     status: {
-      $in: ["PENDING_NGO_REVIEW", "HIGH_RISK_ESCALATED", "PAYMENT_SUCCESS"],
+      $in: ["PENDING_NGO_REVIEW", "HIGH_RISK_ESCALATED", "PAYMENT_SUCCESS", "APPROVED_BY_GOVT"],
     },
   })
     .populate("donor", "name email")
@@ -122,7 +131,7 @@ export const assignDonationToBeneficiary = async (
   }
 
   if (
-    !["PENDING_NGO_REVIEW", "HIGH_RISK_ESCALATED", "PAYMENT_SUCCESS"].includes(
+    !["PENDING_NGO_REVIEW", "HIGH_RISK_ESCALATED", "PAYMENT_SUCCESS", "APPROVED_BY_GOVT"].includes(
       donation.status,
     )
   ) {
@@ -131,10 +140,7 @@ export const assignDonationToBeneficiary = async (
 
   const beneficiary = await Beneficiary.findById(beneficiaryId);
   if (!beneficiary) throw new AppError("Beneficiary not found", 404);
-  if (
-    beneficiary.status !== "ACTIVE" &&
-    beneficiary.status !== "NGO_APPROVED"
-  ) {
+  if (!["APPROVED", "ACTIVE"].includes(beneficiary.status)) {
     throw new AppError(
       "Beneficiary must be approved before receiving funds",
       400,
@@ -163,37 +169,56 @@ export const approveDonation = async (donationId, ngoId) => {
   }
 
   if (
-    !["PENDING_NGO_REVIEW", "HIGH_RISK_ESCALATED", "PAYMENT_SUCCESS"].includes(
+    !["PENDING_NGO_REVIEW", "HIGH_RISK_ESCALATED", "PAYMENT_SUCCESS", "APPROVED_BY_GOVT"].includes(
       donation.status,
     )
   ) {
     throw new AppError("Donation is not in a reviewable state", 400);
   }
 
-  // Create wallet for beneficiary
-  const wallet = await createWallet({
+  // Create (or top up) the beneficiary's wallet for this campaign.
+  // A beneficiary can receive more than one donation on the same campaign
+  // (multiple donors, or an NGO allocating a second donation to someone with
+  // high need) - once their first donation is approved, their status moves
+  // to ACTIVE and createWallet() would reject them (it only accepts status
+  // APPROVED). Route to creditWallet() for that case instead of failing.
+  const existingWallet = await Wallet.findOne({
     beneficiary: donation.beneficiary,
     campaign: donation.campaign._id,
-    donation: donation._id,
-    amount: donation.amount,
-    policy: donation.policySnapshot || donation.campaign.policySnapshot,
-    jobIdHash: generateHash({
-      type: "WALLET_FROM_DONATION",
-      donationId: donation._id.toString(),
-      timestamp: Date.now(),
-    }),
   });
+
+  let wallet;
+  if (existingWallet && existingWallet.status === "ACTIVE") {
+    const creditResult = await creditWallet(
+      existingWallet._id,
+      donation.amount,
+      ngoId,
+    );
+    wallet = creditResult.data || creditResult;
+  } else {
+    wallet = await createWallet({
+      beneficiaryId: donation.beneficiary,
+      campaignId: donation.campaign._id,
+      donation: donation._id,
+      createdBy: ngoId,
+      amount: donation.amount,
+      policy: donation.policySnapshot || donation.campaign.policySnapshot,
+      jobIdHash: generateHash({
+        type: "WALLET_FROM_DONATION",
+        donationId: donation._id.toString(),
+        timestamp: Date.now(),
+      }),
+    });
+  }
 
   donation.status = "READY_FOR_USE";
   donation.wallet = wallet._id;
   donation.walletCreated = true;
   await donation.save();
 
-  // Update campaign stats
-  await Campaign.updateOne(
-    { _id: donation.campaign._id },
-    { $inc: { totalAllocated: donation.amount, totalWalletsCreated: 1 } },
-  );
+  // NOTE: campaign totalAllocated / totalWalletsCreated are already updated
+  // inside createWallet()/creditWallet() themselves - incrementing them
+  // again here would double-count every approved donation.
 
   // Update beneficiary status to ACTIVE
   await Beneficiary.findByIdAndUpdate(donation.beneficiary, {
@@ -211,6 +236,23 @@ export const approveDonation = async (donationId, ngoId) => {
       amount: donation.amount,
     },
   });
+
+  try {
+    await createNotification({
+      userId: donation.donor,
+      role: "DONOR",
+      type: "DONATION_SUCCESS",
+      title: "Donation Allocated",
+      message: `Your ₹${donation.amount} donation to "${donation.campaign.title}" has been allocated to a beneficiary and is ready to be spent.`,
+      entityType: "Donation",
+      entityId: donation._id.toString(),
+      channels: ["IN_APP", "EMAIL"],
+      priority: "NORMAL",
+    });
+  } catch (error) {
+    // Notification failure should never block the donation approval itself
+    console.error("Failed to send donation-approved notification:", error);
+  }
 
   return BaseService.updated({ donation, wallet });
 };
@@ -237,6 +279,22 @@ export const rejectDonation = async (donationId, ngoId, reason) => {
     actorRole: "NGO",
     payload: { reason },
   });
+
+  try {
+    await createNotification({
+      userId: donation.donor,
+      role: "DONOR",
+      type: "DONATION_REJECTED",
+      title: "Donation Rejected",
+      message: `Your ₹${donation.amount} donation to "${donation.campaign.title}" was rejected by the NGO. Reason: ${donation.reviewReason}`,
+      entityType: "Donation",
+      entityId: donation._id.toString(),
+      channels: ["IN_APP", "EMAIL"],
+      priority: "HIGH",
+    });
+  } catch (error) {
+    console.error("Failed to send donation-rejected notification:", error);
+  }
 
   return BaseService.updated(donation);
 };

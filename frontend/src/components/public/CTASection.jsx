@@ -3,84 +3,39 @@ import { Link } from "react-router-dom";
 export default function CTASection() {
   return (
     <section
+      className="animate-fade-up"
       style={{
-        background:
-          "linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%)",
+        background: "var(--color-ink)",
         color: "white",
         padding: "var(--space-12) var(--space-4)",
         textAlign: "center",
       }}
     >
-      <div style={{ maxWidth: "800px", margin: "0 auto" }}>
-        <h2
-          style={{
-            fontSize: "36px",
-            fontWeight: "800",
-            marginBottom: "var(--space-4)",
-            textShadow: "0 2px 4px rgba(0,0,0,0.1)",
-          }}
-        >
-          Ready to Experience Complete Transparency?
+      <div style={{ maxWidth: "720px", margin: "0 auto" }}>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: "32px", fontWeight: "700", marginBottom: "var(--space-3)" }}>
+          Pick a side of the ledger.
         </h2>
-        <p
-          style={{
-            fontSize: "18px",
-            marginBottom: "var(--space-6)",
-            opacity: 0.9,
-          }}
-        >
-          Join thousands of donors and NGOs building a more transparent future
-          for humanitarian aid
+        <p style={{ fontSize: "16px", marginBottom: "var(--space-6)", color: "rgba(255,255,255,0.65)" }}>
+          Donate and watch every step, run an NGO under policy enforcement, or
+          just check the audit trail without an account.
         </p>
-        <div
-          className="row"
-          style={{
-            justifyContent: "center",
-            gap: "var(--space-4)",
-            flexWrap: "wrap",
-          }}
-        >
-          <Link
-            to="/register"
-            className="btn btn-lg"
-            style={{
-              background: "white",
-              color: "var(--color-primary-dark)",
-              padding: "16px 40px",
-              fontSize: "16px",
-              fontWeight: "700",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-            }}
-          >
-            Start Donating
+        <div className="row" style={{ justifyContent: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
+          <Link to="/register" className="btn btn-primary btn-lg">
+            Start donating
           </Link>
           <Link
             to="/request-access"
-            className="btn btn-lg"
-            style={{
-              background: "transparent",
-              color: "white",
-              border: "2px solid white",
-              padding: "16px 40px",
-              fontSize: "16px",
-              fontWeight: "700",
-            }}
+            className="btn btn-ghost btn-lg"
+            style={{ borderColor: "rgba(255,255,255,0.3)", color: "rgba(255,255,255,0.85)" }}
           >
-            Register as NGO
+            Register your NGO
           </Link>
           <Link
             to="/public-audit"
-            className="btn btn-lg"
-            style={{
-              background: "transparent",
-              color: "white",
-              border: "2px solid white",
-              padding: "16px 40px",
-              fontSize: "16px",
-              fontWeight: "700",
-            }}
+            className="btn btn-ghost btn-lg"
+            style={{ borderColor: "rgba(255,255,255,0.3)", color: "rgba(255,255,255,0.85)" }}
           >
-            Explore Public Audit
+            Open the public audit
           </Link>
         </div>
       </div>

@@ -26,7 +26,6 @@ const beneficiarySchema = new mongoose.Schema(
 
     phoneHash: {
       type: String,
-      sparse: true,
       default: null,
     },
 

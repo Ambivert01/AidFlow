@@ -18,11 +18,11 @@ const TrustScoreBadge = ({
   // Determine color based on score
   const getColorClasses = () => {
     if (score >= 70) {
-      return "bg-green-100 text-green-800 border-green-300";
+      return "bg-[var(--color-verified-light)] text-[var(--color-verified-dark)] border-[var(--color-verified)]";
     } else if (score >= 40) {
-      return "bg-yellow-100 text-yellow-800 border-yellow-300";
+      return "bg-[var(--color-caution-light)] text-[var(--color-caution)] border-[var(--color-caution)]";
     } else {
-      return "bg-red-100 text-red-800 border-red-300";
+      return "bg-[var(--color-alert-light)] text-[var(--color-alert-dark)] border-[var(--color-alert)]";
     }
   };
 
@@ -54,7 +54,7 @@ const TrustScoreBadge = ({
         <span className="ml-1 text-xs opacity-75">/100</span>
       </div>
       {showLabel && (
-        <span className="text-sm text-gray-600 font-medium">
+        <span className="text-sm text-[var(--color-steel)] font-medium">
           {getTrustLevel()}
         </span>
       )}

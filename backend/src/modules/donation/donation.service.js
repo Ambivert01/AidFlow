@@ -2,19 +2,25 @@ import { Donation } from "../../models/donor/Donation.model.js";
 import { Campaign } from "../../models/ngo/Campaign.model.js";
 import { AppError } from "../../utils/AppError.js";
 import { withTransaction } from "../../core/transaction.js";
-import { createWallet } from "../wallet/wallet.service.js";
 import { addDonationJob } from "../../jobs/donation.job.js";
-import workflowEngine from "../../engines/workflow.engine.js";
 import { generateHash } from "../../utils/hash.util.js";
+import { DONATION_STATUS, WORKFLOW_STATE } from "./donation.constants.js";
+import { createAuditLog } from "../audit/audit.service.js";
 
-export const createDonation = async (userId, data) => {
+export const createDonation = async (userId, data, idempotencyKey = null) => {
   return withTransaction(async (session) => {
+    // Validate campaign is active
     const campaign = await Campaign.findById(data.campaignId).session(session);
 
     if (!campaign || campaign.status !== "ACTIVE") {
-      throw new AppError("Invalid or inactive campaign", 400, "INVALID_CAMPAIGN");
+      throw new AppError(
+        "Invalid or inactive campaign",
+        400,
+        "INVALID_CAMPAIGN",
+      );
     }
 
+    // Generate unique job ID hash
     const jobIdHash = generateHash({
       type: "DONATION",
       userId: userId.toString(),
@@ -23,6 +29,7 @@ export const createDonation = async (userId, data) => {
       timestamp: Date.now(),
     });
 
+    // Create donation with INITIATED status (not PAYMENT_SUCCESS)
     const donation = await Donation.create(
       [
         {
@@ -31,132 +38,70 @@ export const createDonation = async (userId, data) => {
           amount: data.amount,
           policySnapshot: campaign.policySnapshot,
           jobIdHash,
-          status: "PAYMENT_SUCCESS",
-          paymentStatus: "SUCCESS",
+          idempotencyKey, // Store idempotency key
+          status: DONATION_STATUS.INITIATED, // Start with INITIATED
+          workflowState: WORKFLOW_STATE.PENDING, // Initial workflow state
+          paymentStatus: "SUCCESS", // Assume payment successful for now
         },
       ],
       { session },
     );
 
+    // Update campaign total donated
     await Campaign.updateOne(
       { _id: campaign._id },
       { $inc: { totalDonated: data.amount } },
       { session },
     );
 
+    // Create initial audit log
+    await createAuditLog(
+      {
+        eventType: "DONATION_CREATED",
+        eventCategory: "DONATION",
+        entityId: donation[0]._id.toString(),
+        entityType: "Donation",
+        campaignId: campaign._id,
+        jobIdHash,
+        actorId: userId,
+        actorRole: "DONOR",
+        payload: {
+          donationId: donation[0]._id.toString(),
+          campaignId: campaign._id.toString(),
+          amount: data.amount,
+          status: DONATION_STATUS.INITIATED,
+        },
+        metadata: {
+          idempotencyKey,
+        },
+      },
+      session,
+    );
+
     return donation[0];
   }).then(async (donation) => {
-    await workflowEngine.handleDonationCreated(donation);
-    await addDonationJob({ donationId: donation._id });
-    return donation;
-  });
-};
-
-/*
-NGO APPROVAL
-*/
-export const approveDonationByNGO = async (donationId, ngoId) => {
-  const donation = await Donation.findById(donationId);
-
-  if (!donation) {
-    throw new AppError("Donation not found", 404);
-  }
-
-  /*
-  must be processed by AI first
-  */
-
-  if (
-    donation.status !== "PENDING_NGO_REVIEW" &&
-    donation.status !== "HIGH_RISK_ESCALATED"
-  ) {
-    throw new AppError("Donation not ready for NGO approval", 400);
-  }
-
-  /*
-  prevent duplicate approval
-  */
-
-  if (donation.status === "NGO_APPROVED") {
-    throw new AppError("Donation already approved", 400);
-  }
-
-  donation.status = "NGO_APPROVED";
-
-  donation.lastDecisionBy = "NGO";
-
-  donation.approvedByNgo = ngoId;
-
-  donation.approvedAt = new Date();
-
-  await donation.save();
-
-  return donation;
-};
-
-/*
-GOVERNMENT APPROVAL
-*/
-export const approveDonationByGovernment = async (donationId, govId) => {
-  const donation = await Donation.findById(donationId);
-
-  if (!donation) {
-    throw new AppError("Donation not found", 404);
-  }
-
-  donation.status = "APPROVED_BY_GOVT";
-
-  donation.lastDecisionBy = "GOVERNMENT";
-
-  await donation.save();
-
-  return donation;
-};
-
-/*
-FINALIZE DONATION
-CREATE WALLET SAFELY
-*/
-export const finalizeDonation = async (donationId, beneficiaryId) => {
-  return withTransaction(async (session) => {
-    const donation = await Donation.findById(donationId).session(session);
-
-    if (!donation) {
-      throw new AppError("Donation not found", 404);
-    }
-
-    /*
-    ADD THIS BLOCK
-    ensures NGO approved donation only
-    */
-
-    if (donation.status !== "NGO_APPROVED") {
-      throw new AppError(
-        "Donation must be approved by NGO before allocation",
-        400,
-      );
-    }
-
-    // create wallet safely
-    const wallet = await createWallet({
-      beneficiary: beneficiaryId,
-
-      campaign: donation.campaign,
-
-      amount: donation.amount,
-
-      policy: donation.policySnapshot,
-
-      session,
+    // Count this donor's donations in the last 24h (matching the fraud
+    // check's timeWindowHours) so the fraud agent actually receives a real
+    // frequency signal instead of always seeing 0 regardless of how many
+    // donations this donor has actually made.
+    const windowStart = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const donorRecentDonationCount = await Donation.countDocuments({
+      donor: userId,
+      createdAt: { $gte: windowStart },
     });
 
-    donation.wallet = wallet._id;
+    // Push to queue for async processing (don't call workflow engine here)
+    await addDonationJob({
+      donationId: donation._id.toString(),
+      campaignId: donation.campaign.toString(),
+      amount: donation.amount,
+      donorId: userId.toString(),
+      donorRecentDonationCount,
+      deviceFingerprint: data.deviceFingerprint || undefined,
+      location: data.location || undefined,
+    });
 
-    donation.status = "READY_FOR_USE";
-
-    await donation.save({ session });
-
-    return wallet;
+    return donation;
   });
 };
 
@@ -172,17 +117,4 @@ export const getDonorDonations = async (userId) => {
   return Donation.find({
     donor: userId,
   }).sort({ createdAt: -1 });
-};
-
-export const governmentDecision = async (id, decision) => {
-  const donation = await Donation.findById(id);
-
-  if (!donation) throw new AppError("Donation not found", 404);
-
-  donation.status =
-    decision === "APPROVE" ? "APPROVED_BY_GOVT" : "REJECTED_BY_GOVT";
-
-  await donation.save();
-
-  return donation;
 };

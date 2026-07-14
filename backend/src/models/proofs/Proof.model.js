@@ -28,6 +28,17 @@ const proofFileSchema = new mongoose.Schema(
       default: null,
     },
 
+    // Perceptual hash (imagehash.phash), distinct from `checksum` (SHA-256).
+    // checksum is for tamper-evidence (exact byte match only); this is for
+    // similarity-based duplicate detection (tolerant of recompression/resize)
+    // and is written by the proof AI agent after validation, not by the
+    // upload endpoint.
+    perceptualHash: {
+      type: String,
+      default: null,
+      index: true,
+    },
+
     metadata: {
       type: Object,
       default: {},

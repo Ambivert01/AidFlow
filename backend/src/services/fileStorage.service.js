@@ -17,6 +17,15 @@ class FileStorageService {
     this.s3Bucket = process.env.S3_BUCKET;
     this.s3Region = process.env.S3_REGION || "us-east-1";
     this.s3Client = null;
+    // Frontend and backend run on different origins in this app (see
+    // frontend/src/services/api.js, which uses an absolute baseURL rather
+    // than a same-origin/proxied path) - a bare "/uploads/..." path would
+    // resolve against the frontend's own origin when used in an <img src>
+    // and 404. Return an absolute URL pointing at this backend instead.
+    this.publicUrl = (
+      process.env.BACKEND_PUBLIC_URL ||
+      `http://localhost:${process.env.PORT || 5000}`
+    ).replace(/\/$/, "");
 
     if (this.storageType === "S3") {
       this.s3Client = new S3Client({
@@ -90,7 +99,7 @@ class FileStorageService {
     try {
       const filepath = path.join(this.localPath, filename);
       await fs.writeFile(filepath, fileBuffer);
-      return `/uploads/proofs/${filename}`;
+      return `${this.publicUrl}/uploads/proofs/${filename}`;
     } catch (error) {
       logger.error({
         type: "LOCAL_FILE_STORAGE_ERROR",

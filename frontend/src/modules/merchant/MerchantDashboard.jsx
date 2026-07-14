@@ -128,7 +128,7 @@ export default function MerchantDashboard() {
           Scan a beneficiary's dynamic JWT QR token to instantly verify their aid wallet policy and process a payment.
         </p>
         <div style={{ marginTop: "var(--space-4)" }}>
-          <Link to="/merchant/scan" className="btn btn-primary btn-lg" style={{ padding: "16px 40px", fontSize: "18px", borderRadius: "100px", boxShadow: "0 8px 20px rgba(14,165,233,0.3)" }}>
+          <Link to="/merchant/scan" className="btn btn-primary btn-lg" style={{ padding: "16px 40px", fontSize: "18px", borderRadius: "100px", boxShadow: "0 8px 20px rgba(232,83,11,0.3)" }}>
             <span style={{ fontSize: "24px", marginRight: "var(--space-2)" }}>📷</span> Scan Beneficiary QR
           </Link>
         </div>

@@ -11,6 +11,15 @@ export const registerBeneficiary = asyncHandler(async (req, res) => {
   res.status(201).json(result);
 });
 
+// Beneficiary self-applies to a campaign under their own account
+export const applyAsBeneficiary = asyncHandler(async (req, res) => {
+  const result = await beneficiaryService.applyAsBeneficiary(
+    req.user._id,
+    req.body,
+  );
+  res.status(201).json(result);
+});
+
 // Get NGO's beneficiaries with filters
 export const getNGOBeneficiaries = asyncHandler(async (req, res) => {
   const filters = {

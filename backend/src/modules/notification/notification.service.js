@@ -1,6 +1,7 @@
 import { Notification } from "../../models/system/Notification.model.js";
 
 import { BaseService } from "../../core/base.service.js";
+import { AppError } from "../../utils/AppError.js";
 
 export const createNotification = async (data) => {
   const notification = await Notification.create({
@@ -34,14 +35,16 @@ export const getMyNotifications = async (userId) => {
   return BaseService.success(notifications);
 };
 
-export const markAsRead = async (notificationId) => {
-  const notification = await Notification.findById(notificationId);
+export const markAsRead = async (notificationId, userId) => {
+  const notification = await Notification.findOneAndUpdate(
+    { _id: notificationId, recipient: userId },
+    { isRead: true, readAt: new Date() },
+    { new: true },
+  );
 
-  notification.isRead = true;
-
-  notification.readAt = new Date();
-
-  await notification.save();
+  if (!notification) {
+    throw new AppError("Notification not found", 404);
+  }
 
   return BaseService.updated(notification);
 };

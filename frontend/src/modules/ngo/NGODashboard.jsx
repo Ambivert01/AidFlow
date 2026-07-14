@@ -88,19 +88,15 @@ export default function NGODashboard() {
             Manage campaigns, evaluate beneficiaries, and disburse smart aid.
           </p>
         </div>
-        <div className="card shadow-sm border-0 bg-red-50 border-red-200">
+        <div className="card" style={{ borderLeft: "3px solid var(--color-alert)", background: "var(--color-alert-light)" }}>
           <div className="flex items-center gap-4">
-            <span className="text-3xl">⚠️</span>
-            <div className="flex-1">
-              <div className="text-lg font-bold text-red-800 mb-1">
-                Failed to Load Dashboard
+            <div className="stack-xs" style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, color: "var(--color-alert-dark)" }}>
+                Failed to load dashboard
               </div>
-              <div className="text-sm text-red-600">{error}</div>
+              <div style={{ fontSize: "13px", color: "var(--color-alert)" }}>{error}</div>
             </div>
-            <button
-              onClick={handleRefresh}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 transition-colors"
-            >
+            <button onClick={handleRefresh} className="btn btn-danger btn-sm">
               Retry
             </button>
           </div>
@@ -115,7 +111,7 @@ export default function NGODashboard() {
   return (
     <div className="stack-lg">
       {/* Header */}
-      <div className="page-header">
+      <div className="page-header row-between">
         <div>
           <h1 className="page-title">NGO Operations Dashboard</h1>
           <p className="page-subtitle">
@@ -124,40 +120,41 @@ export default function NGODashboard() {
         </div>
         <div className="flex items-center gap-3">
           {lastRefresh && (
-            <div className="text-xs text-slate-500">
-              Last updated:{" "}
+            <div style={{ fontSize: "12px", color: "var(--color-text-faint)", fontFamily: "var(--font-mono)" }}>
+              Updated{" "}
               {lastRefresh.toLocaleTimeString("en-IN", {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
-              {isStale && <span className="text-orange-600 ml-1">(Stale)</span>}
+              {isStale && <span style={{ color: "var(--color-caution)", marginLeft: "4px" }}>· stale</span>}
             </div>
           )}
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn btn-ghost btn-sm"
           >
-            {refreshing ? "Refreshing..." : "🔄 Refresh"}
+            {refreshing ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </div>
 
       {/* Overview Statistics */}
-      <DashboardStats overview={dashboardData?.overview} />
+      <div className="animate-fade-up" style={{ animationDelay: "0ms", animationFillMode: "both" }}>
+        <DashboardStats overview={dashboardData?.overview} />
+      </div>
 
       {/* Trust Score Section */}
       {trustData && (
-        <div className="card shadow-sm border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="card animate-fade-up" style={{ borderTop: "3px solid var(--color-verified)", animationDelay: "60ms", animationFillMode: "both" }}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-slate-800">
-              Your Trust Score
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "19px", fontWeight: 700 }}>
+              Your trust score
             </h2>
             <TrustScoreBadge score={trustData.trustScore} size="large" />
           </div>
-          <p className="text-sm text-slate-600 mb-6">
-            Your trust score is calculated based on proof validation, AI risk
-            assessment, timeliness, fraud history, and activity consistency.
+          <p style={{ fontSize: "13px", color: "var(--color-text-muted)", marginBottom: "var(--space-6)" }}>
+            Calculated from proof validation, AI risk assessment, response timeliness, fraud history, and activity consistency — not self-reported.
           </p>
           <div className="grid-2 gap-6">
             {ngoId && (
@@ -175,81 +172,69 @@ export default function NGODashboard() {
       )}
 
       {/* Quick Actions */}
-      <div className="card shadow-sm border-0 bg-slate-50">
-        <h2 className="text-lg font-bold mb-4 text-slate-800">Quick Actions</h2>
+      <div className="card animate-fade-up" style={{ animationDelay: "100ms", animationFillMode: "both" }}>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: "17px", fontWeight: 700, marginBottom: "var(--space-4)" }}>
+          Quick actions
+        </h2>
         <div className="grid-3 gap-4">
-          <Link to="/ngo/campaigns/create" className="action-button group">
-            <div className="icon-box bg-blue-100 group-hover:bg-blue-600 transition-colors">
-              <span className="text-2xl group-hover:scale-110 transition-transform inline-block">
-                📋
-              </span>
-            </div>
-            <div className="text-left">
-              <div className="font-bold text-slate-800">Launch Campaign</div>
-              <p className="text-[11px] text-slate-500 leading-tight mt-1">
-                Deploy new aid funds with specific policies.
-              </p>
-            </div>
+          <Link to="/ngo/campaigns/create" className="action-button">
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 700, color: "var(--color-signal)", letterSpacing: "0.08em" }}>
+              NEW
+            </span>
+            <div style={{ fontWeight: 700, color: "var(--color-text)" }}>Launch campaign</div>
+            <p style={{ fontSize: "12px", color: "var(--color-text-muted)", lineHeight: 1.4 }}>
+              Deploy new aid funds with specific policies.
+            </p>
           </Link>
 
-          <Link
-            to="/ngo/beneficiaries/register"
-            className="action-button group"
-          >
-            <div className="icon-box bg-emerald-100 group-hover:bg-emerald-600 transition-colors">
-              <span className="text-2xl group-hover:scale-110 transition-transform inline-block">
-                👤
-              </span>
-            </div>
-            <div className="text-left">
-              <div className="font-bold text-slate-800">Register Victims</div>
-              <p className="text-[11px] text-slate-500 leading-tight mt-1">
-                Onboard beneficiaries for AI validation.
-              </p>
-            </div>
+          <Link to="/ngo/beneficiaries/register" className="action-button">
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 700, color: "var(--color-verified)", letterSpacing: "0.08em" }}>
+              ONBOARD
+            </span>
+            <div style={{ fontWeight: 700, color: "var(--color-text)" }}>Register beneficiaries</div>
+            <p style={{ fontSize: "12px", color: "var(--color-text-muted)", lineHeight: 1.4 }}>
+              Submit people for AI eligibility validation.
+            </p>
           </Link>
 
           <Link
             to="/ngo/reviews"
-            className="action-button group bg-primary bg-opacity-5 border-primary border-opacity-20"
+            className="action-button"
+            style={{ borderColor: "var(--color-signal)", background: "var(--color-signal-light)" }}
           >
-            <div className="icon-box bg-primary group-hover:bg-primary-dark transition-colors">
-              <span className="text-2xl group-hover:scale-110 transition-transform inline-block">
-                ⚖️
-              </span>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 700, color: "var(--color-signal-dark)", letterSpacing: "0.08em" }}>
+              ACTION NEEDED
+            </span>
+            <div style={{ fontWeight: 700, color: "var(--color-signal-dark)" }}>
+              Review & disburse
             </div>
-            <div className="text-left">
-              <div className="font-bold text-primary-dark">
-                Review & Disburse Aid
-              </div>
-              <p className="text-[11px] text-primary-dark opacity-70 leading-tight mt-1">
-                Assign funds to approved beneficiaries.
-              </p>
-            </div>
+            <p style={{ fontSize: "12px", color: "var(--color-signal-dark)", opacity: 0.75, lineHeight: 1.4 }}>
+              Assign funds to approved beneficiaries.
+            </p>
           </Link>
         </div>
       </div>
 
       {/* Campaign Monitor and Beneficiary Overview */}
-      <div className="grid-2 gap-8">
+      <div className="grid-2 gap-8 animate-fade-up" style={{ animationDelay: "140ms", animationFillMode: "both" }}>
         <CampaignMonitor campaigns={dashboardData?.campaigns} />
         <BeneficiaryOverview beneficiaries={dashboardData?.beneficiaries} />
       </div>
 
       {/* Wallet Analytics and Proof Tracker */}
-      <div className="grid-2 gap-8">
+      <div className="grid-2 gap-8 animate-fade-up" style={{ animationDelay: "180ms", animationFillMode: "both" }}>
         <WalletAnalytics wallets={dashboardData?.wallets} />
         <ProofTracker proofs={dashboardData?.proofs} />
       </div>
 
       {/* AI Insights and Workflow Visualizer */}
-      <div className="grid-2 gap-8">
+      <div className="grid-2 gap-8 animate-fade-up" style={{ animationDelay: "220ms", animationFillMode: "both" }}>
         <AIInsights aiInsights={dashboardData?.aiInsights} />
         <WorkflowVisualizer workflow={dashboardData?.workflow} />
       </div>
 
       {/* Blockchain Status and Notifications */}
-      <div className="grid-2 gap-8">
+      <div className="grid-2 gap-8 animate-fade-up" style={{ animationDelay: "260ms", animationFillMode: "both" }}>
         <BlockchainStatus blockchain={dashboardData?.blockchain} />
         <NotificationPanel notifications={dashboardData?.notifications} />
       </div>

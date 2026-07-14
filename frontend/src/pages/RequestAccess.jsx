@@ -38,15 +38,16 @@ export default function RequestAccess() {
   if (success) {
     return (
       <div
-        className="center-page"
+        className="center-page animate-fade-up"
         style={{ padding: "var(--space-6)", textAlign: "center" }}
       >
         <div
-          className="card shadow-lg stack-lg"
+          className="card shadow-lg stack-lg hover-lift"
           style={{
             maxWidth: "460px",
             width: "100%",
             padding: "var(--space-8)",
+            transition: "all 0.3s ease",
           }}
         >
           <div style={{ fontSize: "64px", margin: "0 auto" }}>📨</div>
@@ -74,14 +75,15 @@ export default function RequestAccess() {
   }
 
   return (
-    <div className="center-page" style={{ padding: "var(--space-6)" }}>
+    <div className="center-page animate-fade-up" style={{ padding: "var(--space-6)" }}>
       <div
-        className="card shadow-lg"
-        style={{ maxWidth: "500px", width: "100%", padding: "var(--space-8)" }}
+        className="card shadow-lg hover-lift"
+        style={{ maxWidth: "500px", width: "100%", padding: "var(--space-8)", transition: "all 0.3s ease" }}
       >
         <div style={{ textAlign: "center", marginBottom: "var(--space-6)" }}>
           <h1
             style={{
+              fontFamily: "var(--font-display)",
               fontSize: "24px",
               fontWeight: "800",
               color: "var(--color-text)",

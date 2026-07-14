@@ -9,6 +9,8 @@ class ProofValidationRequest(BaseModel):
     fileUrls: List[str]
     proofType: str
     campaignId: str
+    merchantId: Optional[str] = None
+    expectedAmount: Optional[float] = None
     location: Optional[Dict[str, float]] = None
     capturedAt: Optional[datetime] = None
     campaignLocation: Optional[Dict[str, Any]] = None

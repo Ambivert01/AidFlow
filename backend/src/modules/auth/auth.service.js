@@ -17,6 +17,8 @@ import {
   requiresApproval,
 } from "../../constants/roles.constants.js";
 import { createAuditLog } from "../audit/audit.service.js";
+import { env } from "../../config/env.config.js";
+import { logger } from "../../utils/logger.js";
 
 /**
  * Register new user
@@ -42,6 +44,7 @@ export const registerUser = async (data) => {
   const user = await User.create({
     name: data.name,
     email: data.email.toLowerCase(),
+    phone: data.phone || null,
     passwordHash,
     role: data.role,
     verificationStatus,
@@ -344,12 +347,28 @@ export const requestPasswordReset = async (email) => {
     },
   });
 
-  // TODO: Send reset email with token
-  // For now, return the token (in production, this should be sent via email)
+  // No real email-sending integration exists in this codebase yet - log
+  // the reset link server-side so local development/testing can still
+  // exercise this flow. Logging it does NOT go out over the network the
+  // way including it in the API response would.
+  logger.info({
+    type: "PASSWORD_RESET_TOKEN_ISSUED",
+    userId: user._id.toString(),
+    email: user.email,
+    resetToken,
+  });
+
   return {
     message:
       "If an account with that email exists, a password reset link has been sent.",
-    resetToken, // Remove this in production
+    // SECURITY: never include the raw token in the response in production.
+    // This was previously returned unconditionally, meaning anyone who
+    // knew or guessed a user's email - including an admin's - could call
+    // this endpoint, read the token straight out of the JSON response, and
+    // immediately reset that account's password without ever touching
+    // their inbox. Gated to non-production so local testing still works
+    // without a real email provider configured.
+    ...(env.NODE_ENV !== "production" ? { resetToken } : {}),
   };
 };
 

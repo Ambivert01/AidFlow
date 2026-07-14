@@ -13,7 +13,13 @@ import {
   updateCampaignSchema,
 } from "./campaign.validator.js";
 
+// Import discovery routes
+import campaignDiscoveryRoutes from "./campaign.discovery.routes.js";
+
 const router = express.Router();
+
+// Campaign Discovery Routes (public access for donors)
+router.use("/", campaignDiscoveryRoutes);
 
 // NGO creates campaign
 

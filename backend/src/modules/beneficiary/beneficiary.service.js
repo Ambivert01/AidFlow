@@ -161,9 +161,30 @@ const sendBeneficiaryNotification = async (
 // SERVICE FUNCTIONS
 
 /**
- * Register beneficiary with duplicate detection and AI evaluation
+ * Shared beneficiary-creation logic used by both the NGO-driven
+ * registration flow and the beneficiary self-apply flow. Kept in one
+ * place so both paths get identical validation, duplicate detection,
+ * audit logging and AI eligibility triggering.
+ *
+ * @param {string} actorUserId - id of whoever is performing the action
+ *   (the NGO staff member, or the beneficiary themselves)
+ * @param {string} actorRole - role of the actor, for the audit log
+ * @param {object} data - beneficiary payload (name, phone, aadhaar, etc.)
+ * @param {object} opts
+ * @param {("NGO"|"SELF"|"GOVERNMENT"|"SYSTEM")} opts.registrationSource
+ * @param {string|null} opts.beneficiaryUserId - the User._id that should be
+ *   linked as the *beneficiary's own* login account. This must only be set
+ *   for the self-apply path - an NGO registering someone else's record
+ *   must NOT have their own id stamped into this field.
+ * @param {import("mongoose").ClientSession|null} session
  */
-export const registerBeneficiary = async (userId, data, session = null) => {
+const createBeneficiaryRecord = async (
+  actorUserId,
+  actorRole,
+  data,
+  { registrationSource, beneficiaryUserId = null },
+  session = null,
+) => {
   return withTransaction(async (txSession) => {
     const activeSession = session || txSession;
 
@@ -190,7 +211,11 @@ export const registerBeneficiary = async (userId, data, session = null) => {
 
     // Create beneficiary with PENDING status
     const beneficiaryData = {
-      user: userId,
+      // Only linked to a login account when this IS that account holder's
+      // own application (registrationSource === "SELF"). NGO/GOVERNMENT/
+      // SYSTEM registrations leave this null until/unless the beneficiary
+      // later creates and links their own account.
+      user: beneficiaryUserId,
       campaign: data.campaignId,
       name: data.name,
       phone: data.phone,
@@ -202,12 +227,12 @@ export const registerBeneficiary = async (userId, data, session = null) => {
       incomeLevel: data.incomeLevel || "UNKNOWN",
       documents: data.documents || [],
       status: BENEFICIARY_STATUS.PENDING,
-      registeredBy: userId,
-      registrationSource: "NGO",
+      registeredBy: actorUserId,
+      registrationSource,
       verificationHistory: [
         {
           action: "REGISTERED",
-          performedBy: userId,
+          performedBy: actorUserId,
           reason: null,
           timestamp: new Date(),
         },
@@ -223,10 +248,11 @@ export const registerBeneficiary = async (userId, data, session = null) => {
     await createBeneficiaryAuditLog(
       createdBeneficiary,
       AUDIT_EVENTS.BENEFICIARY_REGISTERED,
-      { _id: userId, role: "NGO" },
+      { _id: actorUserId, role: actorRole },
       {
         campaignName: campaign.title,
         location: data.location,
+        registrationSource,
       },
       activeSession,
     );
@@ -254,6 +280,37 @@ export const registerBeneficiary = async (userId, data, session = null) => {
 
     return BaseService.created(createdBeneficiary);
   }, session);
+};
+
+/**
+ * Register beneficiary with duplicate detection and AI evaluation.
+ * Used by NGOs registering someone else (field staff, camp intake, etc).
+ */
+export const registerBeneficiary = async (userId, data, session = null) => {
+  return createBeneficiaryRecord(
+    userId,
+    "NGO",
+    data,
+    { registrationSource: "NGO", beneficiaryUserId: null },
+    session,
+  );
+};
+
+/**
+ * Self-apply: a beneficiary applies for a campaign under their own logged-in
+ * account. Goes through the exact same duplicate-check, audit-logging and
+ * AI-eligibility pipeline as NGO registration - the only difference is who
+ * submitted it and that the record is linked back to the applicant's own
+ * User account so they can track status / see their wallet once approved.
+ */
+export const applyAsBeneficiary = async (userId, data, session = null) => {
+  return createBeneficiaryRecord(
+    userId,
+    "BENEFICIARY",
+    data,
+    { registrationSource: "SELF", beneficiaryUserId: userId },
+    session,
+  );
 };
 
 /**
@@ -420,6 +477,15 @@ export const submitAppeal = async (
       throw new AppError("Beneficiary not found", 404);
     }
 
+    // Only the beneficiary this record belongs to can appeal it. Without
+    // this check, any authenticated beneficiary could submit an appeal on
+    // *any* other beneficiary's rejected application just by knowing their
+    // record id, silently flipping someone else's application back to
+    // MANUAL_REVIEW without their knowledge.
+    if (!beneficiary.user || beneficiary.user.toString() !== userId.toString()) {
+      throw new AppError("Unauthorized: not your application", 403);
+    }
+
     // Validate status is REJECTED
     if (beneficiary.status !== BENEFICIARY_STATUS.REJECTED) {
       throw new AppError("Only rejected beneficiaries can appeal", 400);
@@ -566,7 +632,7 @@ export const getCampaignBeneficiaries = async (campaignId) => {
  */
 export const getNGOBeneficiaries = async (ngoId, filters = {}) => {
   // Get NGO's campaigns
-  const campaigns = await Campaign.find({ ngo: ngoId }).select("_id");
+  const campaigns = await Campaign.find({ createdBy: ngoId }).select("_id");
   const campaignIds = campaigns.map((c) => c._id);
 
   // Build query
@@ -632,7 +698,7 @@ export const getBeneficiaryDetails = async (
   userRole,
 ) => {
   const beneficiary = await Beneficiary.findById(beneficiaryId)
-    .populate("campaign", "title ngo")
+    .populate("campaign", "title createdBy")
     .populate("registeredBy", "name email")
     .populate("overrideByNgo.ngo", "name email")
     .populate("appeal.decidedBy", "name email");
@@ -644,7 +710,7 @@ export const getBeneficiaryDetails = async (
   // Authorization check
   if (userRole === "NGO") {
     const campaign = await Campaign.findById(beneficiary.campaign._id);
-    if (campaign.ngo.toString() !== userId.toString()) {
+    if (!campaign || campaign.createdBy.toString() !== userId.toString()) {
       throw new AppError("Access denied", 403);
     }
   } else if (userRole === "BENEFICIARY") {
@@ -828,7 +894,9 @@ export const getHighRiskBeneficiaries = async (filters = {}) => {
   }
 
   if (filters.ngo) {
-    const campaigns = await Campaign.find({ ngo: filters.ngo }).select("_id");
+    const campaigns = await Campaign.find({ createdBy: filters.ngo }).select(
+      "_id",
+    );
     const campaignIds = campaigns.map((c) => c._id);
     query.campaign = { $in: campaignIds };
   }
@@ -840,8 +908,8 @@ export const getHighRiskBeneficiaries = async (filters = {}) => {
   }
 
   const beneficiaries = await Beneficiary.find(query)
-    .populate("campaign", "title ngo")
-    .populate("campaign.ngo", "name email")
+    .populate("campaign", "title createdBy")
+    .populate("campaign.createdBy", "name email")
     .sort({ riskScore: -1 })
     .lean();
 
@@ -977,7 +1045,7 @@ export const adminOverrideApproval = async (
  */
 export const getBeneficiaryStatistics = async (ngoId, filters = {}) => {
   // Get NGO's campaigns
-  const campaigns = await Campaign.find({ ngo: ngoId }).select("_id");
+  const campaigns = await Campaign.find({ createdBy: ngoId }).select("_id");
   const campaignIds = campaigns.map((c) => c._id);
 
   const query = { campaign: { $in: campaignIds } };

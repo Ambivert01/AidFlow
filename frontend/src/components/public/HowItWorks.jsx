@@ -1,69 +1,29 @@
 export default function HowItWorks() {
   const steps = [
-    {
-      number: "1",
-      title: "Donate",
-      description: "Choose a campaign and donate securely",
-      icon: "💝",
-    },
-    {
-      number: "2",
-      title: "NGO Uses Funds",
-      description: "NGO spends on verified beneficiaries",
-      icon: "🏢",
-    },
-    {
-      number: "3",
-      title: "Proof Uploaded",
-      description: "NGO uploads bills, photos, and receipts",
-      icon: "📸",
-    },
-    {
-      number: "4",
-      title: "AI Verifies",
-      description: "AI validates authenticity and detects fraud",
-      icon: "🤖",
-    },
-    {
-      number: "5",
-      title: "Blockchain Stores",
-      description: "Proof hash anchored on blockchain",
-      icon: "⛓️",
-    },
-    {
-      number: "6",
-      title: "Donor Tracks",
-      description: "You see exactly where your money went",
-      icon: "✅",
-    },
+    { number: "01", title: "Donate", description: "Choose a campaign and donate securely" },
+    { number: "02", title: "AI evaluates risk", description: "Eligibility and fraud checks run automatically" },
+    { number: "03", title: "NGO disburses", description: "Funds move into a policy-locked beneficiary wallet" },
+    { number: "04", title: "Proof uploaded", description: "Receipts and field photos are submitted for review" },
+    { number: "05", title: "AI verifies the proof", description: "Authenticity, location, and duplicates are checked" },
+    { number: "06", title: "Anchored on-chain", description: "The proof hash is sealed where no one can edit it" },
   ];
 
   return (
     <section
+      className="animate-fade-up"
       style={{
         padding: "var(--space-12) var(--space-4)",
         maxWidth: "1200px",
         margin: "0 auto",
       }}
     >
-      <div style={{ textAlign: "center", marginBottom: "var(--space-12)" }}>
-        <h2
-          style={{
-            fontSize: "36px",
-            fontWeight: "800",
-            marginBottom: "var(--space-2)",
-          }}
-        >
-          How It Works
+      <div className="animate-fade-down" style={{ textAlign: "center", marginBottom: "var(--space-10)" }}>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: "32px", fontWeight: "700", marginBottom: "var(--space-2)" }}>
+          The chain of custody
         </h2>
-        <p
-          style={{
-            color: "var(--color-text-muted)",
-            maxWidth: "600px",
-            margin: "0 auto",
-          }}
-        >
-          Complete transparency from donation to impact verification
+        <p style={{ color: "var(--color-text-muted)", maxWidth: "560px", margin: "0 auto" }}>
+          Six checkpoints stand between your donation and the person it reaches.
+          Each one writes a record that can't quietly disappear.
         </p>
       </div>
 
@@ -71,74 +31,34 @@ export default function HowItWorks() {
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-          gap: "var(--space-6)",
+          gap: "var(--space-5)",
         }}
       >
         {steps.map((step, index) => (
           <div
             key={step.number}
-            className="card stack"
+            className="card stack animate-fade-up"
             style={{
-              textAlign: "center",
-              position: "relative",
-              padding: "var(--space-6)",
+              animationDelay: `${index * 0.08}s`,
             }}
           >
-            {/* Step Number Badge */}
-            <div
+            <span
               style={{
-                position: "absolute",
-                top: "-12px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                background: "var(--color-primary)",
-                color: "white",
-                width: "32px",
-                height: "32px",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "14px",
-                fontWeight: "700",
-                boxShadow: "0 4px 12px rgba(14,165,233, 0.3)",
+                fontFamily: "var(--font-mono)",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "var(--color-signal)",
+                letterSpacing: "0.05em",
               }}
             >
               {step.number}
-            </div>
-
-            <div style={{ fontSize: "48px", marginBottom: "var(--space-2)" }}>
-              {step.icon}
-            </div>
-            <h3 style={{ fontSize: "20px", fontWeight: "700" }}>
+            </span>
+            <h3 style={{ fontSize: "18px", fontWeight: "700", fontFamily: "var(--font-body)" }}>
               {step.title}
             </h3>
-            <p
-              style={{
-                color: "var(--color-text-muted)",
-                fontSize: "14px",
-                lineHeight: "1.5",
-              }}
-            >
+            <p style={{ color: "var(--color-text-muted)", fontSize: "14px", lineHeight: "1.5" }}>
               {step.description}
             </p>
-
-            {/* Arrow connector (except last item) */}
-            {index < steps.length - 1 && (
-              <div
-                style={{
-                  position: "absolute",
-                  right: "-24px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  fontSize: "24px",
-                  color: "var(--color-border)",
-                  display: window.innerWidth > 768 ? "block" : "none",
-                }}
-              >
-                →
-              </div>
-            )}
           </div>
         ))}
       </div>

@@ -15,22 +15,29 @@ new Worker(
 
       console.log(`Starting ${type} counter reset`);
 
-      // Reset counters in batches
+      // NOTE: MongoDB's updateMany has no concept of a result limit -
+      // chaining .limit() onto it is silently ignored by the driver. Real
+      // batching requires fetching a page of IDs and updating just those.
       while (true) {
+        const batchIds = await Wallet.find({
+          status: WALLET_STATUS.ACTIVE,
+          [updateField]: { $gt: 0 },
+        })
+          .select("_id")
+          .limit(batchSize)
+          .lean();
+
+        if (batchIds.length === 0) break;
+
         const result = await Wallet.updateMany(
-          {
-            status: WALLET_STATUS.ACTIVE,
-            [updateField]: { $gt: 0 },
-          },
+          { _id: { $in: batchIds.map((w) => w._id) } },
           { $set: { [updateField]: 0 } },
-        ).limit(batchSize);
+        );
 
         processedCount += result.modifiedCount;
 
-        // Break if no more wallets to process
-        if (result.modifiedCount < batchSize) {
-          break;
-        }
+        // Last page was smaller than a full batch - we're done
+        if (batchIds.length < batchSize) break;
       }
 
       console.log(

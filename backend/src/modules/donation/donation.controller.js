@@ -32,10 +32,16 @@ export const getRecurringDonations = asyncHandler(async (req, res) => {
 
 // Create Donation
 export const createDonation = asyncHandler(async (req, res) => {
+  // Get idempotency key from header or body
+  const idempotencyKey =
+    req.headers["idempotency-key"] ||
+    req.body.idempotencyKey ||
+    req.idempotencyKey;
+
   const donation = await donationService.createDonation(
     req.user._id,
-
     req.body,
+    idempotencyKey, // Pass idempotency key to service
   );
 
   res.status(201).json(ApiResponse.created(donation));
@@ -53,28 +59,4 @@ export const getMyDonations = asyncHandler(async (req, res) => {
   const donations = await donationService.getDonorDonations(req.user._id);
 
   res.json(ApiResponse.success(donations));
-});
-
-// NGO Approves Donation
-export const approveDonationByNGO = asyncHandler(async (req, res) => {
-  const donation = await donationService.approveDonationByNGO(
-    req.params.id,
-
-    req.user._id,
-  );
-
-  res.json(ApiResponse.updated(donation));
-});
-
-// Government Decision
-export const governmentDecision = asyncHandler(async (req, res) => {
-  const donation = await donationService.governmentDecision(
-    req.params.id,
-
-    req.body.decision,
-
-    req.user._id,
-  );
-
-  res.json(ApiResponse.updated(donation));
 });

@@ -26,6 +26,7 @@ export default function AuditPreview() {
   if (loading) {
     return (
       <section
+        className="animate-fade-up"
         style={{
           padding: "var(--space-12) var(--space-4)",
           maxWidth: "1200px",
@@ -33,8 +34,8 @@ export default function AuditPreview() {
           background: "var(--color-surface)",
         }}
       >
-        <div style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
-          Loading recent transactions...
+        <div className="loader-center" style={{ minHeight: "200px" }}>
+          <div className="spinner"></div>
         </div>
       </section>
     );
@@ -46,6 +47,7 @@ export default function AuditPreview() {
 
   return (
     <section
+      className="animate-fade-up"
       style={{
         padding: "var(--space-12) var(--space-4)",
         maxWidth: "1200px",
@@ -56,21 +58,22 @@ export default function AuditPreview() {
       <div style={{ textAlign: "center", marginBottom: "var(--space-8)" }}>
         <h2
           style={{
-            fontSize: "36px",
-            fontWeight: "800",
+            fontFamily: "var(--font-display)",
+            fontSize: "32px",
+            fontWeight: "700",
             marginBottom: "var(--space-2)",
           }}
         >
-          Public Audit Trail
+          The ledger, unedited
         </h2>
         <p
           style={{
             color: "var(--color-text-muted)",
-            maxWidth: "600px",
+            maxWidth: "560px",
             margin: "0 auto",
           }}
         >
-          Every transaction is publicly verifiable and blockchain-anchored
+          The ten most recent donations, with the hash that anchors each one. No login required to check it.
         </p>
       </div>
 
@@ -138,11 +141,13 @@ export default function AuditPreview() {
               </tr>
             </thead>
             <tbody>
-              {transactions.map((tx) => (
+              {transactions.map((tx, idx) => (
                 <tr
                   key={tx.id}
+                  className="animate-fade-up"
                   style={{
                     borderBottom: "1px solid var(--color-border)",
+                    animationDelay: `${idx * 0.05}s`,
                   }}
                 >
                   <td style={{ padding: "var(--space-3)" }}>{tx.donor}</td>
@@ -162,6 +167,7 @@ export default function AuditPreview() {
                       padding: "var(--space-3)",
                       textAlign: "right",
                       fontWeight: "600",
+                      fontFamily: "var(--font-mono)",
                     }}
                   >
                     ₹{tx.amount.toLocaleString()}
@@ -169,11 +175,12 @@ export default function AuditPreview() {
                   <td style={{ padding: "var(--space-3)" }}>
                     <code
                       style={{
-                        fontSize: "12px",
-                        background: "var(--color-surface-alt)",
-                        padding: "2px 6px",
-                        borderRadius: "4px",
-                        fontFamily: "monospace",
+                        fontSize: "11px",
+                        background: "var(--color-ink)",
+                        color: "var(--color-verified-light)",
+                        padding: "3px 8px",
+                        borderRadius: "var(--radius-sm)",
+                        fontFamily: "var(--font-mono)",
                       }}
                     >
                       {tx.hash}

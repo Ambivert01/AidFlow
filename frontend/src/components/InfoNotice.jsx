@@ -1,10 +1,19 @@
-export default function InfoNotice({ title, message }) {
+export default function InfoNotice({ title, message, type = "warning" }) {
+  const typeStyles = {
+    warning: "alert-warning",
+    info: "alert-info",
+    success: "alert-success",
+    danger: "alert-danger",
+  };
+
   return (
-    <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded mb-4">
-      {title && (
-        <p className="font-semibold mb-1">{title}</p>
-      )}
-      <p className="text-sm">{message}</p>
+    <div className={`alert ${typeStyles[type] || typeStyles.warning}`}>
+      <div style={{ flex: 1 }}>
+        {title && (
+          <p style={{ fontWeight: "600", marginBottom: "4px" }}>{title}</p>
+        )}
+        <p style={{ fontSize: "13px", opacity: 0.9 }}>{message}</p>
+      </div>
     </div>
   );
 }

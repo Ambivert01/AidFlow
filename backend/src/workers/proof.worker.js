@@ -2,14 +2,15 @@ import { Worker } from "bullmq";
 import { redisConnection } from "../config/redis.config.js";
 import proofService from "../modules/proof/proof.service.js";
 import blockchainAudit from "../infrastructure/blockchain/audit.service.js";
-import auditService from "../modules/audit/audit.service.js";
+import { createAuditLog } from "../modules/audit/audit.service.js";
 import { AI_PROOF_URL } from "../config/env.config.js";
 import {
   PROOF_STATUS,
   PROOF_AUDIT_EVENTS,
 } from "../modules/proof/proof.constants.js";
 import { Proof } from "../models/proofs/Proof.model.js";
-import logger from "../utils/logger.js";
+import { Donation } from "../models/donor/Donation.model.js";
+import { logger } from "../utils/logger.js";
 
 /**
  * Proof validation worker
@@ -23,6 +24,8 @@ new Worker(
       fileUrls,
       proofType,
       campaignId,
+      merchantId,
+      expectedAmount,
       location,
       capturedAt,
       campaignLocation,
@@ -43,14 +46,16 @@ new Worker(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          proof_id: proofId,
-          file_urls: fileUrls,
-          proof_type: proofType,
-          campaign_id: campaignId,
+          proofId: proofId,
+          fileUrls: fileUrls,
+          proofType: proofType,
+          campaignId: campaignId,
+          merchantId: merchantId,
+          expectedAmount: expectedAmount,
           location,
-          captured_at: capturedAt,
-          campaign_location: campaignLocation,
-          campaign_period: campaignPeriod,
+          capturedAt: capturedAt,
+          campaignLocation: campaignLocation,
+          campaignPeriod: campaignPeriod,
         }),
       });
 
@@ -66,15 +71,15 @@ new Worker(
         type: "AI_VALIDATION_RESPONSE",
         proofId,
         decision: aiResult.decision,
-        confidenceScore: aiResult.confidence_score,
-        fraudProbability: aiResult.fraud_probability,
+        confidenceScore: aiResult.confidenceScore,
+        fraudProbability: aiResult.fraudProbability,
       });
 
       // Update proof with AI results
       await proofService.updateProofFromAI(proofId, {
         decision: aiResult.decision,
-        confidenceScore: aiResult.confidence_score,
-        fraudProbability: aiResult.fraud_probability,
+        confidenceScore: aiResult.confidenceScore,
+        fraudProbability: aiResult.fraudProbability,
         flags: aiResult.flags || [],
       });
 
@@ -142,7 +147,75 @@ logger.info({ type: "WORKER_STARTED", worker: "proof-validation" });
 new Worker(
   "blockchain-anchor",
   async (job) => {
-    const { proofId, hash, campaignId } = job.data;
+    const { proofId, hash, campaignId, type, entityId, data } = job.data;
+
+    // Donation anchoring (the only real caller of addBlockchainJob today
+    // sends {type: "DONATION", entityId, data}). This used to silently fall
+    // into the generic legacy-batch branch below - which anchors a batch
+    // root fine, but writes the result nowhere near the actual donation, so
+    // Donation.blockchainHash/blockchainAnchored (the fields the
+    // donor-facing "verify on blockchain" screen reads) never got set.
+    if (type === "DONATION" && entityId) {
+      try {
+        const eventHash = await blockchainAudit.recordAuditEvent({
+          type: "DONATION",
+          donationId: entityId,
+          ...data,
+        });
+
+        const result = await blockchainAudit.anchorRoot(
+          entityId,
+          data?.campaignId || "",
+        );
+
+        const update = result
+          ? {
+              blockchainHash: result.txHash,
+              blockchainAnchored: true,
+              blockchainAnchoredAt: new Date(),
+            }
+          : {
+              // Blockchain temporarily unavailable - keep the computed
+              // event hash so it's visible, but don't claim it's anchored.
+              blockchainHash: eventHash,
+              blockchainAnchored: false,
+            };
+
+        await Donation.findByIdAndUpdate(entityId, update);
+
+        await createAuditLog({
+          eventType: "BLOCKCHAIN_ANCHORED",
+          actorRole: "SYSTEM",
+          entityType: "Donation",
+          entityId,
+          payload: result
+            ? { merkleRoot: result.root, txHash: result.txHash }
+            : { blockchainUnavailable: true, eventHash },
+          merkleRoot: result?.root,
+          blockchainAnchor: result
+            ? { txHash: result.txHash, anchoredAt: new Date() }
+            : undefined,
+        });
+
+        logger.info({
+          type: "DONATION_BLOCKCHAIN_ANCHORED",
+          entityId,
+          anchored: Boolean(result),
+        });
+
+        return { success: true, entityId, anchored: Boolean(result) };
+      } catch (error) {
+        logger.error({
+          type: "DONATION_BLOCKCHAIN_ANCHOR_ERROR",
+          entityId,
+          error: error.message,
+        });
+        // Graceful degradation - donation stays valid even if anchoring
+        // failed, matching the same "never block on blockchain" policy the
+        // proof-anchoring branch below already follows.
+        return { success: true, entityId, blockchainError: error.message };
+      }
+    }
 
     // Check if this is a proof anchoring job (has proofId)
     if (!proofId) {
@@ -150,15 +223,17 @@ new Worker(
       const result = await blockchainAudit.anchorRoot();
       if (!result) return;
 
-      await auditService.log({
+      await createAuditLog({
         eventType: "BLOCKCHAIN_ANCHORED",
-        actor: "SYSTEM",
-        resource: "Proof",
-        resourceId: job.id.toString(),
+        actorRole: "SYSTEM",
+        entityType: "Proof",
+        entityId: job.id.toString(),
         payload: {
           merkleRoot: result.root,
           txHash: result.txHash,
         },
+        merkleRoot: result.root,
+        blockchainAnchor: { txHash: result.txHash, anchoredAt: new Date() },
       });
 
       return result;
@@ -191,14 +266,19 @@ new Worker(
           await proof.save();
 
           // Create audit log
-          await auditService.log({
+          await createAuditLog({
             eventType: PROOF_AUDIT_EVENTS.PROOF_ANCHORED,
-            actor: "SYSTEM",
-            resource: "Proof",
-            resourceId: proofId,
+            actorRole: "SYSTEM",
+            entityType: "Proof",
+            entityId: proofId,
             payload: {
               merkleRoot: result.root,
               txHash: result.txHash,
+            },
+            merkleRoot: result.root,
+            blockchainAnchor: {
+              txHash: result.txHash,
+              anchoredAt: new Date(),
             },
           });
 

@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { Worker } from "bullmq";
 import { redisConnection } from "../config/redis.config.js";
 import aiService from "../infrastructure/ai/ai.service.js";
@@ -6,12 +7,67 @@ import workflowEngine from "../engines/workflow.engine.js";
 import trustService from "../modules/trust/trust.service.js";
 import { Wallet } from "../models/wallet/Wallet.model.js";
 import { FraudAlert } from "../models/governance/FraudAlert.model.js";
+import { FraudCase } from "../models/FraudCase.model.js";
 import {
   WALLET_STATUS,
   AUDIT_EVENT_TYPES,
 } from "../modules/wallet/wallet.constants.js";
-import { sendNotification } from "../modules/notification/notification.service.js";
+import { createNotification } from "../modules/notification/notification.service.js";
 import { Beneficiary } from "../models/beneficiary/Beneficiary.model.js";
+
+// Builds a FraudAlert document that actually matches the schema. The two
+// call sites below used to pass entityType: "Wallet" (schema requires
+// uppercase "WALLET"), and top-level reason/riskScore/signals/detectedAt
+// fields that don't exist on the schema at all (they live under
+// aiDetection.* / metadata.*) - and never set the two *required* fields,
+// alertId and alertType. Every previous call threw a ValidationError,
+// silently swallowed by this worker's outer try/catch, so no fraud alert
+// had ever actually been persisted, and (for the auto-freeze branch) the
+// throw happened before wallet.save() ran, so the freeze itself silently
+// never took effect either.
+const buildFraudAlertData = ({
+  wallet,
+  alertType,
+  severity,
+  reason,
+  signals,
+}) => ({
+  alertId: `FA-${crypto.randomUUID()}`,
+  entityType: "WALLET",
+  entityId: wallet._id.toString(),
+  campaign: wallet.campaign || null,
+  alertType,
+  severity,
+  aiDetection: {
+    riskScore: wallet.riskScore,
+    signals: Object.entries(signals || {}).map(
+      ([key, value]) => `${key}: ${value}`,
+    ),
+  },
+  metadata: { reason, rawSignals: signals },
+});
+
+// FraudCase is the model backing the admin investigation workflow
+// (assign / add notes / resolve) - a completely separate collection from
+// FraudAlert above. Both records describe the same detected event; each
+// feeds a different, otherwise-disconnected part of the product (FraudAlert
+// -> public/government/NGO dashboards + trust scoring, FraudCase -> the
+// admin Fraud Management investigation screen).
+const buildFraudCaseData = ({ wallet, severity, reason, signals }) => ({
+  entityType: "WALLET",
+  entityId: wallet._id.toString(),
+  riskScore: wallet.riskScore,
+  reason,
+  status: "OPEN",
+  relatedCampaign: wallet.campaign || null,
+  aiMetadata: {
+    modelVersion: "risk_agent-v1",
+    confidence: wallet.riskScore,
+    signals: Object.entries(signals || {}).map(
+      ([key, value]) => `${key}: ${value}`,
+    ),
+  },
+});
 
 new Worker(
   "fraud-detection",
@@ -61,15 +117,23 @@ new Worker(
             wallet.frozenAt = new Date();
 
             // Create fraud alert
-            await FraudAlert.create({
-              entityType: "Wallet",
-              entityId: wallet._id,
-              severity: "HIGH",
-              reason: result.reason || "High risk score detected",
-              riskScore: wallet.riskScore,
-              signals,
-              detectedAt: new Date(),
-            });
+            await FraudAlert.create(
+              buildFraudAlertData({
+                wallet,
+                alertType: "WALLET_ABUSE",
+                severity: "HIGH",
+                reason: result.reason || "High risk score detected",
+                signals,
+              }),
+            );
+            await FraudCase.create(
+              buildFraudCaseData({
+                wallet,
+                severity: "HIGH",
+                reason: result.reason || "High risk score detected",
+                signals,
+              }),
+            );
 
             // Update trust scores for campaign and NGO
             try {
@@ -92,13 +156,15 @@ new Worker(
                 wallet.beneficiary,
               );
               if (beneficiary) {
-                await sendNotification({
+                await createNotification({
                   userId: beneficiary.user,
+                  role: "BENEFICIARY",
                   type: "WALLET_FROZEN",
-                  data: {
-                    walletId: wallet._id,
-                    reason: wallet.freezeReason,
-                  },
+                  title: "Wallet Frozen",
+                  message: `Your wallet has been frozen due to: ${wallet.freezeReason}`,
+                  entityType: "Wallet",
+                  entityId: wallet._id,
+                  priority: "HIGH",
                 });
               }
             } catch (error) {
@@ -121,15 +187,23 @@ new Worker(
 
           // Create fraud alert for ESCALATE decisions
           if (result.decision === "ESCALATE") {
-            await FraudAlert.create({
-              entityType: "Wallet",
-              entityId: wallet._id,
-              severity: "MEDIUM",
-              reason: result.reason || "Suspicious activity requires review",
-              riskScore: wallet.riskScore,
-              signals,
-              detectedAt: new Date(),
-            });
+            await FraudAlert.create(
+              buildFraudAlertData({
+                wallet,
+                alertType: "AI_ANOMALY",
+                severity: "MEDIUM",
+                reason: result.reason || "Suspicious activity requires review",
+                signals,
+              }),
+            );
+            await FraudCase.create(
+              buildFraudCaseData({
+                wallet,
+                severity: "MEDIUM",
+                reason: result.reason || "Suspicious activity requires review",
+                signals,
+              }),
+            );
           }
 
           await wallet.save();

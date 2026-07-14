@@ -30,7 +30,7 @@ export default function PublicCampaigns() {
   }, [disasterFilter, locationFilter]);
 
   return (
-    <div className="stack-lg" style={{ maxWidth: "1200px", margin: "0 auto", padding: "var(--space-6)" }}>
+    <div className="stack-lg animate-fade-up" style={{ maxWidth: "1200px", margin: "0 auto", padding: "var(--space-6)" }}>
       
       <div className="page-header text-center" style={{ marginBottom: "var(--space-8)" }}>
          <h1 className="page-title">Active Response Campaigns</h1>

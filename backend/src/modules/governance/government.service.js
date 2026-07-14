@@ -5,6 +5,7 @@ import { FraudAlert } from "../../models/governance/FraudAlert.model.js";
 import { BaseService } from "../../core/base.service.js";
 import { AppError } from "../../utils/AppError.js";
 import { createAuditLog } from "../audit/audit.service.js";
+import { createNotification } from "../notification/notification.service.js";
 
 /*
 GOVERNMENT OVERVIEW STATS
@@ -19,11 +20,11 @@ export const getOverview = async () => {
     frozenStats,
   ] = await Promise.all([
     Wallet.countDocuments({ status: "ACTIVE" }),
-    Wallet.countDocuments({ status: "FROZEN" }),
+    Wallet.countDocuments({ status: "SUSPENDED" }),
     Donation.countDocuments({ status: "HIGH_RISK_ESCALATED" }),
     Campaign.countDocuments({ status: "ACTIVE" }),
     Wallet.aggregate([{ $match: { status: "ACTIVE" } }, { $group: { _id: null, total: { $sum: "$balance" } } }]),
-    Wallet.aggregate([{ $match: { status: "FROZEN" } }, { $group: { _id: null, total: { $sum: "$balance" } } }]),
+    Wallet.aggregate([{ $match: { status: "SUSPENDED" } }, { $group: { _id: null, total: { $sum: "$balance" } } }]),
   ]);
 
   return BaseService.success({
@@ -42,7 +43,7 @@ GET ESCALATED DONATIONS (HIGH_RISK)
 export const getEscalatedDonations = async () => {
   const donations = await Donation.find({ status: "HIGH_RISK_ESCALATED" })
     .populate("donor", "name email")
-    .populate("campaign", "title disasterType")
+    .populate("campaign", "title disasterType location")
     .sort({ createdAt: -1 });
 
   return BaseService.success(donations);
@@ -52,7 +53,7 @@ export const getEscalatedDonations = async () => {
 APPROVE ESCALATED DONATION
 */
 export const approveDonation = async (donationId, govId) => {
-  const donation = await Donation.findById(donationId);
+  const donation = await Donation.findById(donationId).populate("campaign");
   if (!donation) throw new AppError("Donation not found", 404);
 
   donation.status = "APPROVED_BY_GOVT";
@@ -72,6 +73,33 @@ export const approveDonation = async (donationId, govId) => {
     payload: { govId },
   });
 
+  try {
+    await createNotification({
+      userId: donation.donor,
+      role: "DONOR",
+      type: "DONATION_SUCCESS",
+      title: "Donation Cleared by Government Review",
+      message: `Your ₹${donation.amount} donation to "${donation.campaign.title}" passed government review and is now with the NGO for beneficiary allocation.`,
+      entityType: "Donation",
+      entityId: donation._id.toString(),
+      channels: ["IN_APP", "EMAIL"],
+      priority: "NORMAL",
+    });
+    await createNotification({
+      userId: donation.campaign.createdBy,
+      role: "NGO",
+      type: "DONATION_SUCCESS",
+      title: "Escalated Donation Cleared - Action Needed",
+      message: `A ₹${donation.amount} donation to "${donation.campaign.title}" was cleared by government review and is ready for you to assign to a beneficiary.`,
+      entityType: "Donation",
+      entityId: donation._id.toString(),
+      channels: ["IN_APP", "EMAIL"],
+      priority: "HIGH",
+    });
+  } catch (error) {
+    console.error("Failed to send govt-approval notifications:", error);
+  }
+
   return BaseService.updated(donation);
 };
 
@@ -79,7 +107,7 @@ export const approveDonation = async (donationId, govId) => {
 REJECT ESCALATED DONATION
 */
 export const rejectDonation = async (donationId, govId, reason) => {
-  const donation = await Donation.findById(donationId);
+  const donation = await Donation.findById(donationId).populate("campaign");
   if (!donation) throw new AppError("Donation not found", 404);
 
   donation.status = "REJECTED_BY_GOVT";
@@ -99,6 +127,22 @@ export const rejectDonation = async (donationId, govId, reason) => {
     actorRole: "GOVERNMENT",
     payload: { reason },
   });
+
+  try {
+    await createNotification({
+      userId: donation.donor,
+      role: "DONOR",
+      type: "DONATION_REJECTED",
+      title: "Donation Rejected by Government Review",
+      message: `Your ₹${donation.amount} donation to "${donation.campaign.title}" was rejected during government review. Reason: ${reason || "Not specified"}`,
+      entityType: "Donation",
+      entityId: donation._id.toString(),
+      channels: ["IN_APP", "EMAIL"],
+      priority: "HIGH",
+    });
+  } catch (error) {
+    console.error("Failed to send govt-rejection notification:", error);
+  }
 
   return BaseService.updated(donation);
 };
@@ -126,7 +170,7 @@ export const freezeWallet = async (walletId, reason, govId) => {
   const wallet = await Wallet.findById(walletId);
   if (!wallet) throw new AppError("Wallet not found", 404);
 
-  wallet.status = "FROZEN";
+  wallet.status = "SUSPENDED";
   wallet.freezeReason = reason;
   wallet.frozenBy = govId;
   wallet.frozenAt = new Date();
@@ -150,9 +194,26 @@ export const unfreezeWallet = async (walletId, govId) => {
   const wallet = await Wallet.findById(walletId);
   if (!wallet) throw new AppError("Wallet not found", 404);
 
+  if (wallet.status !== "SUSPENDED") {
+    throw new AppError(
+      `Cannot unfreeze a wallet with status ${wallet.status}. Only SUSPENDED wallets can be unfrozen.`,
+      400,
+    );
+  }
+
   wallet.status = "ACTIVE";
   wallet.freezeReason = null;
+  wallet.frozenBy = null;
+  wallet.frozenAt = null;
   await wallet.save();
+
+  await createAuditLog({
+    eventType: "WALLET_UNFROZEN",
+    entityType: "Wallet",
+    entityId: wallet._id,
+    actorRole: "GOVERNMENT",
+    payload: { unfrozenBy: govId },
+  });
 
   return BaseService.updated(wallet);
 };

@@ -39,8 +39,8 @@ export default function VerifyHash() {
   }, [initialHash]);
 
   return (
-    <div className="center-page" style={{ padding: "var(--space-6)" }}>
-      <div className="card shadow-lg stack-lg" style={{ maxWidth: "500px", width: "100%", padding: "var(--space-8)" }}>
+    <div className="center-page animate-fade-up" style={{ padding: "var(--space-6)" }}>
+      <div className="card shadow-lg stack-lg hover-lift" style={{ maxWidth: "500px", width: "100%", padding: "var(--space-8)", transition: "all 0.3s ease" }}>
         
         <div style={{ textAlign: "center", marginBottom: "var(--space-4)" }}>
            <div style={{ fontSize: "40px", marginBottom: "var(--space-2)" }}>⛓️</div>

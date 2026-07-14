@@ -3,10 +3,29 @@ import { Link } from "react-router-dom";
 import api from "../services/api";
 import useAuthStore from "../store/authStore";
 
+const ROLE_COPY = {
+  DONOR: {
+    badge: "Donor Registration",
+    heading: "Fund aid you can trace",
+    subheading:
+      "Every donation gets an AI risk check, a policy-locked wallet, and a blockchain-anchored proof trail you can verify yourself.",
+    button: "Create Donor Account",
+  },
+  BENEFICIARY: {
+    badge: "Aid Seeker Registration",
+    heading: "Apply to receive aid",
+    subheading:
+      "Create your account to apply to an active relief campaign. Your application goes through an AI eligibility check and NGO review before a wallet is issued to you.",
+    button: "Create My Account",
+  },
+};
+
 export default function Register() {
+  const [role, setRole] = useState("DONOR");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    phone: "",
     password: "",
   });
   const [loading, setLoading] = useState(false);
@@ -22,13 +41,15 @@ export default function Register() {
     setError("");
 
     try {
-      // Donors self-register directly through the auth endpoint with role DONOR
-      await api.post("/auth/register", { ...formData, role: "DONOR" });
+      const payload = { ...formData, role };
+      if (role === "DONOR") delete payload.phone; // keep donor payload unchanged
+      if (!payload.phone) delete payload.phone;
+      await api.post("/auth/register", payload);
 
       // Auto-login after successful registration
       await login({ email: formData.email, password: formData.password });
 
-      // Router will catch the state and redirect to /donor automatically
+      // Router will catch the state and redirect to /donor or /beneficiary automatically
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -38,12 +59,46 @@ export default function Register() {
     }
   };
 
+  const copy = ROLE_COPY[role];
+
   return (
-    <div className="center-page" style={{ padding: "var(--space-6)" }}>
+    <div className="center-page animate-fade-up" style={{ padding: "var(--space-6)" }}>
       <div
-        className="card shadow-lg"
-        style={{ maxWidth: "460px", width: "100%", padding: "var(--space-8)" }}
+        className="card shadow-lg hover-lift"
+        style={{ maxWidth: "460px", width: "100%", padding: "var(--space-8)", transition: "all 0.3s ease" }}
       >
+        <div
+          role="tablist"
+          aria-label="Registration type"
+          style={{
+            display: "flex",
+            background: "var(--color-surface-alt)",
+            borderRadius: "10px",
+            padding: "4px",
+            marginBottom: "var(--space-6)",
+            gap: "4px",
+          }}
+        >
+          {["DONOR", "BENEFICIARY"].map((r) => (
+            <button
+              key={r}
+              type="button"
+              role="tab"
+              aria-selected={role === r}
+              onClick={() => setRole(r)}
+              className={role === r ? "btn btn-primary" : "btn btn-ghost"}
+              style={{
+                flex: 1,
+                fontSize: "13px",
+                padding: "8px 10px",
+                transition: "all 0.2s ease",
+              }}
+            >
+              {r === "DONOR" ? "I want to donate" : "I need aid"}
+            </button>
+          ))}
+        </div>
+
         <div style={{ textAlign: "center", marginBottom: "var(--space-6)" }}>
           <div
             style={{
@@ -59,17 +114,18 @@ export default function Register() {
               marginBottom: "var(--space-4)",
             }}
           >
-            Donor Registration
+            {copy.badge}
           </div>
           <h1
             style={{
-              fontSize: "28px",
-              fontWeight: "800",
+              fontFamily: "var(--font-display)",
+              fontSize: "26px",
+              fontWeight: "700",
               color: "var(--color-text)",
               marginBottom: "var(--space-2)",
             }}
           >
-            Fund Transparent Aid
+            {copy.heading}
           </h1>
           <p
             style={{
@@ -78,8 +134,7 @@ export default function Register() {
               lineHeight: "1.6",
             }}
           >
-            Join AidFlow to track your donations down to the very last rupee
-            with 100% cryptographic certainty.
+            {copy.subheading}
           </p>
         </div>
 
@@ -118,6 +173,23 @@ export default function Register() {
               required
             />
           </div>
+
+          {role === "BENEFICIARY" && (
+            <div className="form-group">
+              <label className="form-label">Phone Number</label>
+              <input
+                type="tel"
+                name="phone"
+                className="form-input"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="10-digit mobile number"
+                pattern="[0-9]{10}"
+                title="Exactly 10 digits"
+                required
+              />
+            </div>
+          )}
 
           <div className="form-group">
             <label className="form-label">Create Password</label>
@@ -160,10 +232,10 @@ export default function Register() {
             disabled={loading}
             style={{
               marginTop: "var(--space-2)",
-              boxShadow: "0 4px 14px 0 rgba(14,165,233, 0.39)",
+              boxShadow: "0 4px 14px 0 rgba(232, 83, 11, 0.3)",
             }}
           >
-            {loading ? "Creating Account..." : "Create Donor Account"}
+            {loading ? "Creating Account..." : copy.button}
           </button>
         </form>
 

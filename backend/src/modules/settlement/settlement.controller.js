@@ -8,6 +8,14 @@ export const processSettlement = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
+export const createSettlementForMerchant = asyncHandler(async (req, res) => {
+  const result = await settlementService.createSettlementForMerchant(
+    req.params.merchantId,
+  );
+
+  res.json(result);
+});
+
 export const getMySettlements = asyncHandler(async (req, res) => {
   const result = await settlementService.getMerchantSettlements(req.user._id);
 
