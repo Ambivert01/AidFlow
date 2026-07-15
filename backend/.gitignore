@@ -1,0 +1,19 @@
+node_modules
+.env
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Uploaded files (local storage mode)
+uploads/
+
+# OS / editor
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Test/coverage output
+coverage/

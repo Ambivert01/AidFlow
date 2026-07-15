@@ -1,0 +1,132 @@
+name: CI
+
+# NOTE: this workflow was written by cross-checking the exact commands and
+# dependencies against this repo's package.json/test files, and by actually
+# running the backend test suite locally to discover it needs both Redis
+# and a MongoDB replica set (not assumed - the first version of this file
+# didn't include Mongo at all, until running it locally proved that wrong).
+# It has NOT been run inside GitHub Actions itself - the mongodb replica-set
+# initialization step in particular (`docker exec` against the service
+# container) is the part most likely to need adjustment on a real run.
+# Treat this as a well-informed starting point, not a guarantee.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+      mongodb:
+        # The app uses multi-document transactions, which require a replica
+        # set - a plain single-node `mongo` service image will fail on
+        # anything beyond the most trivial read/write tests. This image
+        # auto-initializes a single-node replica set on boot.
+        image: mongo:7
+        ports: ["27017:27017"]
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping:1})' --quiet"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+        env:
+          MONGO_INITDB_DATABASE: aidflow_test
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      NODE_ENV: test
+      MONGO_URI: mongodb://localhost:27017/aidflow_test?replicaSet=rs0&directConnection=true
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      JWT_SECRET: ci-test-jwt-secret-not-for-real-use
+      QR_SECRET: ci-test-qr-secret-not-for-real-use
+      PII_HASH_SECRET: ci-test-pii-hash-secret-not-for-real-use
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize MongoDB replica set
+        run: |
+          docker exec ${{ job.services.mongodb.id }} mongosh --eval 'rs.initiate()' || true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: node --check server.js
+      - name: Syntax-check every backend source file
+        run: |
+          for f in $(find src scripts -name "*.js"); do
+            node --check "$f" || exit 1
+          done
+      - run: npm test
+      - run: npm run test:property
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+        env:
+          VITE_API_BASE_URL: http://localhost:5000/api
+          VITE_CHAIN_ID: "31337"
+          VITE_BLOCKCHAIN_EXPLORER: http://localhost:8545
+
+  ai-agents:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        agent: [eligibility_agent, fraud_agent, risk_agent, proof_agent]
+    defaults:
+      run:
+        working-directory: ai-agents/${{ matrix.agent }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - if: matrix.agent == 'proof_agent'
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+      - run: pip install -r requirements.txt
+      - name: Import-check the agent boots without error
+        run: python -c "import main"
+
+  blockchain:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: blockchain
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: blockchain/package-lock.json
+      - run: npm ci
+      - run: npx hardhat compile
+
+  # Add a `deploy` job here once a hosting platform is chosen (see
+  # DEPLOYMENT.md) - triggered on push to `main` after the jobs above pass,
+  # typically `needs: [backend, frontend, ai-agents, blockchain]`.

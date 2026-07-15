@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+
+.env
+!.env.example
+
+# start-agents.sh output
+*.log
+.agent_pids

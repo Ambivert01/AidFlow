@@ -1,0 +1,101 @@
+# Optional. Brings up the whole stack (except MongoDB and the blockchain
+# node - see the notes below) with one command. Useful for local dev without
+# installing 4 Python venvs by hand, staging environments, or as a starting
+# point for a self-hosted production deployment.
+#
+# MongoDB is NOT included here on purpose - use MongoDB Atlas (see
+# SETUP.md §5 / DEPLOYMENT.md). Running your database as an uncontainerized,
+# managed replica set is strongly recommended over a single containerized
+# mongod, both because this app requires transactions (needs a real replica
+# set, not a single-node container) and because you don't want your
+# production data's durability tied to a container's lifecycle.
+#
+# The blockchain node is NOT included either - `hardhat node` is a local
+# dev/test chain that resets on every restart. Production should point
+# RPC_URL at a real network (a testnet during staging, then mainnet or an
+# L2 - see DEPLOYMENT.md). Run `npx hardhat node` separately only if you
+# specifically want a local chain for a self-hosted demo.
+#
+# Usage:
+#   docker compose --env-file backend/.env up --build
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    env_file: ./backend/.env
+    environment:
+      - REDIS_HOST=redis
+      - AI_ELIGIBILITY_URL=http://eligibility-agent:8001
+      - AI_FRAUD_URL=http://fraud-agent:8002
+      - AI_RISK_URL=http://risk-agent:8003
+      - AI_PROOF_URL=http://proof-agent:8004
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
+
+  worker:
+    build: ./backend
+    command: ["node", "src/workers/index.js"]
+    env_file: ./backend/.env
+    environment:
+      - REDIS_HOST=redis
+      - AI_ELIGIBILITY_URL=http://eligibility-agent:8001
+      - AI_FRAUD_URL=http://fraud-agent:8002
+      - AI_RISK_URL=http://risk-agent:8003
+      - AI_PROOF_URL=http://proof-agent:8004
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
+
+  eligibility-agent:
+    build: ./ai-agents/eligibility_agent
+    ports:
+      - "8001:8001"
+
+  fraud-agent:
+    build: ./ai-agents/fraud_agent
+    ports:
+      - "8002:8002"
+
+  risk-agent:
+    build: ./ai-agents/risk_agent
+    ports:
+      - "8003:8003"
+
+  proof-agent:
+    build: ./ai-agents/proof_agent
+    ports:
+      - "8004:8004"
+    env_file: ./ai-agents/proof_agent/.env
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:5000/api}
+        VITE_CHAIN_ID: ${VITE_CHAIN_ID:-31337}
+        VITE_BLOCKCHAIN_EXPLORER: ${VITE_BLOCKCHAIN_EXPLORER:-http://localhost:8545}
+    ports:
+      - "8080:80"
+
+volumes:
+  redis-data:
+  uploads:

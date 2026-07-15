@@ -245,3 +245,13 @@ It calls the real service layer (not raw database inserts), so running it is an 
 
 Run it with `cd backend && node scripts/seedFullLifecycleDemo.js` once your MongoDB, Redis, worker process, and AI agents are all running per `SETUP_GUIDE.md`. Safe to re-run - it clears its own previous demo data first (everything under the `@aidflow-demo.test` email domain).
 
+---
+
+## 16. Ops documentation: SETUP.md, DEPLOYMENT.md, and infrastructure that didn't exist yet
+
+Wrote `SETUP.md` (local dev) and `DEPLOYMENT.md` (production) at the project root, plus the infrastructure DEPLOYMENT.md references: a `Dockerfile` for the backend, frontend, and each of the 4 AI agents, a root `docker-compose.yml`, a GitHub Actions CI workflow, `frontend/nginx.conf`, and `.gitignore` files for `backend/` and `ai-agents/` (neither had one at all before this - a real gap, given `backend/.env` is already flagged elsewhere in this doc as potentially containing real secrets from this codebase's history).
+
+Writing documentation that had to actually be correct - not just plausible-sounding - surfaced 3 more real bugs by forcing verification instead of description: `npm run seed` pointed at a file path that has never existed (fixed); the CI workflow's first draft assumed the backend test suite didn't need a database, until actually running the tests locally proved that wrong (it needs both Redis and a MongoDB replica set - fixed once discovered); and `blockchain/.env.example` had literal shell commands sitting on their own lines as if they were environment variables, left over from a copy-paste (fixed).
+
+The CI workflow has been verified by actually running the equivalent commands locally, but not by running inside GitHub Actions itself - flagged clearly in the file's own header comment, same as every other "written carefully but not executed end-to-end" caveat throughout this document.
+
