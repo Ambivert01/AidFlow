@@ -6,6 +6,7 @@ import { addDonationJob } from "../../jobs/donation.job.js";
 import { generateHash } from "../../utils/hash.util.js";
 import { DONATION_STATUS, WORKFLOW_STATE } from "./donation.constants.js";
 import { createAuditLog } from "../audit/audit.service.js";
+import { v4 as uuidv4 } from "uuid";
 
 export const createDonation = async (userId, data, idempotencyKey = null) => {
   return withTransaction(async (session) => {
@@ -29,6 +30,10 @@ export const createDonation = async (userId, data, idempotencyKey = null) => {
       timestamp: Date.now(),
     });
 
+    // Always ensure a non-null idempotencyKey so the unique sparse index
+    // doesn't throw when multiple donations are created without one.
+    const resolvedIdempotencyKey = idempotencyKey || uuidv4();
+
     // Create donation with INITIATED status (not PAYMENT_SUCCESS)
     const donation = await Donation.create(
       [
@@ -38,10 +43,10 @@ export const createDonation = async (userId, data, idempotencyKey = null) => {
           amount: data.amount,
           policySnapshot: campaign.policySnapshot,
           jobIdHash,
-          idempotencyKey, // Store idempotency key
-          status: DONATION_STATUS.INITIATED, // Start with INITIATED
-          workflowState: WORKFLOW_STATE.PENDING, // Initial workflow state
-          paymentStatus: "SUCCESS", // Assume payment successful for now
+          idempotencyKey: resolvedIdempotencyKey,
+          status: DONATION_STATUS.INITIATED,
+          workflowState: WORKFLOW_STATE.PENDING,
+          paymentStatus: "SUCCESS",
         },
       ],
       { session },
@@ -72,7 +77,7 @@ export const createDonation = async (userId, data, idempotencyKey = null) => {
           status: DONATION_STATUS.INITIATED,
         },
         metadata: {
-          idempotencyKey,
+          idempotencyKey: resolvedIdempotencyKey,
         },
       },
       session,
