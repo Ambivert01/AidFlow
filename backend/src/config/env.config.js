@@ -32,6 +32,10 @@ export const env = {
 
   REDIS_PORT: process.env.REDIS_PORT,
 
+  // Render and other managed providers expose a single URL instead of host/port.
+  // redis.config.js prefers this over REDIS_HOST/REDIS_PORT when set.
+  REDIS_URL: process.env.REDIS_URL,
+
   AI_ELIGIBILITY_URL: process.env.AI_ELIGIBILITY_URL,
 
   AI_FRAUD_URL: process.env.AI_FRAUD_URL,
@@ -60,6 +64,7 @@ export const {
   PII_HASH_SECRET,
   REDIS_HOST,
   REDIS_PORT,
+  REDIS_URL,
   AI_ELIGIBILITY_URL,
   AI_FRAUD_URL,
   AI_RISK_URL,
@@ -75,7 +80,9 @@ export const {
  */
 export const getAllowedOrigins = () => {
   if (!env.FRONTEND_URL) return [];
-  return env.FRONTEND_URL.split(",").map((s) => s.trim()).filter(Boolean);
+  return env.FRONTEND_URL.split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 };
 
 /**
@@ -83,12 +90,7 @@ export const getAllowedOrigins = () => {
  * Fails fast and loudly instead of letting the app boot into a broken state.
  */
 export const validateEnv = () => {
-  const required = [
-    "MONGO_URI",
-    "JWT_SECRET",
-    "FRONTEND_URL",
-    "QR_SECRET",
-  ];
+  const required = ["MONGO_URI", "JWT_SECRET", "FRONTEND_URL", "QR_SECRET"];
 
   const missing = required.filter((key) => !env[key]);
 

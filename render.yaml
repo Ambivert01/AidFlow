@@ -1,0 +1,220 @@
+# AidFlow — Render Blueprint
+# Deploy all services from this single file via:
+#   Render Dashboard → New → Blueprint → point to this repo
+#
+# BEFORE deploying, make sure you have:
+#   1. Deployed the smart contract to a testnet (see Docs/DEPLOYMENT.md §1)
+#   2. Created a MongoDB Atlas cluster and have the connection string
+#   3. Generated fresh secrets: openssl rand -hex 64 (JWT), openssl rand -hex 32 (QR, PII)
+#
+# Fill in every <PLACEHOLDER> value in your Render dashboard env var editor
+# after the blueprint creates the services — do NOT commit real secrets here.
+
+services:
+  # ─────────────────────────────────────────────
+  # Backend API
+  # ─────────────────────────────────────────────
+  - type: web
+    name: aidflow-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: FRONTEND_URL
+        value: https://aidflow-frontend.onrender.com
+      - key: MONGO_URI
+        sync: false # set in dashboard - never commit real URI
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 30d
+      - key: QR_SECRET
+        generateValue: true
+      - key: PII_HASH_SECRET
+        generateValue: true
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: aidflow-redis
+          property: connectionString
+      - key: AI_ELIGIBILITY_URL
+        value: https://aidflow-eligibility-agent.onrender.com
+      - key: AI_FRAUD_URL
+        value: https://aidflow-fraud-agent.onrender.com
+      - key: AI_RISK_URL
+        value: https://aidflow-risk-agent.onrender.com
+      - key: AI_PROOF_URL
+        value: https://aidflow-proof-agent.onrender.com
+      - key: STORAGE_TYPE
+        value: S3
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: BACKEND_PUBLIC_URL
+        value: https://aidflow-backend.onrender.com
+      - key: RPC_URL
+        sync: false # your Alchemy/Infura testnet URL
+      - key: AUDIT_CONTRACT_ADDRESS
+        sync: false # address from your one-time contract deploy
+      - key: BLOCKCHAIN_PRIVATE_KEY
+        sync: false # dedicated wallet key - never a Hardhat default
+
+  # ─────────────────────────────────────────────
+  # Background Worker (same image, different CMD)
+  # ─────────────────────────────────────────────
+  - type: worker
+    name: aidflow-worker
+    runtime: node
+    rootDir: backend
+    buildCommand: npm ci --omit=dev
+    startCommand: node src/workers/index.js
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: aidflow-backend
+          envVarKey: JWT_SECRET
+      - key: QR_SECRET
+        fromService:
+          type: web
+          name: aidflow-backend
+          envVarKey: QR_SECRET
+      - key: PII_HASH_SECRET
+        fromService:
+          type: web
+          name: aidflow-backend
+          envVarKey: PII_HASH_SECRET
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: aidflow-redis
+          property: connectionString
+      - key: AI_ELIGIBILITY_URL
+        value: https://aidflow-eligibility-agent.onrender.com
+      - key: AI_FRAUD_URL
+        value: https://aidflow-fraud-agent.onrender.com
+      - key: AI_RISK_URL
+        value: https://aidflow-risk-agent.onrender.com
+      - key: AI_PROOF_URL
+        value: https://aidflow-proof-agent.onrender.com
+      - key: STORAGE_TYPE
+        value: S3
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: RPC_URL
+        sync: false
+      - key: AUDIT_CONTRACT_ADDRESS
+        sync: false
+      - key: BLOCKCHAIN_PRIVATE_KEY
+        sync: false
+
+  # ─────────────────────────────────────────────
+  # AI Agent — Eligibility (port 8001)
+  # ─────────────────────────────────────────────
+  - type: web
+    name: aidflow-eligibility-agent
+    runtime: python
+    rootDir: ai-agents/eligibility_agent
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port 8001
+    plan: free # lightweight, stateless rule engine
+    healthCheckPath: /health
+
+  # ─────────────────────────────────────────────
+  # AI Agent — Fraud (port 8002)
+  # ─────────────────────────────────────────────
+  - type: web
+    name: aidflow-fraud-agent
+    runtime: python
+    rootDir: ai-agents/fraud_agent
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port 8002
+    plan: free
+    healthCheckPath: /health
+
+  # ─────────────────────────────────────────────
+  # AI Agent — Risk (port 8003)
+  # ─────────────────────────────────────────────
+  - type: web
+    name: aidflow-risk-agent
+    runtime: python
+    rootDir: ai-agents/risk_agent
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port 8003
+    plan: free
+    healthCheckPath: /health
+
+  # ─────────────────────────────────────────────
+  # AI Agent — Proof (port 8004)
+  # Uses Docker because it needs tesseract-ocr system package.
+  # ─────────────────────────────────────────────
+  - type: web
+    name: aidflow-proof-agent
+    runtime: docker
+    rootDir: ai-agents/proof_agent
+    plan: starter # heavier: OCR + image hashing
+    healthCheckPath: /health
+    envVars:
+      - key: MONGO_URI
+        sync: false # same Atlas URI as backend
+      - key: AI_PROOF_PORT
+        value: 8004
+
+  # ─────────────────────────────────────────────
+  # Frontend — Static Site
+  # VITE_* vars are baked in at build time, not runtime.
+  # ─────────────────────────────────────────────
+  - type: web
+    name: aidflow-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    pullRequestPreviewsEnabled: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://aidflow-backend.onrender.com/api
+      - key: VITE_CHAIN_ID
+        value: 80002 # Polygon Amoy testnet
+      - key: VITE_BLOCKCHAIN_EXPLORER
+        value: https://amoy.polygonscan.com
+      - key: VITE_APP_NAME
+        value: AidFlow
+
+# ─────────────────────────────────────────────
+# Managed Redis
+# ─────────────────────────────────────────────
+databases:
+  - type: redis
+    name: aidflow-redis
+    plan: free
+    maxmemoryPolicy: noeviction # important for BullMQ queue durability
