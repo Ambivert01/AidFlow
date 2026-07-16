@@ -473,29 +473,70 @@ cd backend
 npm run seed
 ```
 
+Credentials after quick seed (password `Admin@123` for all):
+
+| Role | Email |
+|---|---|
+| Admin | admin@aidflow.com |
+| Government | govt@aidflow.com |
+| NGO | ngo@aidflow.com |
+| Donor | donor@aidflow.com |
+| Beneficiary | beneficiary@aidflow.com |
+| Merchant | merchant@aidflow.com |
+
+---
+
 ### Full lifecycle demo — `npm run seed:demo`
 
-Comprehensive realistic data. Safe to re-run (only touches `@aidflow-demo.test` emails,
-won't wipe your existing data).
-
-Walks the entire system end to end:
-- Registers all 6 roles
-- Admin approves NGO, Merchant, Government
-- Creates and approves a campaign
-- Registers beneficiaries (NGO-driven + self-apply paths)
-- Fires donations (including one shaped to trigger fraud escalation)
-- Runs NGO approval, wallet creation, merchant QR payment
-- Uploads proof of distribution
-- Checks blockchain anchor + public audit trail
+Comprehensive realistic data — safe to re-run. Uses `@aidflow-demo.test` email domain
+so it never touches your existing accounts or data.
 
 ```bash
 cd backend
 npm run seed:demo
 ```
 
-**Requires workers and AI agents to be running** for all steps to complete.
-If they're not running, the script tells you which steps were skipped and
-prints credentials for what it did manage to create.
+**What it creates:**
+- 1 Admin, 3 Donors (Asha, Ravi, Priya), 1 NGO, 1 Merchant, 1 Government official
+- 2 Beneficiaries: Lakshmi Devi (NGO-registered, no login) + Suresh Patil (self-registered)
+- 1 Campaign: **Pune Flood Relief 2026** (ACTIVE, ₹5,00,000 target)
+- Multiple donations including one shaped to trigger AI fraud escalation
+- Audit trail with blockchain anchor entries
+- Merchant QR payment flow (if workers + agents running)
+
+**Demo credentials** (password: `Demo@12345` for all):
+
+| Role | Email |
+|---|---|
+| Admin | admin@aidflow-demo.test |
+| NGO | ngo@aidflow-demo.test |
+| Government | govt@aidflow-demo.test |
+| Merchant | merchant@aidflow-demo.test |
+| Donor 1 | asha@aidflow-demo.test |
+| Donor 2 | ravi@aidflow-demo.test |
+| Donor 3 | priya@aidflow-demo.test |
+| Beneficiary | suresh@aidflow-demo.test |
+
+> Lakshmi Devi is NGO-registered and has no login account — by design, as most
+> disaster relief beneficiaries don't have email accounts.
+
+**Requires workers and AI agents to be running** for the full pipeline to complete
+(beneficiary AI evaluation, wallet creation, QR payments, blockchain anchoring).
+If they're not running, the script completes with skipped steps and prints credentials
+for everything it did manage to create — it never fails silently.
+
+**Steps to run the full demo end-to-end:**
+
+1. Start all services (Redis, backend, workers, all 4 AI agents, frontend)
+2. Run `npm run seed:demo` from the `backend/` folder
+3. Log in as each role and explore the relevant dashboard:
+   - **Admin** → approve users, view audit logs, manage fraud cases
+   - **NGO** → manage campaign, review donations, approve beneficiaries
+   - **Donor** → view donation history, track impact, see blockchain proof
+   - **Beneficiary** (Suresh) → view wallet, generate QR code
+   - **Merchant** → scan QR, confirm payment, upload proof
+   - **Government** → review escalated donations, oversight dashboard
+4. Visit `/public-audit` — live blockchain-anchored transparency trail (no login needed)
 
 ---
 
