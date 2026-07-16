@@ -8,6 +8,7 @@ import { AuditLog } from "../../models/audit/AuditLog.model.js";
 import { FraudAlert } from "../../models/governance/FraudAlert.model.js";
 import { BaseService } from "../../core/base.service.js";
 import { AppError } from "../../utils/AppError.js";
+import { createAuditLog } from "../audit/audit.service.js";
 import mongoose from "mongoose";
 
 /*
@@ -263,17 +264,15 @@ export const approveCampaign = async (campaignId, adminId) => {
   await campaign.save();
 
   // Create audit log entry
-  await AuditLog.create({
+  await createAuditLog({
     eventType: "CAMPAIGN_APPROVED",
     eventCategory: "CAMPAIGN",
     entityType: "Campaign",
-    entityId: campaign._id,
+    entityId: campaign._id.toString(),
     jobIdHash: campaign.jobIdHash,
     campaignId: campaign._id,
-    actor: {
-      userId: adminId,
-      role: "ADMIN",
-    },
+    actorId: adminId,
+    actorRole: "ADMIN",
     payload: {
       campaignTitle: campaign.title,
       approvedBy: adminId,
@@ -329,17 +328,15 @@ export const rejectCampaign = async (campaignId, adminId, rejectionReason) => {
   await campaign.save();
 
   // Create audit log entry
-  await AuditLog.create({
+  await createAuditLog({
     eventType: "CAMPAIGN_REJECTED",
     eventCategory: "CAMPAIGN",
     entityType: "Campaign",
-    entityId: campaign._id,
+    entityId: campaign._id.toString(),
     jobIdHash: campaign.jobIdHash,
     campaignId: campaign._id,
-    actor: {
-      userId: adminId,
-      role: "ADMIN",
-    },
+    actorId: adminId,
+    actorRole: "ADMIN",
     payload: {
       campaignTitle: campaign.title,
       rejectedBy: adminId,
@@ -429,7 +426,10 @@ export const overrideAIDecision = async (data, adminId) => {
     if (!beneficiary) throw new AppError("Beneficiary not found", 404);
     beneficiary.status = override === "APPROVED" ? "APPROVED" : "BLOCKED";
     beneficiary.verificationHistory.push({
-      action: override === "APPROVED" ? "ADMIN_OVERRIDE_APPROVED" : "ADMIN_OVERRIDE_BLOCKED",
+      action:
+        override === "APPROVED"
+          ? "ADMIN_OVERRIDE_APPROVED"
+          : "ADMIN_OVERRIDE_BLOCKED",
       performedBy: adminId,
       reason: reason || "Admin override of AI decision",
       timestamp: new Date(),
@@ -448,18 +448,16 @@ export const overrideAIDecision = async (data, adminId) => {
   }
 
   // Create audit log
-  await AuditLog.create({
+  await createAuditLog({
     eventType: "AI_DECISION_OVERRIDDEN",
     eventCategory: "SYSTEM",
     entityType,
     entityId,
-    actor: {
-      userId: adminId,
-      role: "ADMIN",
-    },
+    actorId: adminId,
+    actorRole: "ADMIN",
     payload: {
       decisionType,
-      originalDecision: aiDecision.decision,
+      originalDecision: aiDecision?.decision,
       newDecision: override,
       reason,
     },
@@ -524,14 +522,13 @@ export const bulkApproveUsers = async (userIds, adminId) => {
   }
 
   // Create audit log
-  await AuditLog.create({
+  await createAuditLog({
     eventType: "BULK_USER_APPROVAL",
     eventCategory: "AUTH",
     entityType: "User",
-    actor: {
-      userId: adminId,
-      role: "ADMIN",
-    },
+    entityId: adminId.toString(),
+    actorId: adminId,
+    actorRole: "ADMIN",
     payload: {
       totalUsers: userIds.length,
       successCount: results.success.length,
@@ -575,14 +572,13 @@ export const bulkRejectUsers = async (userIds, adminId, reason) => {
   }
 
   // Create audit log
-  await AuditLog.create({
+  await createAuditLog({
     eventType: "BULK_USER_REJECTION",
     eventCategory: "AUTH",
     entityType: "User",
-    actor: {
-      userId: adminId,
-      role: "ADMIN",
-    },
+    entityId: adminId.toString(),
+    actorId: adminId,
+    actorRole: "ADMIN",
     payload: {
       totalUsers: userIds.length,
       successCount: results.success.length,
