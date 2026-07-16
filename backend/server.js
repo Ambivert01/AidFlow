@@ -11,6 +11,12 @@ DATABASE CONNECTION
 */
 const connectDB = async () => {
   try {
+    // Temporary debug log — remove after confirming env vars are injected
+    logger.info(
+      `MONGO_URI set: ${process.env.MONGO_URI ? "YES (length=" + process.env.MONGO_URI.length + ")" : "NO - undefined"}`,
+    );
+    logger.info(`NODE_ENV: ${process.env.NODE_ENV}`);
+
     await mongoose.connect(process.env.MONGO_URI);
 
     logger.info("MongoDB connected");
