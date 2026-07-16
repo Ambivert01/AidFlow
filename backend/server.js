@@ -58,6 +58,26 @@ SERVER START
 const startServer = async () => {
   await connectDB();
 
+  // Start workers in the same process when STANDALONE_WORKERS is not set.
+  // This lets the free Render tier run both API + workers in one service.
+  // In production with a dedicated worker service, set STANDALONE_WORKERS=true
+  // and run `node src/workers/index.js` as a separate process instead.
+  if (process.env.STANDALONE_WORKERS !== "true") {
+    const { connectWorkerDB } = await import("./src/workers/bootstrap.js");
+    await connectWorkerDB(); // no-op if mongoose already connected (readyState===1)
+    await import("./src/workers/donation.worker.js");
+    await import("./src/workers/walletExpiry.worker.js");
+    await import("./src/workers/ai.worker.js");
+    await import("./src/workers/fraud.worker.js");
+    await import("./src/workers/recurring.worker.js");
+    await import("./src/workers/proof.worker.js");
+    await import("./src/workers/settlement.worker.js");
+    await import("./src/workers/reset.worker.js");
+    const { startScheduledJobs } = await import("./src/workers/scheduler.js");
+    startScheduledJobs();
+    logger.info("Workers started in-process");
+  }
+
   // Start campaign completion cron job
   const { startCampaignCompletionJob } =
     await import("./src/jobs/campaign.job.js");
