@@ -14,13 +14,25 @@ new Worker(
 
     switch (type) {
       case "beneficiary-eligibility": {
-        const { processAIEvaluationResult } = await import(
-          "../modules/beneficiary/beneficiary.service.js"
-        );
+        const { processAIEvaluationResult } =
+          await import("../modules/beneficiary/beneficiary.service.js");
         const { Campaign } = await import("../models/ngo/Campaign.model.js");
 
+        const campaign = await Campaign.findById(payload.campaignId).lean();
+
         const eligibilityResult =
-          await aiService.evaluateBeneficiaryEligibility(payload);
+          await aiService.evaluateBeneficiaryEligibility({
+            ...payload,
+            // Pass campaign context so the eligibility agent can match
+            // the beneficiary's ward against the campaign's affected wards
+            disasterType: campaign?.disasterType || "OTHER",
+            affectedWards: campaign?.location?.ward
+              ? [campaign.location.ward]
+              : [],
+            severity: campaign?.policySnapshot?.severity || 2.0,
+            familySize: payload.household?.familySize || 1,
+            vulnerabilityScore: payload.vulnerabilityScore || 70,
+          });
 
         const fraudResult = await aiService.evaluateFraudProbability({
           beneficiaryId: payload.beneficiaryId,
@@ -32,8 +44,6 @@ new Worker(
           merchantId: "",
           timeWindowHours: 24,
         });
-
-        const campaign = await Campaign.findById(payload.campaignId).lean();
 
         const riskResult = await aiService.evaluateRisk(
           eligibilityResult,
@@ -88,11 +98,13 @@ new Worker(
           // Create AI decision log
           const ngo = await User.findById(campaign.createdBy);
           await AIDecisionLog.create({
-            entityType: "CAMPAIGN",
-            entityId: campaign._id,
-            decisionType: "CAMPAIGN_RISK_EVALUATION",
+            modelName: "campaign-risk-evaluator",
+            modelVersion: "1.0",
+            entityType: "Donation",
+            entityId: campaign._id.toString(),
+            decisionType: "DONATION_RISK",
             decision: result.decision || "ALLOW",
-            confidence: result.confidence || 0.85,
+            confidenceScore: result.confidence || 0.85,
             riskScore: result.riskScore || 15,
             flags: result.flags || [],
             reason: result.reason || "Campaign risk evaluation completed",
@@ -132,6 +144,7 @@ new Worker(
           job.id,
       ),
       jobIdHash: job.id.toString(),
+      actorId: null,
       actorRole: "AI",
       payload: { model: type, result },
     });

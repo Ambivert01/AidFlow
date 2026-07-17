@@ -136,17 +136,21 @@ export const createWallet = async (data) => {
 
     // Send notification
     try {
-      await createNotification({
-        userId: beneficiary.user,
-        role: "BENEFICIARY",
-        type: "WALLET_CREATED",
-        title: "Wallet Created",
-        message: `Your wallet has been created with balance ₹${wallet[0].balance}`,
-        entityType: "Wallet",
-        entityId: wallet[0]._id.toString(),
-        channels: ["IN_APP", "SMS"],
-        priority: "HIGH",
-      });
+      // Only send if beneficiary has a linked user account
+      // (NGO-registered beneficiaries may not have one)
+      if (beneficiary.user) {
+        await createNotification({
+          userId: beneficiary.user,
+          role: "BENEFICIARY",
+          type: "WALLET_CREATED",
+          title: "Wallet Created",
+          message: `Your wallet has been created with balance ₹${wallet[0].balance}`,
+          entityType: "Wallet",
+          entityId: wallet[0]._id.toString(),
+          channels: ["IN_APP", "SMS"],
+          priority: "HIGH",
+        });
+      }
     } catch (error) {
       // Log but don't fail wallet creation
       console.error("Failed to send wallet created notification:", error);
@@ -374,7 +378,7 @@ export const creditWallet = async (walletId, amount, ngoUserId) => {
     // Send notification
     try {
       const beneficiary = await Beneficiary.findById(wallet.beneficiary);
-      if (beneficiary) {
+      if (beneficiary && beneficiary.user) {
         await createNotification({
           userId: beneficiary.user,
           role: "BENEFICIARY",

@@ -92,7 +92,7 @@ const createBeneficiaryAuditLog = async (
       entityId: beneficiary._id.toString(),
       entityType: "Beneficiary",
       campaignId: beneficiary.campaign.toString(),
-      actorId: actor._id ? actor._id.toString() : actor.toString(),
+      actorId: actor._id && actor._id !== null ? actor._id.toString() : null,
       actorRole: actor.role || "NGO",
       payload: {
         beneficiaryName: beneficiary.name,
@@ -482,7 +482,10 @@ export const submitAppeal = async (
     // *any* other beneficiary's rejected application just by knowing their
     // record id, silently flipping someone else's application back to
     // MANUAL_REVIEW without their knowledge.
-    if (!beneficiary.user || beneficiary.user.toString() !== userId.toString()) {
+    if (
+      !beneficiary.user ||
+      beneficiary.user.toString() !== userId.toString()
+    ) {
       throw new AppError("Unauthorized: not your application", 403);
     }
 
@@ -867,7 +870,7 @@ export const processAIEvaluationResult = async (
     await createBeneficiaryAuditLog(
       beneficiary,
       AUDIT_EVENTS.BENEFICIARY_AI_EVALUATED,
-      { _id: "SYSTEM", role: "SYSTEM" },
+      { _id: null, role: "AI" },
       {
         aiDecision: aiResult.decision,
         eligibilityConfidence: aiResult.eligibilityConfidence,
