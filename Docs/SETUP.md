@@ -7,23 +7,22 @@ For production deployment on Render, see `DEPLOYMENT.md`.
 
 ## What You Need Running
 
-AidFlow has 8 processes that all need to be up for full functionality:
+AidFlow has 7 processes that all need to be up for full functionality (workers ab backend ke saath automatically start hote hain):
 
 | # | Process | Command | Port |
 |---|---|---|---|
 | 1 | Redis | `redis-server` | 6379 |
-| 2 | Backend API | `cd backend && npm run dev` | 5000 |
-| 3 | Backend Workers | `cd backend && npm run workers` | — |
-| 4 | Eligibility Agent | `cd ai-agents/eligibility_agent && uvicorn main:app --port 8001` | 8001 |
-| 5 | Fraud Agent | `cd ai-agents/fraud_agent && uvicorn main:app --port 8002` | 8002 |
-| 6 | Risk Agent | `cd ai-agents/risk_agent && uvicorn main:app --port 8003` | 8003 |
-| 7 | Proof Agent | `cd ai-agents/proof_agent && uvicorn main:app --port 8004` | 8004 |
-| 8 | Frontend | `cd frontend && npm run dev` | 5173 |
+| 2 | Backend API + Workers | `cd backend && npm run dev` | 5000 |
+| 3 | Eligibility Agent | `cd ai-agents/eligibility_agent && uvicorn main:app --port 8001` | 8001 |
+| 4 | Fraud Agent | `cd ai-agents/fraud_agent && uvicorn main:app --port 8002` | 8002 |
+| 5 | Risk Agent | `cd ai-agents/risk_agent && uvicorn main:app --port 8003` | 8003 |
+| 6 | Proof Agent | `cd ai-agents/proof_agent && uvicorn main:app --port 8004` | 8004 |
+| 7 | Frontend | `cd frontend && npm run dev` | 5173 |
 | — | Blockchain (optional) | `cd blockchain && npx hardhat node` | 8545 |
 
-**You don't need all 8 running to do something useful.**
-Frontend + Backend + MongoDB alone gets you through registration, login, and browsing.
-Donations, AI checks, wallet creation, and blockchain verification need workers + all 4 agents.
+> Workers (`npm run workers`) ko alag se run karne ki zarurat **nahi** hai — woh `npm run dev` ke saath
+> automatically same process mein start hote hain. Agar independent scaling chahiye toh
+> `STANDALONE_WORKERS=true` set karo (see Section 5).
 
 ---
 
@@ -292,36 +291,46 @@ No migrations needed — Mongoose creates collections and indexes on first write
 
 ## Section 5 — Run the Backend
 
-Two processes — both required for end-to-end functionality.
+Workers ab automatically backend ke saath hi start hote hain — **alag terminal ki zarurat nahi**.
 
-**Terminal 1 — API server:**
+**Terminal 1 — API server + workers (dono ek saath):**
+
 ```bash
 cd backend
-npm run dev        # nodemon, auto-restarts on file changes
-# or: npm start    # plain node, no auto-restart
+npm run dev
 ```
 
-**Terminal 2 — Background workers:**
-```bash
-cd backend
-npm run workers
+Yeh internally `server.js` start karta hai jo:
+1. MongoDB se connect karta hai
+2. Saare workers automatically start karta hai (same process)
+3. HTTP + WebSocket server start karta hai
+
+**Confirm it's running — log mein yeh lines dikhni chahiye:**
+
+```
+MongoDB connected
+[DonationWorker] Worker started and listening for jobs
+Wallet expiry worker started
+Fraud detection worker started
+Workers started in-process
+AidFlow server running on port 5000
 ```
 
-Workers handle: donation processing, AI evaluation dispatch, fraud detection,
-blockchain anchoring, wallet creation, wallet expiry, settlement, recurring donations,
-notifications. These are all async (queued jobs) — they do not happen in the API
-request/response cycle.
-
-**Confirm it's running:**
 ```bash
 curl http://localhost:5000/health
 # → {"status":"OK","service":"AidFlow Backend","timestamp":"..."}
 ```
 
 **Create admin account (first time only):**
+
 ```bash
 node scripts/createAdmin.js
 ```
+
+> **Note — `npm run workers` kab use karo?**
+> Agar tum workers ko independently scale karna chahte ho (production mein separate machine/process),
+> toh `STANDALONE_WORKERS=true` set karo `backend/.env` mein — tab workers `server.js` se start
+> nahi honge aur tum `npm run workers` alag se run kar sakte ho.
 
 ---
 
@@ -548,19 +557,16 @@ Minimum to get the app running from scratch:
 # 1. Start Redis
 redis-server
 
-# 2. Start Backend API (new terminal)
+# 2. Start Backend API + Workers (ek hi command, dono saath start hote hain)
 cd backend && npm run dev
 
-# 3. Start Workers (new terminal)
-cd backend && npm run workers
-
-# 4. Start all AI agents (new terminal)
+# 3. Start all AI agents (new terminal)
 cd ai-agents && ./start-agents.sh
 
-# 5. Start Frontend (new terminal)
+# 4. Start Frontend (new terminal)
 cd frontend && npm run dev
 
-# 6. Optional: Start blockchain (new terminal)
+# 5. Optional: Start blockchain (new terminal)
 cd blockchain && npx hardhat node
 # then in another terminal:
 cd blockchain && npx hardhat run scripts/deploy.js --network localhost

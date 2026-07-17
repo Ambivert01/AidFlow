@@ -256,9 +256,15 @@ if (process.env.STANDALONE_WORKERS !== "true") {
 }
 ```
 
-This means one Starter service runs both the API and all workers.
-If you later want to scale workers independently, set `STANDALONE_WORKERS=true` on the backend
-and create a separate Background Worker service with start command `node src/workers/index.js`.
+This means one Starter service runs both the API and all workers — **no separate Background Worker service needed.**
+
+Locally: `npm run dev` starts everything together.
+On Render: same `node server.js` starts everything together.
+
+If you later want to scale workers independently:
+1. Set `STANDALONE_WORKERS=true` on the backend service
+2. Create a separate **Background Worker** service with start command `node src/workers/index.js`
+3. Add the same env vars to it
 
 ### 4c. Create Web Service on Render
 

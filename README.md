@@ -180,16 +180,13 @@ cp ai-agents/proof_agent/.env.example ai-agents/proof_agent/.env
 # 4. Start Redis
 redis-server
 
-# 5. Start backend API (new terminal)
+# 5. Start backend API + workers (dono ek saath — alag terminal nahi chahiye workers ke liye)
 cd backend && npm run dev
 
-# 6. Start workers (new terminal)
-cd backend && npm run workers
-
-# 7. Start AI agents (new terminal)
+# 6. Start AI agents (new terminal)
 cd ai-agents && ./start-agents.sh
 
-# 8. Start frontend (new terminal)
+# 7. Start frontend (new terminal)
 cd frontend && npm run dev
 ```
 
